@@ -1,0 +1,6 @@
+{
+  "name": "Alfa Digi ERP",
+  "description": "Smart workforce and business management portal with HR Admin Dashboard, shift tracking, and leave management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
