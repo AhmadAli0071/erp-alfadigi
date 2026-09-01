@@ -5,6 +5,9 @@ import { LeadSidebar } from './LeadSidebar';
 import { LeadHeader } from './LeadHeader';
 import { SalesDashboardView } from '../sales/SalesDashboardView';
 import { TechDashboardView } from '../tech/TechDashboardView';
+import { LeadAttendanceView } from './LeadAttendanceView';
+import { LeadLeaveView } from './LeadLeaveView';
+import { LeadTicketsView } from './LeadTicketsView';
 
 interface LeadDashboardLayoutProps {
   user: User;
@@ -23,6 +26,9 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   };
 
   const isDashboardRoute = currentRoute === '/lead/dashboard' || currentRoute === '/' || !currentRoute;
+  const isAttendanceRoute = currentRoute.startsWith('/lead/attendance');
+  const isLeaveRoute = currentRoute.startsWith('/lead/leave');
+  const isTicketsRoute = currentRoute.startsWith('/lead/tickets');
 
   return (
     <div className="flex h-screen w-full bg-[#F7F9FC] text-slate-800 overflow-hidden font-sans relative">
@@ -56,6 +62,12 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
             ) : (
               <TechDashboardView user={user} onNavigate={handleNavigate} />
             )
+          ) : isAttendanceRoute ? (
+            <LeadAttendanceView user={user} department={department} onNavigate={handleNavigate} />
+          ) : isLeaveRoute ? (
+            <LeadLeaveView user={user} department={department} onNavigate={handleNavigate} />
+          ) : isTicketsRoute ? (
+            <LeadTicketsView user={user} department={department} onNavigate={handleNavigate} />
           ) : (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full animate-fadeIn">
               <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
