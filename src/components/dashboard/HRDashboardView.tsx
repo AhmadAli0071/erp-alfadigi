@@ -104,15 +104,15 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
       {/* Toast notification feedback */}
       {toastMessage && (
         <div
-          className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-[#121318] border border-emerald-500/40 text-white text-xs shadow-2xl flex items-center gap-3 animate-scaleUp"
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-emerald-200 text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp"
           id="hr-dashboard-toast"
         >
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-bold text-white">Action Completed</div>
-            <div className="text-slate-300 font-medium">{toastMessage.text}</div>
+            <div className="font-bold text-slate-900">Action Completed</div>
+            <div className="text-slate-600 font-medium">{toastMessage.text}</div>
           </div>
         </div>
       )}

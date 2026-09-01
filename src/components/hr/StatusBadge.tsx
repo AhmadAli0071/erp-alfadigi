@@ -39,84 +39,90 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'Approved':
       case 'Active':
         return {
-          bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />,
-          dot: 'bg-emerald-400',
+          bg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />,
+          dot: 'bg-emerald-500',
         };
       case 'Absent':
       case 'Rejected':
       case 'Inactive':
         return {
-          bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-          icon: <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
-          dot: 'bg-rose-400',
+          bg: 'bg-rose-50 text-rose-600 border-rose-200',
+          icon: <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />,
+          dot: 'bg-rose-500',
         };
       case 'Late':
         return {
-          bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-          icon: <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
+          bg: 'bg-amber-50 text-amber-600 border-amber-200',
+          icon: <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />,
           dot: 'bg-amber-400',
         };
       case 'Short Hours':
         return {
-          bg: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-          icon: <MinusCircle className="w-3.5 h-3.5 text-orange-400 shrink-0" />,
-          dot: 'bg-orange-400',
+          bg: 'bg-orange-50 text-orange-600 border-orange-200',
+          icon: <MinusCircle className="w-3.5 h-3.5 text-orange-600 shrink-0" />,
+          dot: 'bg-orange-500',
         };
       case 'Pending OT':
         return {
-          bg: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30 ring-1 ring-indigo-500/20',
-          icon: <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />,
-          dot: 'bg-indigo-400 animate-pulse',
+          bg: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-1 ring-indigo-500/20',
+          icon: <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />,
+          dot: 'bg-indigo-500 animate-pulse',
         };
       case 'Half Day':
         return {
-          bg: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-          icon: <Sun className="w-3.5 h-3.5 text-purple-400 shrink-0" />,
-          dot: 'bg-purple-400',
+          bg: 'bg-purple-50 text-purple-600 border-purple-200',
+          icon: <Sun className="w-3.5 h-3.5 text-purple-600 shrink-0" />,
+          dot: 'bg-purple-500',
         };
       case 'Leave':
         return {
-          bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-          icon: <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />,
-          dot: 'bg-blue-400',
+          bg: 'bg-blue-50 text-blue-600 border-blue-200',
+          icon: <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />,
+          dot: 'bg-blue-500',
+        };
+      case 'On Leave':
+        return {
+          bg: 'bg-blue-50 text-blue-600 border-blue-200',
+          icon: <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />,
+          dot: 'bg-blue-500',
         };
       case 'Work From Home':
         return {
-          bg: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-          icon: <Home className="w-3.5 h-3.5 text-sky-400 shrink-0" />,
-          dot: 'bg-sky-400',
+          bg: 'bg-sky-50 text-sky-600 border-sky-200',
+          icon: <Home className="w-3.5 h-3.5 text-sky-600 shrink-0" />,
+          dot: 'bg-sky-500',
         };
       case 'On Duty':
         return {
-          bg: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-          icon: <Briefcase className="w-3.5 h-3.5 text-teal-400 shrink-0" />,
-          dot: 'bg-teal-400',
+          bg: 'bg-teal-50 text-teal-600 border-teal-200',
+          icon: <Briefcase className="w-3.5 h-3.5 text-teal-600 shrink-0" />,
+          dot: 'bg-teal-500',
         };
       case 'Holiday':
       case 'Weekend':
         return {
-          bg: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-          icon: <Ban className="w-3.5 h-3.5 text-slate-400 shrink-0" />,
+          bg: 'bg-slate-100 text-slate-500 border-slate-200',
+          icon: <Ban className="w-3.5 h-3.5 text-slate-500 shrink-0" />,
           dot: 'bg-slate-400',
         };
       case 'Pending':
       case 'Open':
         return {
-          bg: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-          icon: <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
+          bg: 'bg-amber-50 text-amber-600 border-amber-200',
+          icon: <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />,
           dot: 'bg-amber-400 animate-pulse',
         };
       case 'Closed':
         return {
-          bg: 'bg-slate-700/30 text-slate-400 border-slate-700/50',
-          icon: <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />,
+          bg: 'bg-slate-200/50 text-slate-500 border-slate-200',
+          icon: <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />,
           dot: 'bg-slate-400',
         };
       default:
         return {
-          bg: 'bg-slate-800 text-slate-300 border-slate-700',
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />,
+          bg: 'bg-slate-200 text-slate-600 border-slate-200',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />,
           dot: 'bg-slate-400',
         };
     }

@@ -137,10 +137,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <div className="relative">
         {/* Form Title & Subtitle */}
         <div className="mb-8" id="login-header">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome back
           </h2>
-          <p className="text-sm font-normal text-slate-400 mt-2 leading-relaxed">
+          <p className="text-sm font-normal text-slate-500 mt-2 leading-relaxed">
             Please enter your enterprise credentials to access your account.
           </p>
         </div>
@@ -148,13 +148,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         {/* Global Error Banner */}
         {authError && (
           <div
-            className="mb-6 p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 flex items-start gap-3 text-xs sm:text-sm animate-fadeIn"
+            className="mb-6 p-4 rounded-xl bg-rose-50/60 border border-rose-200 text-rose-700 flex items-start gap-3 text-xs sm:text-sm animate-fadeIn"
             role="alert"
             id="auth-error-banner"
           >
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <span className="font-semibold block text-rose-100">Authentication Failed</span>
+              <span className="font-semibold block text-rose-800">Authentication Failed</span>
               {authError}
             </div>
           </div>
@@ -206,7 +206,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
                 aria-label={showPassword ? 'Password visible. Click to hide password' : 'Password hidden. Click to show password'}
-                className="p-2 rounded-lg text-slate-500 hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                 id="toggle-password-visibility-btn"
               >
                 {showPassword ? (
@@ -232,7 +232,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               type="button"
               onClick={() => onOpenForgotPassword(email)}
               disabled={isLoading}
-              className="text-xs sm:text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors focus:outline-none focus:underline rounded"
+              className="text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-600 transition-colors focus:outline-none focus:underline rounded"
               id="forgot-password-link-btn"
             >
               Forgot Password?
@@ -260,18 +260,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </form>
 
         {/* Enterprise Demo Account Quick-Fill Toolbar */}
-        <div className="mt-8 pt-6 border-t border-white/5" id="demo-accounts-picker">
+        <div className="mt-8 pt-6 border-t border-slate-200/70" id="demo-accounts-picker">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               <span>Demo Accounts (Role Redirection)</span>
             </div>
-            <span className="text-[11px] font-mono text-slate-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded">
+            <span className="text-[11px] font-mono text-slate-500 bg-slate-100/60 border border-slate-200/70 px-2 py-0.5 rounded">
               Pass: {DEMO_PASSWORD}
             </span>
           </div>
 
-          <p className="text-xs text-slate-400 mb-3">
+          <p className="text-xs text-slate-500 mb-3">
             Select an account to auto-fill credentials and test role redirection:
           </p>
 
@@ -282,20 +282,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 type="button"
                 onClick={() => handleQuickFill(acc)}
                 disabled={isLoading}
-                className="flex flex-col items-start p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:border-indigo-500/40 hover:bg-indigo-500/10 text-left transition-all group focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 cursor-pointer"
+                className="flex flex-col items-start p-2.5 rounded-xl border border-slate-200/70 bg-slate-50 hover:border-indigo-200 hover:bg-indigo-50 text-left transition-all group focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 cursor-pointer"
                 id={`demo-user-fill-${acc.role.toLowerCase()}-${acc.department?.toLowerCase() || 'global'}`}
                 title={`Click to fill ${acc.name} (${acc.role})`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-300">
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600">
                     {acc.roleDisplayName}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 truncate w-full mt-0.5">
+                <span className="text-[10px] text-slate-500 truncate w-full mt-0.5">
                   {acc.email}
                 </span>
                 {acc.department && (
-                  <span className="text-[9px] font-medium text-slate-500 mt-0.5">
+                  <span className="text-[9px] font-medium text-slate-400 mt-0.5">
                     Dept: {acc.department}
                   </span>
                 )}
@@ -306,9 +306,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       </div>
 
       {/* Compliance / Security Footnote */}
-      <div className="mt-8 text-center text-xs text-slate-500">
+      <div className="mt-8 text-center text-xs text-slate-400">
         <p className="flex items-center justify-center gap-1.5">
-          <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+          <KeyRound className="w-3.5 h-3.5 text-slate-400" />
           <span>Protected by Enterprise Zero-Trust &amp; Role-Based Access Control</span>
         </p>
       </div>

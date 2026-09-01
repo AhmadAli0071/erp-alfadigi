@@ -97,18 +97,18 @@ export const HRReportsView: React.FC<HRReportsViewProps> = ({ onNavigateToDashbo
               <button
                 type="button"
                 onClick={onNavigateToDashboard}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 md:hidden"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 md:hidden"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <BarChart3 className="w-6 h-6 text-indigo-400" />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+              <BarChart3 className="w-6 h-6 text-indigo-600" />
               Reports
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-500">
             Generate and analyze comprehensive workforce, attendance, and leave audit reports.
           </p>
         </div>
@@ -118,7 +118,7 @@ export const HRReportsView: React.FC<HRReportsViewProps> = ({ onNavigateToDashbo
             type="button"
             onClick={fetchReport}
             disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 transition-colors disabled:opacity-40 text-xs font-semibold"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 transition-colors disabled:opacity-40 text-xs font-semibold"
             title="Refresh Report Data"
             id="report-refresh-btn"
           >

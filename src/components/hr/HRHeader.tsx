@@ -128,7 +128,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
 
   return (
     <header
-      className="h-14 bg-[#0d0e12] border-b border-white/5 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20"
+      className="h-14 shrink-0 mx-3 sm:mx-4 lg:mx-6 mt-3 sm:mt-4 px-3 sm:px-5 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200/80 shadow-[0_4px_24px_rgba(15,23,42,0.04)] flex items-center justify-between z-20"
       id="hr-top-header"
     >
       {/* Left Section: Mobile Menu & Clean Page Title */}
@@ -136,14 +136,14 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 focus:outline-none cursor-pointer"
+          className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 focus:outline-none cursor-pointer"
           aria-label="Open navigation drawer"
           id="mobile-drawer-toggle-btn"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <h1 className="text-base font-bold text-white tracking-tight" id="header-page-title">
+        <h1 className="text-base font-bold text-slate-900 tracking-tight" id="header-page-title">
           {getPageTitle()}
         </h1>
       </div>
@@ -153,7 +153,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
         {/* Search */}
         <div className="relative" ref={searchRef} id="global-search-container">
           <div className="relative w-36 sm:w-60 md:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search..."
@@ -163,7 +163,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full text-xs font-normal rounded-xl py-1.5 pl-8 pr-7 bg-white/[0.04] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+              className="w-full text-xs font-medium rounded-xl py-1.5 pl-8 pr-7 bg-slate-100/70 border border-slate-200/80 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200"
               id="global-search-input"
             />
             {searchQuery && (
@@ -173,7 +173,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                   setSearchQuery('');
                   setSearchResults([]);
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -183,19 +183,19 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery.trim().length > 0 && (
             <div
-              className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#121318] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-scaleUp text-slate-200"
+              className="absolute right-0 mt-2 w-80 sm:w-96 glass-pop rounded-2xl overflow-hidden z-50 animate-scaleUp text-slate-700"
               id="global-search-results-menu"
             >
-              <div className="p-3 border-b border-white/5 flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold text-white">Search Results</span>
-                <span className="font-mono text-[10px] text-slate-500">
+              <div className="p-3 border-b border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-semibold text-slate-900">Search Results</span>
+                <span className="font-mono text-[10px] text-slate-400">
                   {searchResults.length} matches
                 </span>
               </div>
 
-              <div className="max-h-72 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-200/70 custom-scrollbar">
                 {isSearching ? (
-                  <div className="p-4 text-center text-xs text-slate-500">
+                  <div className="p-4 text-center text-xs text-slate-400">
                     Searching records...
                   </div>
                 ) : searchResults.length > 0 ? (
@@ -204,26 +204,26 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                       key={`${item.category}-${item.id}`}
                       type="button"
                       onClick={() => handleSearchResultClick(item)}
-                      className="w-full p-3 text-left hover:bg-white/[0.04] transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                      className="w-full p-3 text-left hover:bg-slate-100/50 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-white group-hover:text-indigo-300 transition-colors">
+                          <span className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
                             {item.title}
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-white/5 text-slate-400">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-slate-100/60 text-slate-500">
                             {item.category}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
                           {item.subtitle}
                         </p>
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 shrink-0 mt-1" />
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 shrink-0 mt-1" />
                     </button>
                   ))
                 ) : (
-                  <div className="p-6 text-center text-xs text-slate-500">
+                  <div className="p-6 text-center text-xs text-slate-400">
                     No matching records found.
                   </div>
                 )}
@@ -237,27 +237,27 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 relative transition-colors focus:outline-none cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 relative transition-colors focus:outline-none cursor-pointer"
             aria-label={`Notifications (${unreadCount} unread)`}
             id="header-notification-bell-btn"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-[#0d0e12]" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white" />
             )}
           </button>
 
           {/* Notifications Panel */}
           {isNotificationsOpen && (
             <div
-              className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#121318] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-scaleUp text-slate-200"
+              className="absolute right-0 mt-2 w-80 sm:w-96 glass-pop rounded-2xl overflow-hidden z-50 animate-scaleUp text-slate-700"
               id="notifications-dropdown-panel"
             >
-              <div className="p-3.5 border-b border-white/5 flex items-center justify-between">
+              <div className="p-3.5 border-b border-slate-200/70 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-xs text-white">Notifications</span>
+                  <span className="font-bold text-xs text-slate-900">Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100/70 text-indigo-600 border border-indigo-200">
                       {unreadCount} New
                     </span>
                   )}
@@ -266,7 +266,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                   <button
                     type="button"
                     onClick={handleMarkAllRead}
-                    className="text-[10px] font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 focus:outline-none cursor-pointer"
+                    className="text-[10px] font-medium text-indigo-600 hover:text-indigo-600 flex items-center gap-1 focus:outline-none cursor-pointer"
                   >
                     <CheckCheck className="w-3 h-3" />
                     Mark all read
@@ -274,38 +274,38 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                 )}
               </div>
 
-              <div className="max-h-72 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-200/70 custom-scrollbar">
                 {notifications.length > 0 ? (
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`p-3 hover:bg-white/[0.04] transition-colors cursor-pointer flex items-start gap-2.5 ${
+                      className={`p-3 hover:bg-slate-100/50 transition-colors cursor-pointer flex items-start gap-2.5 ${
                         !notif.isRead ? 'bg-indigo-500/[0.04]' : ''
                       }`}
                     >
                       <div
                         className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
-                          !notif.isRead ? 'bg-indigo-400' : 'bg-transparent'
+                          !notif.isRead ? 'bg-indigo-500' : 'bg-transparent'
                         }`}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <h4 className="text-xs font-semibold text-white truncate">
+                          <h4 className="text-xs font-semibold text-slate-900 truncate">
                             {notif.title}
                           </h4>
-                          <span className="text-[10px] text-slate-500 shrink-0">
+                          <span className="text-[10px] text-slate-400 shrink-0">
                             {notif.timeAgo}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
+                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
                           {notif.message}
                         </p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="p-6 text-center text-xs text-slate-500">
+                  <div className="p-6 text-center text-xs text-slate-400">
                     No active notifications.
                   </div>
                 )}
@@ -319,27 +319,27 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-2 p-1 pl-2 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-colors focus:outline-none cursor-pointer"
+            className="flex items-center gap-2 p-1 pl-2 rounded-xl border border-slate-200/70 bg-slate-50 hover:bg-slate-100/60 transition-colors focus:outline-none cursor-pointer"
             id="header-user-profile-btn"
           >
             <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
               HA
             </div>
-            <span className="text-xs font-semibold text-slate-200 hidden sm:inline">
+            <span className="text-xs font-semibold text-slate-700 hidden sm:inline">
               HR Admin
             </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            <ChevronDown className="w-3 h-3 text-slate-500" />
           </button>
 
           {/* Profile Dropdown */}
           {isProfileOpen && (
             <div
-              className="absolute right-0 mt-2 w-52 bg-[#121318] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-scaleUp text-slate-200"
+              className="absolute right-0 mt-2 w-52 glass-pop rounded-2xl p-1.5 z-50 animate-scaleUp text-slate-700"
               id="header-user-profile-dropdown"
             >
-              <div className="p-2.5 border-b border-white/5 mb-1">
-                <div className="text-xs font-bold text-white">{user.name}</div>
-                <div className="text-[10px] font-mono text-slate-400 truncate">{user.email}</div>
+              <div className="p-2.5 border-b border-slate-200/70 mb-1">
+                <div className="text-xs font-bold text-slate-900">{user.name}</div>
+                <div className="text-[10px] font-mono text-slate-500 truncate">{user.email}</div>
               </div>
 
               <button
@@ -348,13 +348,13 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                   onNavigate('/hr/settings');
                   setIsProfileOpen(false);
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 transition-colors text-left cursor-pointer"
               >
-                <Settings className="w-3.5 h-3.5 text-slate-400" />
+                <Settings className="w-3.5 h-3.5 text-slate-500" />
                 <span>Settings</span>
               </button>
 
-              <div className="my-1 border-t border-white/5" />
+              <div className="my-1 border-t border-slate-200/70" />
 
               <button
                 type="button"
@@ -362,10 +362,10 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
                   setIsProfileOpen(false);
                   onLogout();
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
                 id="menu-logout-btn"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
                 <span>Logout</span>
               </button>
             </div>

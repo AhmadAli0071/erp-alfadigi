@@ -28,7 +28,7 @@ export default function App() {
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen w-full bg-[#F7F9FC] flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
       </div>
     );

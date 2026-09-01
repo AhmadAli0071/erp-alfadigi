@@ -32,7 +32,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     <div className="flex items-center gap-3 select-none" id="alfa-digi-logo-container">
       {/* Precision Geometric Enterprise Monogram */}
       <div
-        className={`${iconSizes[size]} relative flex items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/25 border border-indigo-400/30`}
+        className={`${iconSizes[size]} relative flex items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/25 border border-indigo-200`}
         id="alfa-digi-brand-mark"
       >
         <span className="text-white font-black text-lg tracking-tight">A</span>
@@ -41,20 +41,20 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       <div className="flex flex-col">
         <div className="flex items-center gap-2">
           <span
-            className={`font-extrabold tracking-tight ${titleSizes[size]} text-white`}
+            className={`font-extrabold tracking-tight ${titleSizes[size]} text-slate-900`}
             id="alfa-digi-brand-title"
           >
             ALFA DIGI
           </span>
           <span
-            className={`font-bold tracking-wider rounded-md font-mono ${badgeSizes[size]} bg-indigo-500/15 text-indigo-400 border border-indigo-500/30`}
+            className={`font-bold tracking-wider rounded-md font-mono ${badgeSizes[size]} bg-indigo-50 text-indigo-600 border border-indigo-200`}
             id="alfa-digi-erp-badge"
           >
             ERP
           </span>
         </div>
         {showTagline && (
-          <span className="text-xs font-medium tracking-normal mt-0.5 text-slate-400">
+          <span className="text-xs font-medium tracking-normal mt-0.5 text-slate-500">
             Smart Workforce &amp; Business Management
           </span>
         )}

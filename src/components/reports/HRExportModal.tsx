@@ -67,43 +67,43 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
       id: 'excel' as const,
       name: 'Microsoft Excel (.xlsx)',
       description: 'Structured spreadsheet format with formulas and table headers',
-      icon: <FileSpreadsheet className="w-5 h-5 text-emerald-400" />,
+      icon: <FileSpreadsheet className="w-5 h-5 text-emerald-600" />,
     },
     {
       id: 'csv' as const,
       name: 'CSV Document (.csv)',
       description: 'Universal comma-separated tabular data file for data processing',
-      icon: <FileText className="w-5 h-5 text-indigo-400" />,
+      icon: <FileText className="w-5 h-5 text-indigo-600" />,
     },
     {
       id: 'pdf' as const,
       name: 'PDF Document (.pdf)',
       description: 'Print-ready formatted document with Alfa Digi ERP header styling',
-      icon: <File className="w-5 h-5 text-rose-400" />,
+      icon: <File className="w-5 h-5 text-rose-600" />,
     },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/25 backdrop-blur-[3px] animate-fadeIn">
       <div
-        className="w-full max-w-md bg-[#0f1017] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-md bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         id="hr-report-export-modal"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100/70 border border-indigo-200 flex items-center justify-center text-indigo-600">
               <Download className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Export Report</h3>
-              <p className="text-[11px] text-slate-400">{category.toUpperCase()} • {dateRangeLabel}</p>
+              <h3 className="text-sm font-semibold text-slate-900">Export Report</h3>
+              <p className="text-[11px] text-slate-500">{category.toUpperCase()} • {dateRangeLabel}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -112,7 +112,7 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 sm:p-5 space-y-4">
           {!hasData && (
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-300">
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2 text-xs text-amber-600">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>No data available to export for the currently selected filters.</span>
             </div>
@@ -122,8 +122,8 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
             <div
               className={`p-3 rounded-xl border flex items-center gap-2 text-xs ${
                 notice.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                  : 'bg-rose-50 border-rose-200 text-rose-600'
               }`}
             >
               {notice.type === 'success' ? (
@@ -136,7 +136,7 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Choose Export Format</label>
+            <label className="text-xs font-semibold text-slate-600">Choose Export Format</label>
             <div className="space-y-2">
               {formats.map((fmt) => (
                 <div
@@ -144,20 +144,20 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
                   onClick={() => setSelectedFormat(fmt.id)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                     selectedFormat === fmt.id
-                      ? 'bg-indigo-600/15 border-indigo-500/40 text-white'
-                      : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/5'
+                      ? 'bg-indigo-50 border-indigo-200 text-slate-900'
+                      : 'bg-slate-50 border-slate-200/70 text-slate-500 hover:bg-slate-100/60'
                   }`}
                 >
-                  <div className="p-2 rounded-lg bg-white/5 shrink-0">{fmt.icon}</div>
+                  <div className="p-2 rounded-lg bg-slate-100/60 shrink-0">{fmt.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white">{fmt.name}</div>
-                    <div className="text-[11px] text-slate-400 truncate">{fmt.description}</div>
+                    <div className="text-xs font-semibold text-slate-900">{fmt.name}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{fmt.description}</div>
                   </div>
                   <div
                     className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                       selectedFormat === fmt.id
                         ? 'border-indigo-500 bg-indigo-500'
-                        : 'border-white/20'
+                        : 'border-slate-300/80'
                     }`}
                   >
                     {selectedFormat === fmt.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -169,11 +169,11 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 flex items-center justify-end gap-2.5 bg-white/[0.01]">
+        <div className="p-4 border-t border-slate-200/80 flex items-center justify-end gap-2.5 bg-slate-50/50">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            className="px-4 py-2 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-600 hover:bg-slate-100/60"
           >
             Cancel
           </button>

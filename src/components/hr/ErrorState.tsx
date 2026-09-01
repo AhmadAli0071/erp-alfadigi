@@ -12,18 +12,18 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 }) => {
   return (
     <div
-      className="p-12 rounded-2xl bg-[#121318] border border-rose-500/30 text-center space-y-4 max-w-lg mx-auto shadow-2xl my-12"
+      className="p-12 rounded-2xl bg-white/80 backdrop-blur-xl border border-rose-200 text-center space-y-4 max-w-lg mx-auto shadow-2xl my-12"
       id="hr-dashboard-error-state"
     >
-      <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+      <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
         <AlertTriangle className="w-6 h-6" />
       </div>
 
       <div className="space-y-1">
-        <h3 className="text-base font-bold text-white tracking-tight">
+        <h3 className="text-base font-bold text-slate-900 tracking-tight">
           Connection Issue
         </h3>
-        <p className="text-xs text-slate-400 leading-relaxed">
+        <p className="text-xs text-slate-500 leading-relaxed">
           {message} Please verify your connection or retry loading the dashboard metrics.
         </p>
       </div>

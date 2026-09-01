@@ -236,24 +236,24 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     <div className="space-y-6 animate-fadeIn pb-12" id="hr-attendance-management-module">
       {/* Toast feedback */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-[#121318] border border-emerald-500/40 text-white text-xs shadow-2xl flex items-center gap-3 animate-scaleUp">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium text-slate-200">{toastMsg}</span>
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-emerald-200 text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="font-medium text-slate-700">{toastMsg}</span>
         </div>
       )}
 
       {/* 1. Page Header (Section 25) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/70">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Attendance Management
             </h1>
-            <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+            <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
               Shift: 6 PM – 3 AM
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Track employee attendance, working hours, breaks and extra hours.
           </p>
         </div>
@@ -264,10 +264,10 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           <button
             type="button"
             onClick={() => setIsMobileFilterOpen(true)}
-            className="md:hidden px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-slate-200 text-xs font-semibold flex items-center gap-2 cursor-pointer relative"
+            className="md:hidden px-3 py-2 rounded-xl bg-slate-100/50 border border-slate-200/80 hover:bg-slate-100/70 text-slate-700 text-xs font-semibold flex items-center gap-2 cursor-pointer relative"
             id="open-mobile-filters-btn"
           >
-            <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+            <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
             <span>Filters</span>
             {activeFiltersCount > 0 && (
               <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
@@ -291,12 +291,12 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       </div>
 
       {/* 2. Quick Date Presets Bar (Section 26 & Section 2) */}
-      <div className="bg-[#121318] border border-white/10 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider">
+          <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
             Quick Date Filter
           </span>
-          <span className="text-xs font-medium text-indigo-300">
+          <span className="text-xs font-medium text-indigo-600">
             {queryResult?.dateRangeLabel || 'Today'}
           </span>
         </div>
@@ -316,7 +316,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                    : 'bg-white/[0.03] text-slate-400 hover:text-slate-200 hover:bg-white/[0.07] border border-white/5'
+                    : 'bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/70'
                 }`}
                 id={`date-preset-${preset.id}`}
               >
@@ -328,25 +328,25 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
         {/* Custom Date Range Selector (Section 4) */}
         {datePreset === 'custom' && (
-          <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-fadeIn">
+          <div className="pt-3 border-t border-slate-200/70 flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-fadeIn">
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400">From Date:</span>
+              <span className="text-slate-500">From Date:</span>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                className="px-2.5 py-1.5 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
                 id="custom-start-date-input"
               />
             </div>
 
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400">To Date:</span>
+              <span className="text-slate-500">To Date:</span>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                className="px-2.5 py-1.5 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
                 id="custom-end-date-input"
               />
             </div>
@@ -360,7 +360,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               Apply
             </button>
 
-            <span className="text-xs text-slate-400 italic">
+            <span className="text-xs text-slate-500 italic">
               ({customDaysCount} {customDaysCount === 1 ? 'day' : 'days'} selected)
             </span>
           </div>
@@ -368,10 +368,10 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       </div>
 
       {/* 3. Advanced Filtering Toolbar (Desktop) */}
-      <div className="hidden md:flex flex-wrap items-center gap-3 bg-[#121318] border border-white/10 rounded-2xl p-4 shadow-sm">
+      <div className="hidden md:flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-4 shadow-sm">
         {/* Search Query */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search employee name, ID, or dept..."
@@ -380,14 +380,14 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full text-xs py-2 pl-8 pr-7 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+            className="w-full text-xs py-2 pl-8 pr-7 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500"
             id="attendance-search-input"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -399,13 +399,13 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           <select
             value={selectedDept}
             onChange={(e) => handleDepartmentChange(e.target.value)}
-            className="w-full text-xs py-2 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="w-full text-xs py-2 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
             id="attendance-department-select"
           >
-            <option value="ALL" className="bg-[#121318]">All Departments</option>
-            <option value="HR" className="bg-[#121318]">HR</option>
-            <option value="Sales" className="bg-[#121318]">Sales</option>
-            <option value="Tech" className="bg-[#121318]">Tech</option>
+            <option value="ALL" className="bg-white/80 backdrop-blur-xl">All Departments</option>
+            <option value="HR" className="bg-white/80 backdrop-blur-xl">HR</option>
+            <option value="Sales" className="bg-white/80 backdrop-blur-xl">Sales</option>
+            <option value="Tech" className="bg-white/80 backdrop-blur-xl">Tech</option>
           </select>
         </div>
 
@@ -414,14 +414,14 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           <select
             value={selectedEmployeeId}
             onChange={(e) => handleEmployeeChange(e.target.value)}
-            className="w-full text-xs py-2 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="w-full text-xs py-2 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
             id="attendance-employee-select"
           >
-            <option value="ALL" className="bg-[#121318]">
+            <option value="ALL" className="bg-white/80 backdrop-blur-xl">
               {selectedDept !== 'ALL' ? `All ${selectedDept} Employees` : 'All Employees'}
             </option>
             {availableEmployees.map((emp) => (
-              <option key={emp.id} value={emp.id} className="bg-[#121318]">
+              <option key={emp.id} value={emp.id} className="bg-white/80 backdrop-blur-xl">
                 {emp.name} ({emp.empId})
               </option>
             ))}
@@ -436,19 +436,19 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               setSelectedStatus(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full text-xs py-2 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="w-full text-xs py-2 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
             id="attendance-status-select"
           >
-            <option value="ALL" className="bg-[#121318]">All Statuses</option>
-            <option value="Present" className="bg-[#121318]">Present</option>
-            <option value="Absent" className="bg-[#121318]">Absent</option>
-            <option value="Late" className="bg-[#121318]">Late / Short Hours</option>
-            <option value="Half Day" className="bg-[#121318]">Half Day</option>
-            <option value="Leave" className="bg-[#121318]">Leave</option>
-            <option value="Work From Home" className="bg-[#121318]">Work From Home</option>
-            <option value="On Duty" className="bg-[#121318]">On Duty</option>
-            <option value="Holiday" className="bg-[#121318]">Holiday</option>
-            <option value="Weekend" className="bg-[#121318]">Weekend</option>
+            <option value="ALL" className="bg-white/80 backdrop-blur-xl">All Statuses</option>
+            <option value="Present" className="bg-white/80 backdrop-blur-xl">Present</option>
+            <option value="Absent" className="bg-white/80 backdrop-blur-xl">Absent</option>
+            <option value="Late" className="bg-white/80 backdrop-blur-xl">Late / Short Hours</option>
+            <option value="Half Day" className="bg-white/80 backdrop-blur-xl">Half Day</option>
+            <option value="Leave" className="bg-white/80 backdrop-blur-xl">Leave</option>
+            <option value="Work From Home" className="bg-white/80 backdrop-blur-xl">Work From Home</option>
+            <option value="On Duty" className="bg-white/80 backdrop-blur-xl">On Duty</option>
+            <option value="Holiday" className="bg-white/80 backdrop-blur-xl">Holiday</option>
+            <option value="Weekend" className="bg-white/80 backdrop-blur-xl">Weekend</option>
           </select>
         </div>
 
@@ -457,7 +457,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           <button
             type="button"
             onClick={handleClearAllFilters}
-            className="p-2 rounded-xl bg-white/[0.04] hover:bg-rose-500/10 hover:text-rose-400 text-slate-400 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-slate-100/50 hover:bg-rose-50 hover:text-rose-600 text-slate-500 transition-colors cursor-pointer"
             title="Reset all filters"
             id="reset-attendance-filters-btn"
           >
@@ -467,45 +467,45 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       </div>
 
       {/* 4. Active Filters Summary Bar & Removable Chips (Section 8) */}
-      <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-300">
+      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-white">Results for:</span>
+          <span className="font-semibold text-slate-900">Results for:</span>
 
           {/* Period Chip */}
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-medium">
-            <Calendar className="w-3 h-3 text-indigo-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 font-medium">
+            <Calendar className="w-3 h-3 text-indigo-600" />
             <span>{queryResult?.dateRangeLabel || 'Today'}</span>
           </span>
 
           {/* Employee Chip */}
           {selectedEmployeeObj ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-medium">
-              <User className="w-3 h-3 text-indigo-400" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 font-medium">
+              <User className="w-3 h-3 text-indigo-600" />
               <span>{selectedEmployeeObj.name}</span>
               <button
                 type="button"
                 onClick={() => setSelectedEmployeeId('ALL')}
-                className="hover:text-white"
+                className="hover:text-slate-900"
               >
                 <X className="w-3 h-3" />
               </button>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">
-              <Users className="w-3 h-3 text-slate-400" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/60 border border-slate-200/80 text-slate-600 font-medium">
+              <Users className="w-3 h-3 text-slate-500" />
               <span>All Employees</span>
             </span>
           )}
 
           {/* Department Chip */}
           {selectedDept !== 'ALL' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">
-              <Building className="w-3 h-3 text-slate-400" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/60 border border-slate-200/80 text-slate-600 font-medium">
+              <Building className="w-3 h-3 text-slate-500" />
               <span>{selectedDept}</span>
               <button
                 type="button"
                 onClick={() => handleDepartmentChange('ALL')}
-                className="hover:text-white"
+                className="hover:text-slate-900"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -514,12 +514,12 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
           {/* Status Chip */}
           {selectedStatus !== 'ALL' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/60 border border-slate-200/80 text-slate-600 font-medium">
               <span>Status: {selectedStatus}</span>
               <button
                 type="button"
                 onClick={() => setSelectedStatus('ALL')}
-                className="hover:text-white"
+                className="hover:text-slate-900"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -528,12 +528,12 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
           {/* Search Query Chip */}
           {searchQuery && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 font-medium">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/60 border border-slate-200/80 text-slate-600 font-medium">
               <span>Query: "{searchQuery}"</span>
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="hover:text-white"
+                className="hover:text-slate-900"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -542,14 +542,14 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono text-xs font-bold text-slate-400">
+          <span className="font-mono text-xs font-bold text-slate-500">
             {queryResult?.totalCount || 0} records found
           </span>
           {activeFiltersCount > 0 && (
             <button
               type="button"
               onClick={handleClearAllFilters}
-              className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer underline text-[11px]"
+              className="text-indigo-600 hover:text-indigo-600 font-semibold cursor-pointer underline text-[11px]"
             >
               Clear All
             </button>
@@ -560,84 +560,84 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       {/* 5. Attendance Summary Cards (Section 10) */}
       {selectedEmployeeObj && queryResult?.employeeSummary ? (
         /* Employee-Specific Summary Card */
-        <div className="bg-[#121318] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 font-black flex items-center justify-center text-sm shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100/70 border border-indigo-200 text-indigo-600 font-black flex items-center justify-center text-sm shrink-0">
                 {selectedEmployeeObj.name
                   .split(' ')
                   .map((n) => n[0])
                   .join('')}
               </div>
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight">
+                <h3 className="text-base font-bold text-slate-900 tracking-tight">
                   {selectedEmployeeObj.name} — Attendance Summary
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   {selectedEmployeeObj.empId} • {selectedEmployeeObj.jobTitle} (
-                  <span className="text-slate-300 font-semibold">{selectedEmployeeObj.department}</span>)
+                  <span className="text-slate-600 font-semibold">{selectedEmployeeObj.department}</span>)
                 </p>
               </div>
             </div>
 
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 self-start sm:self-auto">
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 self-start sm:self-auto">
               {queryResult.employeeSummary.periodLabel}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <span className="text-[10px] text-slate-500 block font-semibold uppercase">Working Days</span>
-              <span className="text-lg font-black text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Working Days</span>
+              <span className="text-lg font-black text-slate-900 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.workingDays}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20">
-              <span className="text-[10px] text-emerald-400 block font-semibold uppercase">Present</span>
-              <span className="text-lg font-black text-emerald-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-200">
+              <span className="text-[10px] text-emerald-600 block font-semibold uppercase">Present</span>
+              <span className="text-lg font-black text-emerald-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.presentDays}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-rose-500/[0.04] border border-rose-500/20">
-              <span className="text-[10px] text-rose-400 block font-semibold uppercase">Absent</span>
-              <span className="text-lg font-black text-rose-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-rose-500/[0.04] border border-rose-200">
+              <span className="text-[10px] text-rose-600 block font-semibold uppercase">Absent</span>
+              <span className="text-lg font-black text-rose-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.absentDays}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-blue-500/[0.04] border border-blue-500/20">
-              <span className="text-[10px] text-blue-400 block font-semibold uppercase">Leaves</span>
-              <span className="text-lg font-black text-blue-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-blue-500/[0.04] border border-blue-200">
+              <span className="text-[10px] text-blue-600 block font-semibold uppercase">Leaves</span>
+              <span className="text-lg font-black text-blue-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.leaveDays}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <span className="text-[10px] text-slate-500 block font-semibold uppercase">Avg Work/Day</span>
-              <span className="text-base font-bold text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Avg Work/Day</span>
+              <span className="text-base font-bold text-slate-900 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.avgWorkingHours}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-orange-500/[0.04] border border-orange-500/20">
-              <span className="text-[10px] text-orange-400 block font-semibold uppercase">Short Hours</span>
-              <span className="text-base font-bold text-orange-300 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-orange-500/[0.04] border border-orange-200">
+              <span className="text-[10px] text-orange-600 block font-semibold uppercase">Short Hours</span>
+              <span className="text-base font-bold text-orange-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.totalShortHours}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-indigo-500/[0.04] border border-indigo-500/20">
-              <span className="text-[10px] text-indigo-300 block font-semibold uppercase">Approved OT</span>
-              <span className="text-base font-bold text-indigo-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-indigo-500/[0.04] border border-indigo-200">
+              <span className="text-[10px] text-indigo-600 block font-semibold uppercase">Approved OT</span>
+              <span className="text-base font-bold text-indigo-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.approvedExtraHours}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/20">
-              <span className="text-[10px] text-amber-300 block font-semibold uppercase">Pending OT</span>
-              <span className="text-base font-bold text-amber-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-amber-500/[0.04] border border-amber-200">
+              <span className="text-[10px] text-amber-600 block font-semibold uppercase">Pending OT</span>
+              <span className="text-base font-bold text-amber-600 font-mono mt-0.5 block">
                 {queryResult.employeeSummary.pendingExtraHours}
               </span>
             </div>
@@ -645,74 +645,74 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
         </div>
       ) : queryResult?.companySummary ? (
         /* All Employees Summary Card */
-        <div className="bg-[#121318] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
                 Company-wide Attendance Summary
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Turnout overview across HR, Sales, and Tech departments
               </p>
             </div>
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 self-start sm:self-auto">
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 self-start sm:self-auto">
               {queryResult.companySummary.periodLabel}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <span className="text-[10px] text-slate-500 block font-semibold uppercase">Total Records</span>
-              <span className="text-lg font-black text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Total Records</span>
+              <span className="text-lg font-black text-slate-900 font-mono mt-0.5 block">
                 {queryResult.companySummary.totalRecords}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20">
-              <span className="text-[10px] text-emerald-400 block font-semibold uppercase">Present</span>
-              <span className="text-lg font-black text-emerald-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-emerald-500/[0.04] border border-emerald-200">
+              <span className="text-[10px] text-emerald-600 block font-semibold uppercase">Present</span>
+              <span className="text-lg font-black text-emerald-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.presentCount}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-rose-500/[0.04] border border-rose-500/20">
-              <span className="text-[10px] text-rose-400 block font-semibold uppercase">Absent</span>
-              <span className="text-lg font-black text-rose-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-rose-500/[0.04] border border-rose-200">
+              <span className="text-[10px] text-rose-600 block font-semibold uppercase">Absent</span>
+              <span className="text-lg font-black text-rose-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.absentCount}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-blue-500/[0.04] border border-blue-500/20">
-              <span className="text-[10px] text-blue-400 block font-semibold uppercase">On Leave</span>
-              <span className="text-lg font-black text-blue-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-blue-500/[0.04] border border-blue-200">
+              <span className="text-[10px] text-blue-600 block font-semibold uppercase">On Leave</span>
+              <span className="text-lg font-black text-blue-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.leaveCount}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-sky-500/[0.04] border border-sky-500/20">
-              <span className="text-[10px] text-sky-400 block font-semibold uppercase">WFH</span>
-              <span className="text-lg font-black text-sky-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-sky-500/[0.04] border border-sky-200">
+              <span className="text-[10px] text-sky-600 block font-semibold uppercase">WFH</span>
+              <span className="text-lg font-black text-sky-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.wfhCount}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-purple-500/[0.04] border border-purple-500/20">
-              <span className="text-[10px] text-purple-400 block font-semibold uppercase">Half Day</span>
-              <span className="text-lg font-black text-purple-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-purple-500/[0.04] border border-purple-200">
+              <span className="text-[10px] text-purple-600 block font-semibold uppercase">Half Day</span>
+              <span className="text-lg font-black text-purple-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.halfDayCount}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <span className="text-[10px] text-slate-500 block font-semibold uppercase">Avg Net Work</span>
-              <span className="text-base font-bold text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Avg Net Work</span>
+              <span className="text-base font-bold text-slate-900 font-mono mt-0.5 block">
                 {queryResult.companySummary.avgWorkingHours}
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-indigo-500/[0.04] border border-indigo-500/20">
-              <span className="text-[10px] text-indigo-300 block font-semibold uppercase">Approved OT</span>
-              <span className="text-base font-bold text-indigo-400 font-mono mt-0.5 block">
+            <div className="p-3 rounded-xl bg-indigo-500/[0.04] border border-indigo-200">
+              <span className="text-[10px] text-indigo-600 block font-semibold uppercase">Approved OT</span>
+              <span className="text-base font-bold text-indigo-600 font-mono mt-0.5 block">
                 {queryResult.companySummary.totalApprovedExtraHours}
               </span>
             </div>
@@ -721,33 +721,33 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       ) : null}
 
       {/* 6. Overnight Shift Clarification Banner (Section 15) */}
-      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-400">
-        <Moon className="w-4 h-4 text-indigo-400 shrink-0" />
+      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-500">
+        <Moon className="w-4 h-4 text-indigo-600 shrink-0" />
         <span>
-          <strong className="text-slate-300">Shift Crossover Note:</strong> Shift start date represents the attendance day. Punches after midnight display the next calendar date with night badges.
+          <strong className="text-slate-600">Shift Crossover Note:</strong> Shift start date represents the attendance day. Punches after midnight display the next calendar date with night badges.
         </span>
       </div>
 
       {/* 7. Attendance Table Container */}
-      <div className="bg-[#121318] border border-white/10 rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-xl overflow-hidden">
         {/* Table Controls Top */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200/70 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-white tracking-tight">
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
               Attendance Records
             </h3>
-            <span className="text-xs font-mono font-semibold text-slate-400">
+            <span className="text-xs font-mono font-semibold text-slate-500">
               ({queryResult?.totalCount || 0} total)
             </span>
           </div>
 
           <div className="flex items-center gap-3">
             {/* View Mode Toggle for Small Screens */}
-            <div className="sm:hidden flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/10">
+            <div className="sm:hidden flex items-center bg-slate-100/50 rounded-lg p-0.5 border border-slate-200/80">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`p-1 rounded ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
+                className={`p-1 rounded ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
                 title="Table view"
               >
                 <TableIcon className="w-3.5 h-3.5" />
@@ -755,7 +755,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`p-1 rounded ${viewMode === 'cards' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
+                className={`p-1 rounded ${viewMode === 'cards' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
                 title="Card view"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -763,7 +763,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
             </div>
 
             {/* Page size dropdown */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
               <span className="hidden sm:inline">Rows per page:</span>
               <select
                 value={pageSize}
@@ -771,11 +771,11 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="py-1 px-2 rounded-lg bg-white/[0.04] border border-white/10 text-white focus:outline-none cursor-pointer"
+                className="py-1 px-2 rounded-lg bg-slate-100/50 border border-slate-200/80 text-slate-900 focus:outline-none cursor-pointer"
               >
-                <option value={20} className="bg-[#121318]">20</option>
-                <option value={50} className="bg-[#121318]">50</option>
-                <option value={100} className="bg-[#121318]">100</option>
+                <option value={20} className="bg-white/80 backdrop-blur-xl">20</option>
+                <option value={50} className="bg-white/80 backdrop-blur-xl">50</option>
+                <option value={100} className="bg-white/80 backdrop-blur-xl">100</option>
               </select>
             </div>
           </div>
@@ -784,9 +784,9 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
         {/* Scrollable Table View */}
         {viewMode === 'table' ? (
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-xs text-slate-300 border-collapse">
+            <table className="w-full text-left text-xs text-slate-600 border-collapse">
               <thead>
-                <tr className="bg-white/[0.02] border-b border-white/5 text-slate-400 uppercase tracking-wider font-semibold text-[10px] select-none">
+                <tr className="bg-slate-50 border-b border-slate-200/70 text-slate-500 uppercase tracking-wider font-semibold text-[10px] select-none">
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Employee</th>
                   <th className="py-3 px-3">Department</th>
@@ -801,10 +801,10 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-slate-200/70 font-medium">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-500 text-xs">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs">
                       Loading attendance records...
                     </td>
                   </tr>
@@ -812,27 +812,27 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                   queryResult.records.map((record) => (
                     <tr
                       key={record.id}
-                      className="hover:bg-white/[0.03] transition-colors group"
+                      className="hover:bg-slate-50 transition-colors group"
                     >
                       {/* Date */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="font-bold text-white">{record.attendanceDate}</span>
+                        <span className="font-bold text-slate-900">{record.attendanceDate}</span>
                       </td>
 
                       {/* Employee */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 font-bold text-[10px] flex items-center justify-center shrink-0">
                             {record.employeeName
                               .split(' ')
                               .map((n) => n[0])
                               .join('')}
                           </div>
                           <div>
-                            <span className="font-bold text-white block group-hover:text-indigo-300 transition-colors">
+                            <span className="font-bold text-slate-900 block group-hover:text-indigo-600 transition-colors">
                               {record.employeeName}
                             </span>
-                            <span className="font-mono text-[10px] text-slate-500 block">
+                            <span className="font-mono text-[10px] text-slate-400 block">
                               {record.employeeCode}
                             </span>
                           </div>
@@ -841,7 +841,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
                       {/* Department */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-white/5 text-slate-300 border-white/10">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-slate-100/60 text-slate-600 border-slate-200/80">
                           {record.department}
                         </span>
                       </td>
@@ -850,13 +850,13 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
                         {record.clockInTime !== '—' ? (
                           <div>
-                            <span className="text-slate-200">{record.clockInTime}</span>
-                            <span className="text-[9px] text-slate-500 ml-1">
+                            <span className="text-slate-700">{record.clockInTime}</span>
+                            <span className="text-[9px] text-slate-400 ml-1">
                               ({record.clockInDate})
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-700">—</span>
                         )}
                       </td>
 
@@ -864,18 +864,18 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
                         {record.clockOutTime !== '—' ? (
                           <div>
-                            <span className="text-slate-200">{record.clockOutTime}</span>
-                            <span className="text-[9px] font-semibold text-indigo-400 ml-1">
+                            <span className="text-slate-700">{record.clockOutTime}</span>
+                            <span className="text-[9px] font-semibold text-indigo-600 ml-1">
                               ({record.clockOutDate})
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-700">—</span>
                         )}
                       </td>
 
                       {/* Break */}
-                      <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px] text-slate-400">
+                      <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px] text-slate-500">
                         {record.breakDuration}
                       </td>
 
@@ -883,7 +883,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
                         <span
                           className={`font-bold ${
-                            record.workingHours >= '08:00' ? 'text-emerald-400' : 'text-slate-300'
+                            record.workingHours >= '08:00' ? 'text-emerald-600' : 'text-slate-600'
                           }`}
                         >
                           {record.workingHours}
@@ -893,20 +893,20 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                       {/* Short Hours */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
                         {record.shortHours !== '00:00' ? (
-                          <span className="text-orange-400 font-semibold">{record.shortHours}</span>
+                          <span className="text-orange-600 font-semibold">{record.shortHours}</span>
                         ) : (
-                          <span className="text-slate-600">00:00</span>
+                          <span className="text-slate-700">00:00</span>
                         )}
                       </td>
 
                       {/* Extra Hours */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
                         {record.extraHours !== '00:00' ? (
-                          <span className="font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                          <span className="font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
                             +{record.extraHours}
                           </span>
                         ) : (
-                          <span className="text-slate-600">00:00</span>
+                          <span className="text-slate-700">00:00</span>
                         )}
                       </td>
 
@@ -923,7 +923,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                             setSelectedRecordForDetail(record);
                             setIsDrawerOpen(true);
                           }}
-                          className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-indigo-600 hover:text-white text-slate-300 text-[11px] font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100/50 hover:bg-indigo-600 hover:text-white text-slate-600 text-[11px] font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Details</span>
@@ -933,7 +933,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-500 text-xs">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs">
                       No attendance records found matching your filters.
                     </td>
                   </tr>
@@ -943,9 +943,9 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           </div>
         ) : (
           /* Mobile Card View */
-          <div className="p-4 space-y-3 divide-y divide-white/5">
+          <div className="p-4 space-y-3 divide-y divide-slate-200/70">
             {isLoading ? (
-              <div className="py-12 text-center text-slate-500 text-xs">
+              <div className="py-12 text-center text-slate-400 text-xs">
                 Loading attendance records...
               </div>
             ) : queryResult && queryResult.records.length > 0 ? (
@@ -953,34 +953,34 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 <div key={record.id} className="pt-3 first:pt-0 space-y-2">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-bold text-sm text-white">{record.employeeName}</div>
-                      <div className="text-xs text-slate-400 font-mono">
+                      <div className="font-bold text-sm text-slate-900">{record.employeeName}</div>
+                      <div className="text-xs text-slate-500 font-mono">
                         {record.employeeCode} • {record.department}
                       </div>
                     </div>
                     <StatusBadge status={record.status} size="xs" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                  <div className="grid grid-cols-2 gap-2 text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
                     <div>
-                      <span className="text-[10px] text-slate-500 block">Date & Shift</span>
-                      <span className="font-semibold text-slate-200">{record.attendanceDate}</span>
+                      <span className="text-[10px] text-slate-400 block">Date & Shift</span>
+                      <span className="font-semibold text-slate-700">{record.attendanceDate}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 block">Net Work</span>
-                      <span className="font-bold text-emerald-400 font-mono">
+                      <span className="text-[10px] text-slate-400 block">Net Work</span>
+                      <span className="font-bold text-emerald-600 font-mono">
                         {record.workingHours}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 block">In / Out</span>
-                      <span className="font-mono text-slate-300">
+                      <span className="text-[10px] text-slate-400 block">In / Out</span>
+                      <span className="font-mono text-slate-600">
                         {record.clockInTime} – {record.clockOutTime}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 block">Extra Time</span>
-                      <span className="font-mono text-amber-400">{record.extraHours}</span>
+                      <span className="text-[10px] text-slate-400 block">Extra Time</span>
+                      <span className="font-mono text-amber-600">{record.extraHours}</span>
                     </div>
                   </div>
 
@@ -991,7 +991,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                         setSelectedRecordForDetail(record);
                         setIsDrawerOpen(true);
                       }}
-                      className="w-full py-2 rounded-xl bg-white/[0.04] text-indigo-300 font-semibold text-xs flex items-center justify-center gap-1.5"
+                      className="w-full py-2 rounded-xl bg-slate-100/50 text-indigo-600 font-semibold text-xs flex items-center justify-center gap-1.5"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>View Full Shift Details</span>
@@ -1000,7 +1000,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 </div>
               ))
             ) : (
-              <div className="py-8 text-center text-slate-500 text-xs">
+              <div className="py-8 text-center text-slate-400 text-xs">
                 No records found.
               </div>
             )}
@@ -1009,14 +1009,14 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
         {/* 8. Pagination Controls (Section 23) */}
         {queryResult && queryResult.totalPages > 1 && (
-          <div className="p-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="p-4 border-t border-slate-200/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <div>
               Showing{' '}
-              <strong className="text-white">
+              <strong className="text-slate-900">
                 {(queryResult.page - 1) * queryResult.pageSize + 1}–
                 {Math.min(queryResult.page * queryResult.pageSize, queryResult.totalCount)}
               </strong>{' '}
-              of <strong className="text-white">{queryResult.totalCount}</strong> records
+              of <strong className="text-slate-900">{queryResult.totalCount}</strong> records
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -1024,7 +1024,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={queryResult.page <= 1}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-slate-100/50 hover:bg-slate-100/70 disabled:opacity-30 disabled:pointer-events-none text-slate-900 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                 id="pagination-prev-btn"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -1043,7 +1043,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                       className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                         active
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-white/[0.03] text-slate-400 hover:text-white'
+                          : 'bg-slate-50 text-slate-500 hover:text-slate-900'
                       }`}
                     >
                       {pNum}
@@ -1056,7 +1056,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(queryResult.totalPages, p + 1))}
                 disabled={queryResult.page >= queryResult.totalPages}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-slate-100/50 hover:bg-slate-100/70 disabled:opacity-30 disabled:pointer-events-none text-slate-900 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                 id="pagination-next-btn"
               >
                 <span>Next</span>
@@ -1085,20 +1085,20 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           aria-modal="true"
         >
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]"
             onClick={() => setIsMobileFilterOpen(false)}
           />
 
-          <div className="relative w-full max-w-lg bg-[#121318] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 z-10 animate-slideUp text-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+          <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border-t sm:border border-slate-200/80 rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 z-10 animate-slideUp text-slate-700 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-base font-bold text-white">Filter Attendance</h3>
+                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">Filter Attendance</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-500 hover:text-slate-900"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1106,44 +1106,44 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
             {/* Mobile Search */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 font-medium">Search</label>
+              <label className="text-xs text-slate-500 font-medium">Search</label>
               <input
                 type="text"
                 placeholder="Search name, code, dept..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs py-2 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white focus:outline-none focus:border-indigo-500"
+                className="w-full text-xs py-2 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             {/* Mobile Department */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 font-medium">Department</label>
+              <label className="text-xs text-slate-500 font-medium">Department</label>
               <select
                 value={selectedDept}
                 onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full text-xs py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none"
+                className="w-full text-xs py-2.5 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none"
               >
-                <option value="ALL" className="bg-[#121318]">All Departments</option>
-                <option value="HR" className="bg-[#121318]">HR</option>
-                <option value="Sales" className="bg-[#121318]">Sales</option>
-                <option value="Tech" className="bg-[#121318]">Tech</option>
+                <option value="ALL" className="bg-white/80 backdrop-blur-xl">All Departments</option>
+                <option value="HR" className="bg-white/80 backdrop-blur-xl">HR</option>
+                <option value="Sales" className="bg-white/80 backdrop-blur-xl">Sales</option>
+                <option value="Tech" className="bg-white/80 backdrop-blur-xl">Tech</option>
               </select>
             </div>
 
             {/* Mobile Employee */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 font-medium">Employee</label>
+              <label className="text-xs text-slate-500 font-medium">Employee</label>
               <select
                 value={selectedEmployeeId}
                 onChange={(e) => handleEmployeeChange(e.target.value)}
-                className="w-full text-xs py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none"
+                className="w-full text-xs py-2.5 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none"
               >
-                <option value="ALL" className="bg-[#121318]">
+                <option value="ALL" className="bg-white/80 backdrop-blur-xl">
                   {selectedDept !== 'ALL' ? `All ${selectedDept} Staff` : 'All Staff'}
                 </option>
                 {availableEmployees.map((emp) => (
-                  <option key={emp.id} value={emp.id} className="bg-[#121318]">
+                  <option key={emp.id} value={emp.id} className="bg-white/80 backdrop-blur-xl">
                     {emp.name} ({emp.empId})
                   </option>
                 ))}
@@ -1152,19 +1152,19 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
             {/* Mobile Status */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 font-medium">Status</label>
+              <label className="text-xs text-slate-500 font-medium">Status</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full text-xs py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 focus:outline-none"
+                className="w-full text-xs py-2.5 px-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-700 focus:outline-none"
               >
-                <option value="ALL" className="bg-[#121318]">All Statuses</option>
-                <option value="Present" className="bg-[#121318]">Present</option>
-                <option value="Absent" className="bg-[#121318]">Absent</option>
-                <option value="Late" className="bg-[#121318]">Late / Short Hours</option>
-                <option value="Half Day" className="bg-[#121318]">Half Day</option>
-                <option value="Leave" className="bg-[#121318]">Leave</option>
-                <option value="Work From Home" className="bg-[#121318]">Work From Home</option>
+                <option value="ALL" className="bg-white/80 backdrop-blur-xl">All Statuses</option>
+                <option value="Present" className="bg-white/80 backdrop-blur-xl">Present</option>
+                <option value="Absent" className="bg-white/80 backdrop-blur-xl">Absent</option>
+                <option value="Late" className="bg-white/80 backdrop-blur-xl">Late / Short Hours</option>
+                <option value="Half Day" className="bg-white/80 backdrop-blur-xl">Half Day</option>
+                <option value="Leave" className="bg-white/80 backdrop-blur-xl">Leave</option>
+                <option value="Work From Home" className="bg-white/80 backdrop-blur-xl">Work From Home</option>
               </select>
             </div>
 
@@ -1172,7 +1172,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="flex-1 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100/60 hover:bg-slate-200/60 text-slate-600 text-xs font-semibold"
               >
                 Clear All
               </button>

@@ -23,7 +23,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <main
-      className="min-h-screen w-full flex flex-col lg:flex-row bg-[#0a0a0b] text-slate-100 selection:bg-indigo-500 selection:text-white"
+      className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F7F9FC] text-slate-800 selection:bg-indigo-500 selection:text-white"
       id="alfa-digi-login-page"
     >
       {/* Left Section: Enterprise Visual & Branding (Desktop/Tablet) */}
@@ -31,7 +31,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
       {/* Right Section: Centered Login Form Area */}
       <section
-        className="w-full lg:w-1/2 xl:w-5/12 flex-1 flex flex-col justify-center items-center p-6 sm:p-10 lg:p-14 overflow-y-auto bg-[#0a0a0b] relative"
+        className="w-full lg:w-1/2 xl:w-5/12 flex-1 flex flex-col justify-center items-center p-6 sm:p-10 lg:p-14 overflow-y-auto bg-[#F7F9FC] relative"
         aria-label="Account Login Area"
         id="login-section"
       >

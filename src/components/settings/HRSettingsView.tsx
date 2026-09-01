@@ -142,7 +142,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
     return (
       <div className="py-20 flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        <span className="text-xs text-slate-400">Loading system settings...</span>
+        <span className="text-xs text-slate-500">Loading system settings...</span>
       </div>
     );
   }
@@ -151,8 +151,8 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
     <div className="space-y-6 animate-fadeIn pb-24" id="hr-settings-screen">
       {/* Toast Notification */}
       {feedbackToast && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-white/90 backdrop-blur-xl border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-bounce">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>{feedbackToast}</span>
         </div>
       )}
@@ -165,18 +165,18 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
               <button
                 type="button"
                 onClick={onNavigateToDashboard}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 md:hidden"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 md:hidden"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <Settings className="w-6 h-6 text-indigo-400" />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+              <Settings className="w-6 h-6 text-indigo-600" />
               HR Settings
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-500">
             Configure company operational rules, shift policies, approval hierarchies, and notifications.
           </p>
         </div>
@@ -187,12 +187,12 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
         {/* Navigation Sidebar / Mobile Selector */}
         <div className="lg:col-span-3 space-y-2">
           {/* Mobile Category Dropdown */}
-          <div className="lg:hidden p-3 rounded-2xl bg-[#0f1016] border border-white/5 space-y-1.5">
-            <label className="text-[11px] font-semibold text-slate-400 uppercase">Settings Section</label>
+          <div className="lg:hidden p-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200/70 space-y-1.5">
+            <label className="text-[11px] font-semibold text-slate-500 uppercase">Settings Section</label>
             <select
               value={activeSection}
               onChange={(e) => setActiveSection(e.target.value as SettingsSectionIdpytest)}
-              className="w-full bg-[#14151e] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             >
               {navItems.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -203,7 +203,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
           </div>
 
           {/* Desktop Vertical Menu */}
-          <div className="hidden lg:flex flex-col p-2 rounded-2xl bg-[#0f1016] border border-white/5 space-y-1">
+          <div className="hidden lg:flex flex-col p-2 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200/70 space-y-1">
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
 
@@ -214,21 +214,21 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
                   onClick={() => setActiveSection(item.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer group ${
                     isActive
-                      ? 'bg-indigo-600/15 text-white border border-indigo-500/30 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
+                      ? 'bg-indigo-50 text-slate-900 border border-indigo-200 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                   }`}
                   id={`settings-nav-${item.id}`}
                 >
                   <div
                     className={`p-1.5 rounded-lg transition-colors ${
-                      isActive ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 text-slate-400 group-hover:text-slate-300'
+                      isActive ? 'bg-indigo-100/70 text-indigo-600' : 'bg-slate-100/60 text-slate-500 group-hover:text-slate-600'
                     }`}
                   >
                     {item.icon}
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs font-semibold truncate">{item.label}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{item.description}</div>
+                    <div className="text-[10px] text-slate-400 truncate">{item.description}</div>
                   </div>
                 </button>
               );
@@ -237,7 +237,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
         </div>
 
         {/* Selected Settings Panel Area */}
-        <div className="lg:col-span-9 p-5 sm:p-7 rounded-2xl bg-[#0f1016] border border-white/5 shadow-xl">
+        <div className="lg:col-span-9 p-5 sm:p-7 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200/70 shadow-xl">
           {activeSection === 'general' && (
             <GeneralSettingsPanel
               settings={currentSettings.general}
@@ -319,8 +319,8 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
 
       {/* Floating Unsaved Changes Bar */}
       {isDirty && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl p-4 rounded-2xl bg-[#141522] border border-indigo-500/40 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
-          <div className="flex items-center gap-2.5 text-xs text-indigo-200">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl p-4 rounded-2xl bg-slate-50/80 border border-indigo-200 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-xs text-indigo-600">
             <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             <span>You have unsaved changes in system settings.</span>
           </div>
@@ -329,7 +329,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
             <button
               type="button"
               onClick={handleDiscardChanges不易}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/5 transition-colors"
+              className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-600 hover:bg-slate-100/60 transition-colors"
               id="settings-discard-btn"
             >
               Discard

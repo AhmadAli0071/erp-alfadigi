@@ -55,18 +55,18 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px] transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Dialog Box */}
-      <div className="relative w-full max-w-lg bg-[#121318] border border-white/10 rounded-2xl shadow-2xl p-6 sm:p-7 z-10 animate-scaleUp text-slate-200 space-y-5">
+      <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl p-6 sm:p-7 z-10 animate-scaleUp text-slate-700 space-y-5">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors focus:outline-none cursor-pointer"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
 
         {/* Modal Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
             {action.type === 'LEAVE_REQUEST' ? (
               <Calendar className="w-5 h-5" />
             ) : action.type === 'ATTENDANCE_CORRECTION' ? (
@@ -84,46 +84,46 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
             )}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
               Review {action.requestType}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Audit and endorse pending workforce request
             </p>
           </div>
         </div>
 
         {/* Request Details Grid */}
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-white/5">
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-3 text-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
             <div className="flex items-center gap-2">
-              <User className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-bold text-white">{action.employeeName}</span>
-              <span className="font-mono text-[10px] text-slate-400">({action.employeeCode})</span>
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span className="font-bold text-slate-900">{action.employeeName}</span>
+              <span className="font-mono text-[10px] text-slate-500">({action.employeeCode})</span>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100/60 text-slate-600">
               {action.department}
             </span>
           </div>
 
           <div>
-            <span className="text-[10px] text-slate-500 block mb-0.5">Request Summary</span>
-            <p className="text-sm font-semibold text-indigo-300">{action.details}</p>
+            <span className="text-[10px] text-slate-400 block mb-0.5">Request Summary</span>
+            <p className="text-sm font-semibold text-indigo-600">{action.details}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 text-slate-400">
+          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 text-slate-500">
             <div>
-              <span className="text-slate-500 block text-[10px]">Applied Date:</span>
-              <span className="text-white font-medium">{action.date}</span>
+              <span className="text-slate-400 block text-[10px]">Applied Date:</span>
+              <span className="text-slate-900 font-medium">{action.date}</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-[10px]">Submitted:</span>
-              <span className="text-white font-medium">{action.submissionTime}</span>
+              <span className="text-slate-400 block text-[10px]">Submitted:</span>
+              <span className="text-slate-900 font-medium">{action.submissionTime}</span>
             </div>
           </div>
 
           {action.appliedByLead && (
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-1.5">
+            <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] flex items-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5 shrink-0" />
               <span>{action.appliedByLead}</span>
             </div>
@@ -131,14 +131,14 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
         </div>
 
         {/* Tab Selection (Approve vs Reject) */}
-        <div className="flex rounded-xl bg-white/[0.04] p-1 border border-white/5 text-xs font-semibold">
+        <div className="flex rounded-xl bg-slate-100/50 p-1 border border-slate-200/70 text-xs font-semibold">
           <button
             type="button"
             onClick={() => setActiveTab('APPROVE')}
             className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'APPROVE'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <CheckCircle className="w-3.5 h-3.5" />
@@ -150,7 +150,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
             className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'REJECT'
                 ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <XCircle className="w-3.5 h-3.5" />
@@ -160,7 +160,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
 
         {/* HR Note Input */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">
             {activeTab === 'APPROVE' ? 'Approval Note (Optional)' : 'Rejection Reason (Required)'}
           </label>
           <textarea
@@ -172,7 +172,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
             }
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full text-xs p-3 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+            className="w-full text-xs p-3 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 resize-none"
             id="hr-review-note-input"
           />
         </div>
@@ -183,7 +183,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-xs font-semibold transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl border border-slate-200/80 text-slate-600 hover:bg-slate-100/60 text-xs font-semibold transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -193,7 +193,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
               type="button"
               onClick={handleConfirmApprove}
               disabled={isProcessing}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-600 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               id="confirm-approve-btn"
             >
               {isProcessing ? 'Processing...' : 'Confirm Approval'}
@@ -203,7 +203,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
               type="button"
               onClick={handleConfirmReject}
               disabled={isProcessing}
-              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-bold transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-600 text-white text-xs font-bold transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               id="confirm-reject-btn"
             >
               {isProcessing ? 'Processing...' : 'Confirm Rejection'}

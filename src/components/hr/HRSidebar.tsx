@@ -60,7 +60,7 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       icon: <CalendarDays className="w-4 h-4 shrink-0" />,
       route: '/hr/leaves',
       badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined,
-      badgeColor: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+      badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200',
     },
     {
       id: 'tickets',
@@ -68,7 +68,7 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       icon: <Ticket className="w-4 h-4 shrink-0" />,
       route: '/hr/tickets',
       badge: openTicketsCount > 0 ? openTicketsCount : undefined,
-      badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+      badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200',
     },
     {
       id: 'reports',
@@ -97,9 +97,9 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0d0e12] border-r border-white/5 text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-white/75 backdrop-blur-xl border-r border-slate-200/70 text-slate-600 select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/70 shrink-0">
         {!isCollapsed ? (
           <div
             className="flex items-center gap-2 cursor-pointer"
@@ -123,7 +123,7 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
         <button
           type="button"
           onClick={onCloseMobile}
-          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 focus:outline-none cursor-pointer"
+          className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 focus:outline-none cursor-pointer"
           aria-label="Close sidebar"
         >
           <X className="w-5 h-5" />
@@ -133,7 +133,7 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="hidden lg:flex p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-colors focus:outline-none cursor-pointer"
+          className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 transition-colors focus:outline-none cursor-pointer"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -155,28 +155,31 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
               type="button"
               onClick={() => handleItemClick(item.route)}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group cursor-pointer ${
+              className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 group cursor-pointer ${
                 active
-                  ? 'bg-indigo-600/15 text-white border border-indigo-500/30 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                  ? 'bg-indigo-50/90 text-indigo-700 border border-indigo-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 border border-transparent'
               }`}
               id={`sidebar-nav-${item.id}`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span
                   className={`transition-colors ${
-                    active ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'
+                    active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-500'
                   }`}
                 >
                   {item.icon}
                 </span>
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-indigo-500/80" />
+                )}
               </div>
 
               {!isCollapsed && item.badge !== undefined && (
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    item.badgeColor || 'bg-white/10 text-slate-300'
+                    item.badgeColor || 'bg-slate-200/50 text-slate-600'
                   }`}
                 >
                   {item.badge}
@@ -189,12 +192,12 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
 
       {/* Compact Portal Tag */}
       {!isCollapsed && (
-        <div className="p-3 m-3 rounded-xl bg-white/[0.02] border border-white/5 shrink-0 flex items-center justify-between">
+        <div className="p-3 m-3 rounded-xl bg-slate-50 border border-slate-200/70 shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] font-medium text-slate-300">HR Admin Portal</span>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-medium text-slate-600">HR Admin Portal</span>
           </div>
-          <span className="text-[10px] font-mono text-slate-500">v2.4</span>
+          <span className="text-[10px] font-mono text-slate-400">v2.4</span>
         </div>
       )}
     </div>
@@ -216,7 +219,7 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       {isMobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px] transition-opacity"
             onClick={onCloseMobile}
             aria-hidden="true"
           />

@@ -8,6 +8,7 @@ import { HRLeaveManagementView } from '../leave/HRLeaveManagementView';
 import { HRTicketManagementView } from '../tickets/HRTicketManagementView';
 import { HRReportsView } from '../reports/HRReportsView';
 import { HRSettingsView } from '../settings/HRSettingsView';
+import { HREmployeesManagementView } from '../employees/HREmployeesManagementView';
 import { HRPlaceholderView } from '../hr/HRPlaceholderView';
 
 interface HRDashboardLayoutProps {
@@ -32,6 +33,7 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
   const isTicketRoute = currentRoute.startsWith('/hr/tickets');
   const isReportRoute = currentRoute.startsWith('/hr/reports');
   const isSettingsRoute = currentRoute.startsWith('/hr/settings');
+  const isEmployeesRoute = currentRoute.startsWith('/hr/employees');
 
   const getAttendancePreset = () => {
     if (currentRoute === '/hr/attendance/today') return 'today';
@@ -46,7 +48,10 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#0a0a0b] text-slate-100 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-[#F7F9FC] text-slate-800 overflow-hidden font-sans relative">
+      {/* Subtle decorative background glow */}
+      <div className="app-bg" aria-hidden="true" />
+
       {/* Sidebar (Desktop + Mobile Drawer) */}
       <HRSidebar
         currentRoute={currentRoute}
@@ -60,7 +65,7 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
       />
 
       {/* Main App Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 relative z-[1]">
         {/* Top Header */}
         <HRHeader
           user={user}
@@ -77,6 +82,12 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
         >
           {isMainDashboardRoute ? (
             <HRDashboardView user={user} onNavigate={handleNavigate} />
+          ) : isEmployeesRoute ? (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <HREmployeesManagementView
+                onNavigateToDashboard={() => handleNavigate('/hr/dashboard')}
+              />
+            </div>
           ) : isAttendanceRoute ? (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <HRAttendanceManagementView

@@ -16,21 +16,21 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" id="leave-types-modal">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px] transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-[#0d0e12] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-10 animate-scaleUp max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-3xl bg-white/75 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl overflow-hidden z-10 animate-scaleUp max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between bg-[#111217] shrink-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200/70 flex items-center justify-between bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Company Leave Policies & Types</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-base font-bold text-slate-900">Company Leave Policies & Types</h2>
+              <p className="text-xs text-slate-500">
                 Official corporate quotas, carry-forward limits and approval guidelines
               </p>
             </div>
@@ -39,7 +39,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900"
           >
             <X className="w-5 h-5" />
           </button>
@@ -51,13 +51,13 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
             {leaveTypes.map((type) => (
               <div
                 key={type.id}
-                className="p-4 rounded-xl bg-[#111217] border border-white/5 space-y-3 shadow-sm hover:border-indigo-500/30 transition-colors"
+                className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-3 shadow-sm hover:border-indigo-200 transition-colors"
               >
                 {/* Title and Code Badge */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white">{type.name}</h3>
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 text-slate-400">
+                    <h3 className="text-sm font-bold text-slate-900">{type.name}</h3>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100/60 text-slate-500">
                       {type.code}
                     </span>
                   </div>
@@ -65,42 +65,42 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
                       type.isPaid
-                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                        : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                        : 'bg-rose-50 text-rose-600 border-rose-200'
                     }`}
                   >
                     {type.isPaid ? 'Paid' : 'Unpaid'}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-400 leading-relaxed">{type.description}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{type.description}</p>
 
                 {/* Quota Metrics */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 text-xs">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/70 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Annual Quota</span>
-                    <span className="font-bold text-white font-mono">
+                    <span className="text-[10px] text-slate-400 block">Annual Quota</span>
+                    <span className="font-bold text-slate-900 font-mono">
                       {type.annualQuota} {type.annualQuota === 1 ? 'Day' : 'Days'}/yr
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Carry Forward</span>
-                    <span className="font-bold text-indigo-400 font-mono">
+                    <span className="text-[10px] text-slate-400 block">Carry Forward</span>
+                    <span className="font-bold text-indigo-600 font-mono">
                       Max {type.carryForwardLimit} Days
                     </span>
                   </div>
                 </div>
 
                 {/* Requirements tags */}
-                <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
                   {type.requiresLeadApproval && (
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <CheckCircle className="w-3 h-3 text-emerald-400" /> Lead Approval
+                    <span className="flex items-center gap-1 text-slate-600">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" /> Lead Approval
                     </span>
                   )}
                   {type.requiresDocument && (
-                    <span className="flex items-center gap-1 text-amber-300">
-                      <ShieldAlert className="w-3 h-3 text-amber-400" /> Doc Required
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <ShieldAlert className="w-3 h-3 text-amber-600" /> Doc Required
                     </span>
                   )}
                 </div>
@@ -109,8 +109,8 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
           </div>
 
           {/* Policy notes footnote */}
-          <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/20 text-xs text-indigo-200 flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200 text-xs text-indigo-600 flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               <strong>Enterprise Leave Rule:</strong> Pending leaves are displayed separately and do not alter the final available balance until authorized by HR. The calendar year spans from January 1 to December 31.
             </p>
@@ -118,7 +118,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/5 bg-[#111217] flex justify-end shrink-0">
+        <div className="p-4 border-t border-slate-200/70 bg-slate-50 flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}

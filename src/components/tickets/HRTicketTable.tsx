@@ -42,48 +42,48 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
     switch (status) {
       case 'Open':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
             Open
           </span>
         );
       case 'Pending':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-            <Clock className="w-3 h-3 text-amber-400" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
+            <Clock className="w-3 h-3 text-amber-600" />
             Pending
           </span>
         );
       case 'In Progress':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
             In Progress
           </span>
         );
       case 'Resolved':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             Resolved
           </span>
         );
       case 'Closed':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-500/15 text-slate-300 border border-slate-500/30">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200/60 text-slate-600 border border-slate-300">
             Closed
           </span>
         );
       case 'Rejected':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-            <AlertCircle className="w-3 h-3 text-rose-400" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+            <AlertCircle className="w-3 h-3 text-rose-600" />
             Rejected
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/10 text-slate-300">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-200/50 text-slate-600">
             {status}
           </span>
         );
@@ -94,27 +94,27 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
     switch (priority) {
       case 'Urgent':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
-            <Flame className="w-3 h-3 text-rose-400" />
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-100/70 text-rose-600 border border-rose-200">
+            <Flame className="w-3 h-3 text-rose-600" />
             Urgent
           </span>
         );
       case 'High':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
-            <AlertTriangle className="w-3 h-3 text-amber-400" />
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-amber-100/70 text-amber-600 border border-amber-200">
+            <AlertTriangle className="w-3 h-3 text-amber-600" />
             High
           </span>
         );
       case 'Medium':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-blue-500/15 text-blue-300 border border-blue-500/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200">
             Medium
           </span>
         );
       case 'Low':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-500/15 text-slate-400 border border-slate-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-200/60 text-slate-500 border border-slate-200">
             Low
           </span>
         );
@@ -125,22 +125,22 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
   const endRecord = Math.min(page * pageSize, totalCount);
 
   return (
-    <div className="bg-[#0f1015] border border-white/5 rounded-2xl overflow-hidden shadow-xl" id="hr-ticket-table-container">
+    <div className="bg-white/70 backdrop-blur-xl border border-slate-200/70 rounded-2xl overflow-hidden shadow-xl" id="hr-ticket-table-container">
       {/* Loading Overlay */}
       {isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3">
           <div className="w-7 h-7 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-          <span className="text-xs text-slate-400">Loading tickets...</span>
+          <span className="text-xs text-slate-500">Loading tickets...</span>
         </div>
       ) : tickets.length === 0 ? (
         /* Empty State */
         <div className="py-16 px-4 text-center flex flex-col items-center justify-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-500">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100/60 border border-slate-200/80 flex items-center justify-center text-slate-400">
             <Ticket className="w-6 h-6" />
           </div>
           <div className="space-y-1 max-w-sm">
-            <h4 className="text-sm font-semibold text-slate-200">No tickets found</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h4 className="text-sm font-semibold text-slate-700">No tickets found</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
               Tickets will appear here when employees or leads create them.
             </p>
           </div>
@@ -151,7 +151,7 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse" id="hr-ticket-data-table">
               <thead>
-                <tr className="border-b border-white/5 bg-white/[0.02] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-200/70 bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Ticket ID</th>
                   <th className="py-3.5 px-4">Subject</th>
                   <th className="py-3.5 px-4">Employee</th>
@@ -163,34 +163,34 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-xs text-slate-300">
+              <tbody className="divide-y divide-slate-200/70 text-xs text-slate-600">
                 {tickets.map((t) => (
                   <tr
                     key={t.id}
-                    className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
                     onClick={() => onSelectTicket(t)}
                   >
-                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-400">
+                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-600">
                       {t.ticketCode}
                     </td>
                     <td className="py-3.5 px-4 max-w-xs">
-                      <div className="font-semibold text-white truncate">{t.subject}</div>
-                      <div className="text-[11px] text-slate-500 truncate">{t.ticketType}</div>
+                      <div className="font-semibold text-slate-900 truncate">{t.subject}</div>
+                      <div className="text-[11px] text-slate-400 truncate">{t.ticketType}</div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-200">{t.employeeName}</div>
-                      <div className="text-[11px] font-mono text-slate-500">{t.employeeCode}</div>
+                      <div className="font-medium text-slate-700">{t.employeeName}</div>
+                      <div className="text-[11px] font-mono text-slate-400">{t.employeeCode}</div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-300">{t.department}</td>
+                    <td className="py-3.5 px-4 text-slate-600">{t.department}</td>
                     <td className="py-3.5 px-4">{getPriorityBadge(t.priority)}</td>
-                    <td className="py-3.5 px-4 text-slate-400">
+                    <td className="py-3.5 px-4 text-slate-500">
                       {t.assignedTo ? (
-                        <span className="text-slate-200">{t.assignedTo}</span>
+                        <span className="text-slate-700">{t.assignedTo}</span>
                       ) : (
-                        <span className="text-slate-600 italic">Unassigned</span>
+                        <span className="text-slate-700 italic">Unassigned</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">{t.createdDate}</td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{t.createdDate}</td>
                     <td className="py-3.5 px-4">{getStatusBadge(t.status)}</td>
                     <td
                       className="py-3.5 px-4 text-right"
@@ -200,7 +200,7 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectTicket(t)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -214,15 +214,15 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
           </div>
 
           {/* Mobile Card List */}
-          <div className="md:hidden divide-y divide-white/5">
+          <div className="md:hidden divide-y divide-slate-200/70">
             {tickets.map((t) => (
               <div
                 key={t.id}
                 onClick={() => onSelectTicket(t)}
-                className="p-4 space-y-3 hover:bg-white/[0.02] cursor-pointer"
+                className="p-4 space-y-3 hover:bg-slate-50 cursor-pointer"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold text-xs text-indigo-400">
+                  <span className="font-mono font-bold text-xs text-indigo-600">
                     {t.ticketCode}
                   </span>
                   <div className="flex items-center gap-2">
@@ -232,15 +232,15 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-semibold text-white">{t.subject}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">{t.ticketType}</p>
+                  <h4 className="text-sm font-semibold text-slate-900">{t.subject}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">{t.ticketType}</p>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-200/70">
                   <div>
-                    <span className="text-slate-300 font-medium">{t.employeeName}</span> ({t.department})
+                    <span className="text-slate-600 font-medium">{t.employeeName}</span> ({t.department})
                   </div>
-                  <div className="text-[11px] text-slate-500">{t.createdDate}</div>
+                  <div className="text-[11px] text-slate-400">{t.createdDate}</div>
                 </div>
               </div>
             ))}
@@ -249,24 +249,24 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
       )}
 
       {/* Pagination Footer */}
-      <div className="p-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 bg-white/[0.01]">
+      <div className="p-4 border-t border-slate-200/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-slate-50/50">
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="bg-[#14151e] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+            className="bg-slate-50/80 border border-slate-200/80 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             id="ticket-page-size-select"
           >
             <option value={20}>20</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
-          <span className="hidden sm:inline text-slate-500">|</span>
+          <span className="hidden sm:inline text-slate-400">|</span>
           <span>
-            Showing <strong className="text-white">{startRecord}</strong> to{' '}
-            <strong className="text-white">{endRecord}</strong> of{' '}
-            <strong className="text-white">{totalCount}</strong> tickets
+            Showing <strong className="text-slate-900">{startRecord}</strong> to{' '}
+            <strong className="text-slate-900">{endRecord}</strong> of{' '}
+            <strong className="text-slate-900">{totalCount}</strong> tickets
           </span>
         </div>
 
@@ -275,14 +275,14 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
             type="button"
             disabled={page <= 1 || isLoading}
             onClick={() => onPageChange(page - 1)}
-            className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300"
+            className="p-1.5 rounded-lg border border-slate-200/80 hover:bg-slate-100/60 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
             title="Previous Page"
             id="ticket-prev-page-btn"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <span className="px-3 py-1 font-mono text-xs text-slate-300 bg-white/5 rounded-lg border border-white/5">
+          <span className="px-3 py-1 font-mono text-xs text-slate-600 bg-slate-100/60 rounded-lg border border-slate-200/70">
             Page {totalPages > 0 ? page : 0} of {totalPages}
           </span>
 
@@ -290,7 +290,7 @@ export const HRTicketTable: React.FC<HRTicketTableProps> = ({
             type="button"
             disabled={page >= totalPages || isLoading || totalPages === 0}
             onClick={() => onPageChange(page + 1)}
-            className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300"
+            className="p-1.5 rounded-lg border border-slate-200/80 hover:bg-slate-100/60 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
             title="Next Page"
             id="ticket-next-page-btn"
           >

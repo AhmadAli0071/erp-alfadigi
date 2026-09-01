@@ -26,12 +26,12 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
       value: stats.totalRequests,
       statusKey: 'ALL',
       subtitle: 'All requests in selected period',
-      icon: <FileText className="w-4 h-4 text-indigo-400" />,
-      activeBorder: 'border-indigo-500/50 bg-indigo-500/10',
-      inactiveBorder: 'border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.03]',
-      valueColor: 'text-white',
+      icon: <FileText className="w-4 h-4 text-indigo-600" />,
+      activeBorder: 'border-indigo-300 bg-indigo-50',
+      inactiveBorder: 'border-slate-200/70 hover:border-indigo-200 hover:bg-slate-50',
+      valueColor: 'text-slate-900',
       badge: 'All',
-      badgeColor: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+      badgeColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
     },
     {
       id: 'pending',
@@ -39,12 +39,12 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
       value: stats.pending,
       statusKey: 'Pending',
       subtitle: 'Waiting for HR action',
-      icon: <Clock className="w-4 h-4 text-amber-400" />,
-      activeBorder: 'border-amber-500/50 bg-amber-500/10',
-      inactiveBorder: 'border-white/5 hover:border-amber-500/30 hover:bg-white/[0.03]',
-      valueColor: 'text-amber-400',
+      icon: <Clock className="w-4 h-4 text-amber-600" />,
+      activeBorder: 'border-amber-300 bg-amber-50',
+      inactiveBorder: 'border-slate-200/70 hover:border-amber-200 hover:bg-slate-50',
+      valueColor: 'text-amber-600',
       badge: 'Action Needed',
-      badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      badgeColor: 'bg-amber-50 text-amber-600 border-amber-200',
     },
     {
       id: 'approved',
@@ -52,12 +52,12 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
       value: stats.approved,
       statusKey: 'Approved',
       subtitle: 'Authorized leaves',
-      icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
-      activeBorder: 'border-emerald-500/50 bg-emerald-500/10',
-      inactiveBorder: 'border-white/5 hover:border-emerald-500/30 hover:bg-white/[0.03]',
-      valueColor: 'text-emerald-400',
+      icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
+      activeBorder: 'border-emerald-300 bg-emerald-50',
+      inactiveBorder: 'border-slate-200/70 hover:border-emerald-200 hover:bg-slate-50',
+      valueColor: 'text-emerald-600',
       badge: `${stats.totalDaysApproved} Days Total`,
-      badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      badgeColor: 'bg-emerald-50 text-emerald-600 border-emerald-200',
     },
     {
       id: 'rejected',
@@ -65,12 +65,12 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
       value: stats.rejected,
       statusKey: 'Rejected',
       subtitle: 'Declined requests',
-      icon: <XCircle className="w-4 h-4 text-rose-400" />,
-      activeBorder: 'border-rose-500/50 bg-rose-500/10',
-      inactiveBorder: 'border-white/5 hover:border-rose-500/30 hover:bg-white/[0.03]',
-      valueColor: 'text-rose-400',
+      icon: <XCircle className="w-4 h-4 text-rose-600" />,
+      activeBorder: 'border-rose-300 bg-rose-50',
+      inactiveBorder: 'border-slate-200/70 hover:border-rose-200 hover:bg-slate-50',
+      valueColor: 'text-rose-600',
       badge: 'Declined',
-      badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      badgeColor: 'bg-rose-50 text-rose-600 border-rose-200',
     },
     {
       id: 'on_leave',
@@ -78,12 +78,12 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
       value: stats.employeesOnLeaveToday,
       statusKey: 'ON_LEAVE_TODAY',
       subtitle: 'Currently absent today',
-      icon: <UserCheck className="w-4 h-4 text-sky-400" />,
-      activeBorder: 'border-sky-500/50 bg-sky-500/10',
-      inactiveBorder: 'border-white/5 hover:border-sky-500/30 hover:bg-white/[0.03]',
-      valueColor: 'text-sky-400',
+      icon: <UserCheck className="w-4 h-4 text-sky-600" />,
+      activeBorder: 'border-sky-300 bg-sky-50',
+      inactiveBorder: 'border-slate-200/70 hover:border-sky-200 hover:bg-slate-50',
+      valueColor: 'text-sky-600',
       badge: 'Active Today',
-      badgeColor: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+      badgeColor: 'bg-sky-50 text-sky-600 border-sky-200',
     },
   ];
 
@@ -111,15 +111,15 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
             }}
             className={`p-3.5 sm:p-4 rounded-xl border text-left transition-all relative overflow-hidden group cursor-pointer ${
               isSelected ? card.activeBorder : card.inactiveBorder
-            } bg-[#111217] shadow-sm`}
+            } bg-slate-50 shadow-sm`}
             id={`leave-card-${card.id}`}
           >
             {/* Header row inside card */}
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-medium text-slate-400 truncate">
+              <span className="text-xs font-medium text-slate-500 truncate">
                 {card.title}
               </span>
-              <div className="p-1.5 rounded-lg bg-white/5 border border-white/5 shrink-0">
+              <div className="p-1.5 rounded-lg bg-slate-100/60 border border-slate-200/70 shrink-0">
                 {card.icon}
               </div>
             </div>
@@ -134,7 +134,7 @@ export const HRLeaveSummaryCards: React.FC<HRLeaveSummaryCardsProps> = ({
             </div>
 
             {/* Footer / Badge */}
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="truncate">{card.subtitle}</span>
             </div>
 

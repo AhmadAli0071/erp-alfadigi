@@ -136,8 +136,8 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
     <div className="space-y-6 animate-fadeIn pb-12" id="hr-ticket-management-screen">
       {/* Toast notification */}
       {feedbackToast && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-white/90 backdrop-blur-xl border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-bounce">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>{feedbackToast}</span>
         </div>
       )}
@@ -150,18 +150,18 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToDashboard}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 md:hidden"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 md:hidden"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <Ticket className="w-6 h-6 text-indigo-400" />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+              <Ticket className="w-6 h-6 text-indigo-600" />
               Ticket Management
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-500">
             Manage employee requests, issues and HR support tickets.
           </p>
         </div>
@@ -171,7 +171,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
             type="button"
             onClick={fetchTickets}
             disabled={isLoading}
-            className="p-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 transition-colors disabled:opacity-40"
+            className="p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 transition-colors disabled:opacity-40"
             title="Refresh tickets"
             id="ticket-refresh-btn"
           >

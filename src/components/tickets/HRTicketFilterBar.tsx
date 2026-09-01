@@ -80,15 +80,15 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
     <>
       {/* Status Selector */}
       <div className="flex flex-col gap-1 min-w-[130px]">
-        <label className="text-[11px] font-medium text-slate-400">Status</label>
+        <label className="text-[11px] font-medium text-slate-500">Status</label>
         <select
           value={filters.status || 'ALL'}
           onChange={(e) => onFilterChange({ status: e.target.value, page: 1 })}
-          className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           id="ticket-filter-status"
         >
           {statuses.map((st) => (
-            <option key={st} value={st} className="bg-[#161722] text-slate-200">
+            <option key={st} value={st} className="bg-slate-100 text-slate-700">
               {st === 'ALL' ? 'All Statuses' : st}
             </option>
           ))}
@@ -97,15 +97,15 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
 
       {/* Priority Selector */}
       <div className="flex flex-col gap-1 min-w-[120px]">
-        <label className="text-[11px] font-medium text-slate-400">Priority</label>
+        <label className="text-[11px] font-medium text-slate-500">Priority</label>
         <select
           value={filters.priority || 'ALL'}
           onChange={(e) => onFilterChange({ priority: e.target.value, page: 1 })}
-          className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           id="ticket-filter-priority"
         >
           {priorities.map((pr) => (
-            <option key={pr} value={pr} className="bg-[#161722] text-slate-200">
+            <option key={pr} value={pr} className="bg-slate-100 text-slate-700">
               {pr === 'ALL' ? 'All Priorities' : pr}
             </option>
           ))}
@@ -114,15 +114,15 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
 
       {/* Department Selector */}
       <div className="flex flex-col gap-1 min-w-[120px]">
-        <label className="text-[11px] font-medium text-slate-400">Department</label>
+        <label className="text-[11px] font-medium text-slate-500">Department</label>
         <select
           value={filters.department || 'ALL'}
           onChange={(e) => onFilterChange({ department: e.target.value, page: 1 })}
-          className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           id="ticket-filter-department"
         >
           {departments.map((dept) => (
-            <option key={dept} value={dept} className="bg-[#161722] text-slate-200">
+            <option key={dept} value={dept} className="bg-slate-100 text-slate-700">
               {dept === 'ALL' ? 'All Departments' : dept}
             </option>
           ))}
@@ -131,15 +131,15 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
 
       {/* Ticket Type Selector */}
       <div className="flex flex-col gap-1 min-w-[140px]">
-        <label className="text-[11px] font-medium text-slate-400">Ticket Type</label>
+        <label className="text-[11px] font-medium text-slate-500">Ticket Type</label>
         <select
           value={filters.ticketType || 'ALL'}
           onChange={(e) => onFilterChange({ ticketType: e.target.value, page: 1 })}
-          className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           id="ticket-filter-type"
         >
           {ticketTypes.map((tt) => (
-            <option key={tt} value={tt} className="bg-[#161722] text-slate-200">
+            <option key={tt} value={tt} className="bg-slate-100 text-slate-700">
               {tt === 'ALL' ? 'All Types' : tt}
             </option>
           ))}
@@ -148,15 +148,15 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
 
       {/* Date Range Selector */}
       <div className="flex flex-col gap-1 min-w-[130px]">
-        <label className="text-[11px] font-medium text-slate-400">Date Range</label>
+        <label className="text-[11px] font-medium text-slate-500">Date Range</label>
         <select
           value={filters.datePreset || 'all'}
           onChange={(e) => onFilterChange({ datePreset: e.target.value, page: 1 })}
-          className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           id="ticket-filter-date-preset"
         >
           {datePresets.map((dp) => (
-            <option key={dp.value} value={dp.value} className="bg-[#161722] text-slate-200">
+            <option key={dp.value} value={dp.value} className="bg-slate-100 text-slate-700">
               {dp.label}
             </option>
           ))}
@@ -167,22 +167,22 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
       {filters.datePreset === 'custom' && (
         <div className="flex items-center gap-2">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-400">Start</label>
+            <label className="text-[11px] font-medium text-slate-500">Start</label>
             <input
               type="date"
               value={filters.startDate || ''}
               onChange={(e) => onFilterChange({ startDate: e.target.value, page: 1 })}
-              className="bg-[#12131a] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
               id="ticket-filter-start-date"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-slate-400">End</label>
+            <label className="text-[11px] font-medium text-slate-500">End</label>
             <input
               type="date"
               value={filters.endDate || ''}
               onChange={(e) => onFilterChange({ endDate: e.target.value, page: 1 })}
-              className="bg-[#12131a] border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
               id="ticket-filter-end-date"
             />
           </div>
@@ -192,11 +192,11 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
   );
 
   return (
-    <div className="p-4 rounded-2xl bg-[#0f1015] border border-white/5 space-y-3" id="hr-ticket-filter-bar">
+    <div className="p-4 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200/70 space-y-3" id="hr-ticket-filter-bar">
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Field */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={localSearch}
@@ -205,7 +205,7 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
               onFilterChange({ searchQuery: e.target.value, page: 1 });
             }}
             placeholder="Search tickets (ID, employee, subject, department)..."
-            className="w-full bg-[#14151e] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+            className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
             id="ticket-filter-search-input"
           />
           {localSearch && (
@@ -215,7 +215,7 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
                 setLocalSearch('');
                 onFilterChange({ searchQuery: '', page: 1 });
               }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-900"
               title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -228,10 +228,10 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
           <button
             type="button"
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="md:hidden flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-colors"
+            className="md:hidden flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-100/60 border border-slate-200/80 text-xs font-semibold text-slate-600 hover:bg-slate-200/50 transition-colors"
             id="ticket-mobile-filter-btn"
           >
-            <Filter className="w-3.5 h-3.5 text-indigo-400" />
+            <Filter className="w-3.5 h-3.5 text-indigo-600" />
             Filters {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
           </button>
 
@@ -242,7 +242,7 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
                 setLocalSearch('');
                 onReset();
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100/60 border border-transparent hover:border-slate-200/80 transition-all cursor-pointer"
               title="Reset all filters"
               id="ticket-filter-reset-btn"
             >
@@ -254,23 +254,23 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
       </div>
 
       {/* Desktop Horizontal Filter Bar */}
-      <div className="hidden md:flex flex-wrap items-end gap-3 pt-2 border-t border-white/5">
+      <div className="hidden md:flex flex-wrap items-end gap-3 pt-2 border-t border-slate-200/70">
         {filterControls}
       </div>
 
       {/* Mobile Filters Drawer */}
       {isMobileDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#12131c] border-t border-white/10 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/25 backdrop-blur-[3px]">
+          <div className="bg-white/80 backdrop-blur-xl border-t border-slate-200/80 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-semibold text-white">Filter Tickets</h3>
+                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-semibold text-slate-900">Filter Tickets</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileDrawerOpen(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="p-1 text-slate-500 hover:text-slate-900"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -278,7 +278,7 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
 
             <div className="space-y-3.5">{filterControls}</div>
 
-            <div className="pt-3 border-t border-white/10 flex items-center gap-2">
+            <div className="pt-3 border-t border-slate-200/80 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -286,7 +286,7 @@ export const HRTicketFilterBar: React.FC<HRTicketFilterBarProps> = ({
                   onReset();
                   setIsMobileDrawerOpen(false);
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-medium text-slate-300 hover:bg-white/5 text-center"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200/80 text-xs font-medium text-slate-600 hover:bg-slate-100/60 text-center"
               >
                 Reset All
               </button>
