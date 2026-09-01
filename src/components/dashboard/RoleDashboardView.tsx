@@ -3,6 +3,7 @@ import { User, UserRole } from '../../types/auth';
 import { BrandLogo } from '../common/BrandLogo';
 import { HRDashboardLayout } from './HRDashboardLayout';
 import { LeadDashboardLayout } from '../leads/LeadDashboardLayout';
+import { EmployeeDashboardLayout } from '../employee/EmployeeDashboardLayout';
 import {
   ShieldAlert,
   Users,
@@ -34,6 +35,11 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({
   // If the logged-in user is a Department Lead, render the appropriate Lead Dashboard
   if (user.role === 'DEPARTMENT_LEAD') {
     return <LeadDashboardLayout user={user} onLogout={onLogout} />;
+  }
+
+  // If the logged-in user is an Employee, render the Employee Portal
+  if (user.role === 'EMPLOYEE') {
+    return <EmployeeDashboardLayout user={user} onLogout={onLogout} />;
   }
 
   const getDashboardDetails = (role: UserRole) => {
