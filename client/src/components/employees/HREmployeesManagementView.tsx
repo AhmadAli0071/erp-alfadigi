@@ -71,7 +71,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
     setError(null);
     try {
       const response = await hrDashboardService.getDashboardData();
-      const created = authService.getCreatedAccounts();
+      const created = await authService.getCreatedAccounts();
       const createdAsEmployees: Employee[] = created.map((acc) => ({
         id: acc.id,
         empId: acc.id.toUpperCase().replace('USR_', 'EMP-'),

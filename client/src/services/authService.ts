@@ -7,8 +7,10 @@ import {
   UserRole,
 } from '../types/auth';
 
-// FRONTEND DEMO AUTH ONLY — Used exclusively for UI navigation and testing.
-// These are not real employee records and are not referenced by business data.
+// ---- API config ----
+const API_BASE = '/api';
+
+// ---- Demo accounts (kept for login hint UI only) ----
 export const DEMO_PASSWORD = 'Admin@123';
 
 export const DEMO_ACCOUNTS: DemoUserAccount[] = [
@@ -19,7 +21,7 @@ export const DEMO_ACCOUNTS: DemoUserAccount[] = [
     role: 'SUPER_ADMIN',
     jobTitle: 'Global System Administrator',
     roleDisplayName: 'Super Admin',
-    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800',
+    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
     demoPasswordHint: DEMO_PASSWORD,
   },
   {
@@ -30,7 +32,7 @@ export const DEMO_ACCOUNTS: DemoUserAccount[] = [
     department: 'Human Resources',
     jobTitle: 'Head of People & Culture',
     roleDisplayName: 'HR Admin',
-    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
     demoPasswordHint: DEMO_PASSWORD,
   },
   {
@@ -41,7 +43,7 @@ export const DEMO_ACCOUNTS: DemoUserAccount[] = [
     department: 'Sales',
     jobTitle: 'Director of Enterprise Sales',
     roleDisplayName: 'Sales Lead',
-    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     demoPasswordHint: DEMO_PASSWORD,
   },
   {
@@ -52,7 +54,7 @@ export const DEMO_ACCOUNTS: DemoUserAccount[] = [
     department: 'Tech',
     jobTitle: 'Principal Engineering Lead',
     roleDisplayName: 'Tech Lead',
-    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
     demoPasswordHint: DEMO_PASSWORD,
   },
   {
@@ -63,11 +65,12 @@ export const DEMO_ACCOUNTS: DemoUserAccount[] = [
     department: 'Sales',
     jobTitle: 'Account Executive',
     roleDisplayName: 'Employee',
-    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
     demoPasswordHint: DEMO_PASSWORD,
   },
 ];
 
+// ---- Types ----
 export interface IAuthService {
   login(credentials: LoginCredentials): Promise<AuthResponse>;
   logout(): Promise<void>;
@@ -75,10 +78,8 @@ export interface IAuthService {
   requestPasswordReset(email: string): Promise<ResetPasswordResponse>;
   getDemoAccounts(): DemoUserAccount[];
   createUserAccount(input: CreateUserAccountInput): Promise<CreateUserAccountResult>;
-  getCreatedAccounts(): StoredUserAccount[];
+  getCreatedAccounts(): Promise<StoredUserAccount[]>;
 }
-
-// ---- HR-created user accounts (persisted locally until backend exists) ----
 
 export interface CreateUserAccountInput {
   name: string;
@@ -90,9 +91,8 @@ export interface CreateUserAccountInput {
 }
 
 export interface StoredUserAccount extends User {
-  password: string;
+  password?: string;
   createdAt: string;
-  createdBy: string;
 }
 
 export interface CreateUserAccountResult {
@@ -101,29 +101,27 @@ export interface CreateUserAccountResult {
   account?: StoredUserAccount;
 }
 
-const CREATED_ACCOUNTS_KEY = 'alfa_digi_erp_created_accounts';
-
-const readCreatedAccounts = (): StoredUserAccount[] => {
-  try {
-    const stored = localStorage.getItem(CREATED_ACCOUNTS_KEY);
-    return stored ? (JSON.parse(stored) as StoredUserAccount[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeCreatedAccounts = (accounts: StoredUserAccount[]) => {
-  try {
-    localStorage.setItem(CREATED_ACCOUNTS_KEY, JSON.stringify(accounts));
-  } catch {
-    // Storage access resilience
-  }
-};
-
+// ---- Storage keys ----
 const SESSION_KEY = 'alfa_digi_erp_user_session';
+const TOKEN_KEY = 'alfa_digi_erp_token';
 const REMEMBERED_EMAIL_KEY = 'alfa_digi_erp_remembered_email';
 
-class MockAuthService implements IAuthService {
+// ---- Token helper ----
+const getToken = (): string | null => {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const authHeaders = (): Record<string, string> => {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+// ---- Service ----
+class AuthService implements IAuthService {
   private currentUser: User | null = null;
 
   constructor() {
@@ -142,77 +140,56 @@ class MockAuthService implements IAuthService {
   }
 
   public async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    // Simulate natural enterprise network latency (600ms)
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: credentials.email.trim(),
+          password: credentials.password,
+        }),
+      });
 
-    const normalizedEmail = credentials.email.trim().toLowerCase();
-    const account = DEMO_ACCOUNTS.find(
-      (acc) => acc.email.toLowerCase() === normalizedEmail
-    );
-    const createdAccount = readCreatedAccounts().find(
-      (acc) => acc.email.toLowerCase() === normalizedEmail
-    );
+      const data = await res.json();
 
-    // Validation check: generic error to avoid exposing email presence
-    const passwordMatches = account
-      ? credentials.password === DEMO_PASSWORD
-      : createdAccount
-        ? credentials.password === createdAccount.password
-        : false;
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Login failed.' };
+      }
 
-    if ((!account && !createdAccount) || !passwordMatches) {
+      const authenticatedUser: User = data.user;
+
+      this.currentUser = authenticatedUser;
+
+      try {
+        const storage = credentials.rememberMe ? localStorage : sessionStorage;
+        storage.setItem(SESSION_KEY, JSON.stringify(authenticatedUser));
+        storage.setItem(TOKEN_KEY, data.token);
+        if (credentials.rememberMe) {
+          localStorage.setItem(REMEMBERED_EMAIL_KEY, credentials.email);
+        } else {
+          localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+          sessionStorage.removeItem(REMEMBERED_EMAIL_KEY);
+        }
+      } catch {
+        // Storage access resilience
+      }
+
+      return { success: true, user: authenticatedUser };
+    } catch {
       return {
         success: false,
-        error: 'Invalid email or password. Please try again.',
+        error: 'Unable to connect to server. Please try again.',
       };
     }
-
-    const source: Omit<StoredUserAccount, 'password' | 'createdAt' | 'createdBy'> = account
-      ? {
-          id: account.id,
-          name: account.name,
-          email: account.email,
-          role: account.role,
-          department: account.department,
-          jobTitle: account.jobTitle,
-        }
-      : {
-          id: createdAccount!.id,
-          name: createdAccount!.name,
-          email: createdAccount!.email,
-          role: createdAccount!.role,
-          department: createdAccount!.department,
-          jobTitle: createdAccount!.jobTitle,
-        };
-
-    const authenticatedUser: User = source;
-
-    this.currentUser = authenticatedUser;
-
-    try {
-      if (credentials.rememberMe) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(authenticatedUser));
-        localStorage.setItem(REMEMBERED_EMAIL_KEY, account.email);
-      } else {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(authenticatedUser));
-        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
-      }
-    } catch {
-      // Storage access resilience
-    }
-
-    return {
-      success: true,
-      user: authenticatedUser,
-    };
   }
 
   public async logout(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 200));
     this.currentUser = null;
     try {
       localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
     } catch {
       // ignore
     }
@@ -243,8 +220,6 @@ class MockAuthService implements IAuthService {
   }
 
   public async requestPasswordReset(email: string): Promise<ResetPasswordResponse> {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
     return {
       success: true,
       message:
@@ -259,60 +234,56 @@ class MockAuthService implements IAuthService {
   public async createUserAccount(
     input: CreateUserAccountInput
   ): Promise<CreateUserAccountResult> {
-    // Simulate network latency
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: JSON.stringify({
+          name: input.name.trim(),
+          email: input.email.trim(),
+          password: input.password,
+          role: input.role,
+          department: input.department,
+          jobTitle: input.jobTitle.trim(),
+        }),
+      });
 
-    const normalizedEmail = input.email.trim().toLowerCase();
-    const name = input.name.trim();
-    const jobTitle = input.jobTitle.trim();
-    const department = input.department?.trim();
+      const data = await res.json();
 
-    if (!name || !normalizedEmail || !input.password || !jobTitle) {
-      return { success: false, error: 'All required fields must be filled.' };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Unable to create account.' };
+      }
+
+      return { success: true, account: data.account };
+    } catch {
+      return {
+        success: false,
+        error: 'Unable to connect to server. Please try again.',
+      };
     }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return { success: false, error: 'Please enter a valid email address.' };
-    }
-
-    if (input.password.length < 8) {
-      return { success: false, error: 'Password must be at least 8 characters.' };
-    }
-
-    const emailTaken =
-      DEMO_ACCOUNTS.some((acc) => acc.email.toLowerCase() === normalizedEmail) ||
-      readCreatedAccounts().some((acc) => acc.email.toLowerCase() === normalizedEmail);
-
-    if (emailTaken) {
-      return { success: false, error: 'An account with this email already exists.' };
-    }
-
-    const account: StoredUserAccount = {
-      id: `usr_${Date.now().toString(36)}`,
-      name,
-      email: normalizedEmail,
-      password: input.password,
-      role: input.role,
-      department,
-      jobTitle,
-      createdAt: new Date().toISOString(),
-      createdBy: 'HR Admin',
-    };
-
-    const accounts = readCreatedAccounts();
-    accounts.push(account);
-    writeCreatedAccounts(accounts);
-
-    return { success: true, account };
   }
 
-  public getCreatedAccounts(): StoredUserAccount[] {
-    return readCreatedAccounts();
+  public async getCreatedAccounts(): Promise<StoredUserAccount[]> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/accounts`, {
+        headers: authHeaders(),
+      });
+
+      if (!res.ok) return [];
+
+      const data = await res.json();
+      return data.accounts || [];
+    } catch {
+      return [];
+    }
   }
 }
 
 // Singleton instance export
 export const authService: IAuthService & {
   getRememberedEmail: () => string;
-  getCreatedAccounts: () => StoredUserAccount[];
-} = new MockAuthService();
+  getCreatedAccounts: () => Promise<StoredUserAccount[]>;
+} = new AuthService();
