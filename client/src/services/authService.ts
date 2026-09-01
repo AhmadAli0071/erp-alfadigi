@@ -4,6 +4,7 @@ import {
   LoginCredentials,
   ResetPasswordResponse,
   User,
+  UserRole,
 } from '../types/auth';
 
 // FRONTEND DEMO AUTH ONLY — Used exclusively for UI navigation and testing.
@@ -73,7 +74,51 @@ export interface IAuthService {
   getCurrentUser(): User | null;
   requestPasswordReset(email: string): Promise<ResetPasswordResponse>;
   getDemoAccounts(): DemoUserAccount[];
+  createUserAccount(input: CreateUserAccountInput): Promise<CreateUserAccountResult>;
+  getCreatedAccounts(): StoredUserAccount[];
 }
+
+// ---- HR-created user accounts (persisted locally until backend exists) ----
+
+export interface CreateUserAccountInput {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  department?: string;
+  jobTitle: string;
+}
+
+export interface StoredUserAccount extends User {
+  password: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface CreateUserAccountResult {
+  success: boolean;
+  error?: string;
+  account?: StoredUserAccount;
+}
+
+const CREATED_ACCOUNTS_KEY = 'alfa_digi_erp_created_accounts';
+
+const readCreatedAccounts = (): StoredUserAccount[] => {
+  try {
+    const stored = localStorage.getItem(CREATED_ACCOUNTS_KEY);
+    return stored ? (JSON.parse(stored) as StoredUserAccount[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCreatedAccounts = (accounts: StoredUserAccount[]) => {
+  try {
+    localStorage.setItem(CREATED_ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch {
+    // Storage access resilience
+  }
+};
 
 const SESSION_KEY = 'alfa_digi_erp_user_session';
 const REMEMBERED_EMAIL_KEY = 'alfa_digi_erp_remembered_email';
@@ -104,23 +149,43 @@ class MockAuthService implements IAuthService {
     const account = DEMO_ACCOUNTS.find(
       (acc) => acc.email.toLowerCase() === normalizedEmail
     );
+    const createdAccount = readCreatedAccounts().find(
+      (acc) => acc.email.toLowerCase() === normalizedEmail
+    );
 
     // Validation check: generic error to avoid exposing email presence
-    if (!account || credentials.password !== DEMO_PASSWORD) {
+    const passwordMatches = account
+      ? credentials.password === DEMO_PASSWORD
+      : createdAccount
+        ? credentials.password === createdAccount.password
+        : false;
+
+    if ((!account && !createdAccount) || !passwordMatches) {
       return {
         success: false,
         error: 'Invalid email or password. Please try again.',
       };
     }
 
-    const authenticatedUser: User = {
-      id: account.id,
-      name: account.name,
-      email: account.email,
-      role: account.role,
-      department: account.department,
-      jobTitle: account.jobTitle,
-    };
+    const source: Omit<StoredUserAccount, 'password' | 'createdAt' | 'createdBy'> = account
+      ? {
+          id: account.id,
+          name: account.name,
+          email: account.email,
+          role: account.role,
+          department: account.department,
+          jobTitle: account.jobTitle,
+        }
+      : {
+          id: createdAccount!.id,
+          name: createdAccount!.name,
+          email: createdAccount!.email,
+          role: createdAccount!.role,
+          department: createdAccount!.department,
+          jobTitle: createdAccount!.jobTitle,
+        };
+
+    const authenticatedUser: User = source;
 
     this.currentUser = authenticatedUser;
 
@@ -190,8 +255,64 @@ class MockAuthService implements IAuthService {
   public getDemoAccounts(): DemoUserAccount[] {
     return DEMO_ACCOUNTS;
   }
+
+  public async createUserAccount(
+    input: CreateUserAccountInput
+  ): Promise<CreateUserAccountResult> {
+    // Simulate network latency
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    const jobTitle = input.jobTitle.trim();
+    const department = input.department?.trim();
+
+    if (!name || !normalizedEmail || !input.password || !jobTitle) {
+      return { success: false, error: 'All required fields must be filled.' };
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+
+    if (input.password.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters.' };
+    }
+
+    const emailTaken =
+      DEMO_ACCOUNTS.some((acc) => acc.email.toLowerCase() === normalizedEmail) ||
+      readCreatedAccounts().some((acc) => acc.email.toLowerCase() === normalizedEmail);
+
+    if (emailTaken) {
+      return { success: false, error: 'An account with this email already exists.' };
+    }
+
+    const account: StoredUserAccount = {
+      id: `usr_${Date.now().toString(36)}`,
+      name,
+      email: normalizedEmail,
+      password: input.password,
+      role: input.role,
+      department,
+      jobTitle,
+      createdAt: new Date().toISOString(),
+      createdBy: 'HR Admin',
+    };
+
+    const accounts = readCreatedAccounts();
+    accounts.push(account);
+    writeCreatedAccounts(accounts);
+
+    return { success: true, account };
+  }
+
+  public getCreatedAccounts(): StoredUserAccount[] {
+    return readCreatedAccounts();
+  }
 }
 
 // Singleton instance export
-export const authService: IAuthService & { getRememberedEmail: () => string } =
-  new MockAuthService();
+export const authService: IAuthService & {
+  getRememberedEmail: () => string;
+  getCreatedAccounts: () => StoredUserAccount[];
+} = new MockAuthService();

@@ -11,10 +11,13 @@ import {
   Building2,
   Mail,
   UserRound,
+  UserPlus,
 } from 'lucide-react';
 import { hrDashboardService } from '../../services/hrDashboardService';
+import { authService } from '../../services/authService';
 import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
+import { HRCreateUserModal } from '../hr/HRCreateUserModal';
 
 interface HREmployeesManagementViewProps {
   onNavigateToDashboard: () => void;
@@ -57,6 +60,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [department, setDepartment] = useState<DepartmentFilter>('ALL');
@@ -67,7 +71,19 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
     setError(null);
     try {
       const response = await hrDashboardService.getDashboardData();
-      setEmployees(response.employees);
+      const created = authService.getCreatedAccounts();
+      const createdAsEmployees: Employee[] = created.map((acc) => ({
+        id: acc.id,
+        empId: acc.id.toUpperCase().replace('USR_', 'EMP-'),
+        name: acc.name,
+        email: acc.email,
+        department: (acc.department as DepartmentName) || 'Sales',
+        jobTitle: acc.jobTitle,
+        status: 'Active' as const,
+        joinedDate: acc.createdAt.split('T')[0],
+        phone: '',
+      }));
+      setEmployees([...response.employees, ...createdAsEmployees]);
     } catch {
       setError('Unable to load the employee directory.');
     } finally {
@@ -173,16 +189,26 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => fetchEmployees(true)}
-          disabled={isLoading}
-          className="p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 transition-colors disabled:opacity-40 self-start sm:self-auto cursor-pointer"
-          title="Refresh directory"
-          id="employees-refresh-btn"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setShowCreateUserModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 inline-flex items-center gap-2 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Employee</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => fetchEmployees(true)}
+            disabled={isLoading}
+            className="p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 transition-colors disabled:opacity-40 cursor-pointer"
+            title="Refresh directory"
+            id="employees-refresh-btn"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -490,6 +516,13 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
             ))}
           </div>
         </>
+      )}
+
+      {showCreateUserModal && (
+        <HRCreateUserModal
+          onClose={() => setShowCreateUserModal(false)}
+          onUserCreated={() => fetchEmployees(false)}
+        />
       )}
     </div>
   );
