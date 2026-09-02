@@ -8,6 +8,7 @@ import { TechDashboardView } from '../tech/TechDashboardView';
 import { LeadAttendanceView } from './LeadAttendanceView';
 import { LeadLeaveView } from './LeadLeaveView';
 import { LeadTicketsView } from './LeadTicketsView';
+import { LeadTeamView } from './LeadTeamView';
 
 interface LeadDashboardLayoutProps {
   user: User;
@@ -26,6 +27,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   };
 
   const isDashboardRoute = currentRoute === '/lead/dashboard' || currentRoute === '/' || !currentRoute;
+  const isTeamRoute = currentRoute.startsWith('/lead/team');
   const isAttendanceRoute = currentRoute.startsWith('/lead/attendance');
   const isLeaveRoute = currentRoute.startsWith('/lead/leave');
   const isTicketsRoute = currentRoute.startsWith('/lead/tickets');
@@ -62,6 +64,8 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
             ) : (
               <TechDashboardView user={user} onNavigate={handleNavigate} />
             )
+          ) : isTeamRoute ? (
+            <LeadTeamView user={user} department={department} onNavigate={handleNavigate} />
           ) : isAttendanceRoute ? (
             <LeadAttendanceView user={user} department={department} onNavigate={handleNavigate} />
           ) : isLeaveRoute ? (

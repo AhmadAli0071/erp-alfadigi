@@ -16,6 +16,17 @@ import {
   queryAttendanceRecords,
 } from './hrAttendanceGenerator';
 
+const API_BASE = '/api';
+
+const getHeaders = (): Record<string, string> => {
+  try {
+    const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+};
+
 export interface HRDashboardData {
   kpis: HRDashboardKPIs;
   todayAttendance: AttendanceRecord[];
@@ -52,20 +63,29 @@ class HRDashboardService {
   private activitiesState: HRActivityItem[] = [];
   private employeesState: Employee[] = [];
 
-  /**
-   * Fetches consolidated HR Admin Dashboard data.
-   * Returns empty/clean baseline structures until real backend is connected.
-   */
   public async getDashboardData(simulateError = false): Promise<HRDashboardData> {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
     if (simulateError) {
       throw new Error('Unable to load dashboard data.');
     }
 
+    // Fetch employees from real API
+    let employees: Employee[] = [];
+    try {
+      const res = await fetch(`${API_BASE}/employees`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        employees = data.employees || [];
+      }
+    } catch {
+      employees = [];
+    }
+
+    this.employeesState = employees;
+
     return {
       kpis: {
         ...EMPTY_DASHBOARD_KPIS,
+        totalEmployees: employees.length,
         pendingRequestsCount: this.pendingActionsState.filter(a => a.status === 'Pending').length,
         pendingLeavesCount: this.pendingActionsState.filter(a => a.type === 'LEAVE_REQUEST' && a.status === 'Pending').length,
         pendingCorrectionsCount: this.pendingActionsState.filter(a => a.type === 'ATTENDANCE_CORRECTION' && a.status === 'Pending').length,
@@ -77,62 +97,32 @@ class HRDashboardService {
       departmentSummary: [],
       attendanceTrend: [],
       recentActivities: [...this.activitiesState],
-      employees: [...this.employeesState],
+      employees,
     };
   }
 
-  /**
-   * Retrieves today's attendance records.
-   */
   public async getTodayAttendance(): Promise<AttendanceRecord[]> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
     return [...this.attendanceState];
   }
 
-  /**
-   * Query multi-day attendance records with filters & summary calculations.
-   */
   public async queryAttendance(params: AttendanceFilterParams): Promise<AttendanceQueryResult> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
     return queryAttendanceRecords(params);
   }
 
-  /**
-   * Exports attendance records to a downloadable CSV file.
-   */
   public exportAttendanceCSV(records: AttendanceRecord[], filename = 'attendance_report.csv'): void {
     const headers = [
-      'Shift Date',
-      'Employee Code',
-      'Employee Name',
-      'Department',
-      'Clock In Time',
-      'Clock In Date',
-      'Clock Out Time',
-      'Clock Out Date',
-      'Break Duration',
-      'Working Hours',
-      'Short Hours',
-      'Extra Hours',
-      'Status',
-      'Notes',
+      'Shift Date', 'Employee Code', 'Employee Name', 'Department',
+      'Clock In Time', 'Clock In Date', 'Clock Out Time', 'Clock Out Date',
+      'Break Duration', 'Working Hours', 'Short Hours', 'Extra Hours',
+      'Status', 'Notes',
     ];
 
     const rows = records.map((r) => [
-      `"${r.attendanceDate}"`,
-      `"${r.employeeCode}"`,
-      `"${r.employeeName}"`,
-      `"${r.department}"`,
-      `"${r.clockInTime}"`,
-      `"${r.clockInDate}"`,
-      `"${r.clockOutTime}"`,
-      `"${r.clockOutDate}"`,
-      `"${r.breakDuration}"`,
-      `"${r.workingHours}"`,
-      `"${r.shortHours}"`,
-      `"${r.extraHours}"`,
-      `"${r.status}"`,
-      `"${(r.notes || '').replace(/"/g, '""')}"`,
+      `"${r.attendanceDate}"`, `"${r.employeeCode}"`, `"${r.employeeName}"`,
+      `"${r.department}"`, `"${r.clockInTime}"`, `"${r.clockInDate}"`,
+      `"${r.clockOutTime}"`, `"${r.clockOutDate}"`, `"${r.breakDuration}"`,
+      `"${r.workingHours}"`, `"${r.shortHours}"`, `"${r.extraHours}"`,
+      `"${r.status}"`, `"${(r.notes || '').replace(/"/g, '""')}"`,
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -147,23 +137,16 @@ class HRDashboardService {
     URL.revokeObjectURL(url);
   }
 
-  /**
-   * Approves a pending action item (Leave request, correction, or overtime verification).
-   */
   public async approveAction(actionId: string, note?: string): Promise<{ success: boolean; message: string }> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     const target = this.pendingActionsState.find((a) => a.id === actionId);
-    if (!target) {
-      return { success: false, message: 'Action item not found.' };
-    }
+    if (!target) return { success: false, message: 'Action item not found.' };
 
     target.status = 'Approved';
 
     if (target.type === 'EXTRA_HOURS') {
       const att = this.attendanceState.find((r) => r.employeeId === target.employeeId);
-      if (att && att.status === 'Pending OT') {
-        att.status = 'Present';
-      }
+      if (att && att.status === 'Pending OT') att.status = 'Present';
     }
 
     this.activitiesState.unshift({
@@ -176,21 +159,13 @@ class HRDashboardService {
       actorRole: 'HR Admin',
     });
 
-    return {
-      success: true,
-      message: `Successfully approved ${target.requestType} for ${target.employeeName}.`,
-    };
+    return { success: true, message: `Successfully approved ${target.requestType} for ${target.employeeName}.` };
   }
 
-  /**
-   * Rejects a pending action item.
-   */
   public async rejectAction(actionId: string, reason?: string): Promise<{ success: boolean; message: string }> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     const target = this.pendingActionsState.find((a) => a.id === actionId);
-    if (!target) {
-      return { success: false, message: 'Action item not found.' };
-    }
+    if (!target) return { success: false, message: 'Action item not found.' };
 
     target.status = 'Rejected';
 
@@ -204,44 +179,27 @@ class HRDashboardService {
       actorRole: 'HR Admin',
     });
 
-    return {
-      success: true,
-      message: `Rejected ${target.requestType} for ${target.employeeName}.`,
-    };
+    return { success: true, message: `Rejected ${target.requestType} for ${target.employeeName}.` };
   }
 
-  /**
-   * Retrieves active notifications.
-   */
   public async getNotifications(): Promise<HRNotification[]> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
     return [...this.notificationsState];
   }
 
-  /**
-   * Marks a notification as read.
-   */
   public async markNotificationRead(id: string): Promise<void> {
     const notif = this.notificationsState.find((n) => n.id === id);
     if (notif) notif.isRead = true;
   }
 
-  /**
-   * Marks all notifications as read.
-   */
   public async markAllNotificationsRead(): Promise<void> {
     this.notificationsState.forEach((n) => (n.isRead = true));
   }
 
-  /**
-   * Global Search across Employees, Attendance, Tickets, and Leave Requests.
-   */
   public async searchGlobal(query: string): Promise<GlobalSearchResult[]> {
     if (!query || query.trim().length === 0) return [];
     const q = query.trim().toLowerCase();
     const results: GlobalSearchResult[] = [];
 
-    // Search real in-memory employees
     this.employeesState.forEach((emp) => {
       if (
         emp.name.toLowerCase().includes(q) ||
@@ -260,7 +218,6 @@ class HRDashboardService {
       }
     });
 
-    // Search Attendance
     this.attendanceState.forEach((att) => {
       if (
         att.employeeName.toLowerCase().includes(q) ||
@@ -278,7 +235,6 @@ class HRDashboardService {
       }
     });
 
-    // Search Leave Requests
     this.pendingActionsState
       .filter((a) => a.type === 'LEAVE_REQUEST')
       .forEach((lr) => {
@@ -303,4 +259,3 @@ class HRDashboardService {
 }
 
 export const hrDashboardService = new HRDashboardService();
-

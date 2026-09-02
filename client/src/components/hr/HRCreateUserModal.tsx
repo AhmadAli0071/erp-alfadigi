@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserPlus,
   X,
@@ -12,6 +12,7 @@ import {
   Mail,
   KeyRound,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 import { authService, StoredUserAccount } from '../../services/authService';
 import { UserRole } from '../../types/auth';
@@ -28,6 +29,13 @@ const ROLE_OPTIONS: { value: UserRole; label: string; hint: string }[] = [
   { value: 'DEPARTMENT_LEAD', label: 'Department Lead', hint: 'Team dashboard + approvals' },
   { value: 'HR_ADMIN', label: 'HR Admin', hint: 'Full HR management access' },
 ];
+
+interface LeadOption {
+  id: string;
+  name: string;
+  department: string;
+  jobTitle: string;
+}
 
 const generatePassword = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
@@ -49,11 +57,31 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
   const [jobTitle, setJobTitle] = useState('');
   const [password, setPassword] = useState(generatePassword());
   const [showPassword, setShowPassword] = useState(false);
+  const [reportedTo, setReportedTo] = useState('');
+  const [leads, setLeads] = useState<LeadOption[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [createdAccount, setCreatedAccount] = useState<StoredUserAccount | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+        const res = await fetch('/api/employees/leads', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLeads(data.leads || []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchLeads();
+  }, []);
 
   const handleCopy = async (label: string, value: string) => {
     try {
@@ -76,6 +104,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
         role,
         department,
         jobTitle,
+        reportedTo: reportedTo || undefined,
       });
       if (result.success && result.account) {
         setCreatedAccount(result.account);
@@ -325,6 +354,32 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
               {ROLE_OPTIONS.find((r) => r.value === role)?.hint}
             </p>
           </div>
+
+          {role === 'EMPLOYEE' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Reports To (Lead)
+              </label>
+              <div className="relative">
+                <select
+                  value={reportedTo}
+                  onChange={(e) => setReportedTo(e.target.value)}
+                  className={`${inputClasses} appearance-none cursor-pointer pr-8`}
+                >
+                  <option value="">— Select a lead —</option>
+                  {leads.map((lead) => (
+                    <option key={lead.id} value={lead.id}>
+                      {lead.name} — {lead.jobTitle} ({lead.department})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Leave empty if no reporting lead assigned yet
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">

@@ -29,8 +29,15 @@ export interface Employee {
   department: DepartmentName;
   jobTitle: string;
   avatar?: string;
+  phone?: string;
   joinedDate: string;
   status: 'Active' | 'On Leave' | 'Inactive';
+  reportedTo?: {
+    id: string;
+    name: string;
+    empId: string;
+    jobTitle: string;
+  } | null;
 }
 
 export interface AttendanceTimelineEvent {

@@ -3,6 +3,10 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import { config } from './config.js';
 import authRoutes from './routes/auth.js';
+import employeeRoutes from './routes/employees.js';
+import attendanceRoutes from './routes/attendance.js';
+import leaveRoutes from './routes/leaves.js';
+import ticketRoutes from './routes/tickets.js';
 
 const app = express();
 
@@ -24,6 +28,10 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // MongoDB connection + server start
 const start = async () => {

@@ -1,0 +1,37 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IAttendance extends Document {
+  employeeId: mongoose.Types.ObjectId;
+  date: string;
+  clockIn?: string;
+  clockOut?: string;
+  breakMinutes: number;
+  workingMinutes: number;
+  status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const AttendanceSchema = new Schema<IAttendance>(
+  {
+    employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+    date: { type: String, required: true },
+    clockIn: { type: String },
+    clockOut: { type: String },
+    breakMinutes: { type: Number, default: 0 },
+    workingMinutes: { type: Number, default: 0 },
+    status: {
+      type: String,
+      enum: ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Work From Home', 'On Duty', 'Pending OT', 'Short Hours'],
+      default: 'Absent',
+    },
+    notes: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+
+AttendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
+AttendanceSchema.index({ date: 1 });
+
+export const Attendance = mongoose.model<IAttendance>('Attendance', AttendanceSchema);

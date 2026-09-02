@@ -12,12 +12,13 @@ import {
   Mail,
   UserRound,
   UserPlus,
+  Pencil,
 } from 'lucide-react';
 import { hrDashboardService } from '../../services/hrDashboardService';
-import { authService } from '../../services/authService';
 import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
 import { HRCreateUserModal } from '../hr/HRCreateUserModal';
+import { HREmployeeEditModal } from '../hr/HREmployeeEditModal';
 
 interface HREmployeesManagementViewProps {
   onNavigateToDashboard: () => void;
@@ -61,6 +62,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [department, setDepartment] = useState<DepartmentFilter>('ALL');
@@ -71,19 +73,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
     setError(null);
     try {
       const response = await hrDashboardService.getDashboardData();
-      const created = await authService.getCreatedAccounts();
-      const createdAsEmployees: Employee[] = created.map((acc) => ({
-        id: acc.id,
-        empId: acc.id.toUpperCase().replace('USR_', 'EMP-'),
-        name: acc.name,
-        email: acc.email,
-        department: (acc.department as DepartmentName) || 'Sales',
-        jobTitle: acc.jobTitle,
-        status: 'Active' as const,
-        joinedDate: acc.createdAt.split('T')[0],
-        phone: '',
-      }));
-      setEmployees([...response.employees, ...createdAsEmployees]);
+      setEmployees(response.employees);
     } catch {
       setError('Unable to load the employee directory.');
     } finally {
@@ -392,6 +382,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     <th className="py-3 px-4">Employee</th>
                     <th className="py-3 px-3">Department</th>
                     <th className="py-3 px-3">Role</th>
+                    <th className="py-3 px-3">Reports To</th>
                     <th className="py-3 px-3">Email</th>
                     <th className="py-3 px-3">Joined</th>
                     <th className="py-3 px-3 text-right pr-4">Status</th>
@@ -434,6 +425,18 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                         </span>
                       </td>
                       <td className="py-3.5 px-3">
+                        {emp.reportedTo ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                            <span className="text-xs font-medium text-slate-600 truncate max-w-[150px]">
+                              {emp.reportedTo.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3">
                         <span className="text-xs text-slate-500 truncate block max-w-[200px]">
                           {emp.email}
                         </span>
@@ -442,7 +445,25 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                         <span className="text-xs text-slate-500 whitespace-nowrap">{emp.joinedDate}</span>
                       </td>
                       <td className="py-3.5 px-3 text-right pr-4">
-                        <StatusBadge status={emp.status} size="xs" />
+                        <div className="flex items-center justify-end gap-2">
+                  <StatusBadge status={emp.status} size="xs" />
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmployee(emp)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                    title="Edit employee"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingEmployee(emp)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                            title="Edit employee"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -512,6 +533,14 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                   <UserRound className="w-3 h-3 text-slate-400 shrink-0" />
                   <span className="truncate">{emp.jobTitle}</span>
                 </div>
+                {emp.reportedTo && (
+                  <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5">
+                    <span className="w-3 h-3 flex items-center justify-center shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                    </span>
+                    <span>Reports to <span className="font-semibold text-slate-700">{emp.reportedTo.name}</span></span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -522,6 +551,14 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
         <HRCreateUserModal
           onClose={() => setShowCreateUserModal(false)}
           onUserCreated={() => fetchEmployees(false)}
+        />
+      )}
+
+      {editingEmployee && (
+        <HREmployeeEditModal
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+          onUpdated={() => fetchEmployees(false)}
         />
       )}
     </div>

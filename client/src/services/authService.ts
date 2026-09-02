@@ -88,6 +88,7 @@ export interface CreateUserAccountInput {
   role: UserRole;
   department?: string;
   jobTitle: string;
+  reportedTo?: string;
 }
 
 export interface StoredUserAccount extends User {
@@ -248,6 +249,7 @@ class AuthService implements IAuthService {
           role: input.role,
           department: input.department,
           jobTitle: input.jobTitle.trim(),
+          reportedTo: input.reportedTo || undefined,
         }),
       });
 

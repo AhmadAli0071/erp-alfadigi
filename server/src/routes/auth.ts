@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { User } from '../models/User.js';
+import { Employee } from '../models/Employee.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -15,6 +16,7 @@ const registerSchema = z.object({
   role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'EMPLOYEE']).default('EMPLOYEE'),
   department: z.string().optional(),
   jobTitle: z.string().min(1, 'Job title is required'),
+  reportedTo: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -31,7 +33,7 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    const { name, email, password, role, department, jobTitle } = parsed.data;
+    const { name, email, password, role, department, jobTitle, reportedTo } = parsed.data;
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
@@ -49,6 +51,23 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
       department,
       jobTitle,
       createdBy: req.user?.name || 'System',
+    });
+
+    // Also create Employee record so user appears in employee directory
+    const empCount = await Employee.countDocuments();
+    const empId = `EMP-${String(empCount + 1).padStart(3, '0')}`;
+
+    await Employee.create({
+      userId: user._id,
+      empId,
+      name,
+      email: email.toLowerCase(),
+      department: department || 'Sales',
+      jobTitle,
+      phone: '',
+      joinedDate: new Date().toISOString().split('T')[0],
+      status: 'Active',
+      reportedTo: reportedTo || undefined,
     });
 
     res.status(201).json({
@@ -94,7 +113,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
     }
 
     const token = jwt.sign({ userId: user._id.toString() }, config.jwtSecret, {
-      expiresIn: config.jwtExpiresIn,
+      expiresIn: '7d',
     });
 
     res.json({
