@@ -1,421 +1,390 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  LeaveFilterParams,
-  LeaveQueryResult,
-  LeaveRequest,
-} from '../../types/leave';
-import { leaveService } from '../../services/leaveService';
-import { HRLeaveSummaryCards } from './HRLeaveSummaryCards';
-import { HRLeaveFilterBar } from './HRLeaveFilterBar';
-import { HRLeaveRequestTable } from './HRLeaveRequestTable';
-import { HRLeaveRequestDetailDrawer } from './HRLeaveRequestDetailDrawer';
-import { HRLeaveApproveModal } from './HRLeaveApproveModal';
-import { HRLeaveRejectModal } from './HRLeaveRejectModal';
-import { HRLeaveCalendarView } from './HRLeaveCalendarView';
-import { HRCurrentlyOnLeaveCard } from './HRCurrentlyOnLeaveCard';
-import { HRUpcomingLeavesCard } from './HRUpcomingLeavesCard';
-import { HRLeaveDistributionCard } from './HRLeaveDistributionCard';
-import { HRLeaveTypesModal } from './HRLeaveTypesModal';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StatusBadge } from '../hr/StatusBadge';
 import {
   CalendarDays,
-  ListFilter,
-  Download,
-  BookOpen,
+  ArrowLeft,
+  Search,
+  ChevronDown,
+  Clock,
   CheckCircle2,
+  XCircle,
   AlertCircle,
-  X,
-  RotateCcw,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 
 interface HRLeaveManagementViewProps {
   onNavigateToDashboard?: () => void;
-  initialPreset?: 'today' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'custom';
+  initialPreset?: string;
 }
+
+interface LeaveRecord {
+  id: string;
+  employeeName: string;
+  employeeCode: string;
+  department: string;
+  jobTitle: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+  status: string;
+  leadApprovalNote?: string;
+  leadApprovalDate?: string;
+  hrApprovalNote?: string;
+  createdAt: string;
+}
+
+const API_BASE = '/api';
+
+const getHeaders = (): Record<string, string> => {
+  try {
+    const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+};
+
+const STATUS_OPTIONS = ['ALL', 'Approved', 'In Process', 'Final Approved', 'Rejected'];
 
 export const HRLeaveManagementView: React.FC<HRLeaveManagementViewProps> = ({
   onNavigateToDashboard,
-  initialPreset = 'this_month',
 }) => {
-  // Main view mode: 'list' vs 'calendar'
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<LeaveRecord | null>(null);
+  const [actionNote, setActionNote] = useState('');
 
-  // Filter state
-  const [filters, setFilters] = useState<LeaveFilterParams>({
-    searchQuery: '',
-    employeeId: 'ALL',
-    department: 'ALL',
-    leaveType: 'ALL',
-    status: 'ALL',
-    datePreset: initialPreset,
-    year: 2026,
-    page: 1,
-    pageSize: 20,
-    sortBy: 'submittedDate',
-    sortDirection: 'desc',
-  });
+  const fetchLeaves = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/leaves/hr?status=${encodeURIComponent(selectedStatus)}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setLeaves(data.leaves || []);
+    } catch {
+      setError('Unable to load leave requests.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedStatus]);
 
-  // Query Result State
-  const [queryResult, setQueryResult] = useState<LeaveQueryResult>(() =>
-    leaveService.getLeaveRequests(filters)
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);
+
+  const filteredLeaves = leaves.filter((l) =>
+    !searchQuery ||
+    l.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.leaveType.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const summary = {
+    awaiting: leaves.filter((l) => l.status === 'Approved').length,
+    inProcess: leaves.filter((l) => l.status === 'In Process').length,
+    finalApproved: leaves.filter((l) => l.status === 'Final Approved').length,
+    rejected: leaves.filter((l) => l.status === 'Rejected').length,
+  };
 
-  // Selected request for detail drawer
-  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
-  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-
-  // Modals state
-  const [approvingRequest, setApprovingRequest] = useState<LeaveRequest | null>(null);
-  const [rejectingRequest, setRejectingRequest] = useState<LeaveRequest | null>(null);
-  const [isTypesModalOpen, setIsTypesModalOpen] = useState(false);
-
-  // Toast notifications
-  const [toastMessage, setToastMessage] = useState<{
-    id: string;
-    text: string;
-    type: 'success' | 'info' | 'error';
-  } | null>(null);
-
-  const showToast = useCallback((text: string, type: 'success' | 'info' | 'error' = 'success') => {
-    setToastMessage({ id: Date.now().toString(), text, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
-  }, []);
-
-  // Fetch / Query data
-  const fetchData = useCallback(() => {
+  const performAction = async (leaveId: string, action: 'hr-approve' | 'hr-reject' | 'hr-inprocess') => {
+    setActionInProgress(leaveId);
     try {
-      setHasError(false);
-      const res = leaveService.getLeaveRequests(filters);
-      setQueryResult(res);
-    } catch (err) {
-      console.error('Error loading leave requests:', err);
-      setHasError(true);
-    }
-  }, [filters]);
-
-  // Subscribe to service updates (e.g. on approve/reject)
-  useEffect(() => {
-    fetchData();
-    const unsubscribe = leaveService.subscribe(() => {
-      fetchData();
-      // If a request is currently open, refresh it in drawer
-      if (selectedRequest) {
-        const refreshed = leaveService.getLeaveRequestById(selectedRequest.id);
-        if (refreshed) {
-          setSelectedRequest(refreshed);
-        }
+      const res = await fetch(`${API_BASE}/leaves/${leaveId}/${action}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ note: actionNote }),
+      });
+      if (res.ok) {
+        setDetailModal(null);
+        setActionNote('');
+        fetchLeaves();
       }
-    });
-    return () => unsubscribe();
-  }, [fetchData, selectedRequest]);
-
-  // Filter mutation helper
-  const handleFilterChange = (newFilters: Partial<LeaveFilterParams>) => {
-    setIsLoading(true);
-    setFilters((prev) => ({ ...prev, ...newFilters }));
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 150);
+    } catch { /* ignore */ } finally {
+      setActionInProgress(null);
+    }
   };
-
-  const handleResetFilters = () => {
-    setIsLoading(true);
-    setFilters({
-      searchQuery: '',
-      employeeId: 'ALL',
-      department: 'ALL',
-      leaveType: 'ALL',
-      status: 'ALL',
-      datePreset: 'this_month',
-      year: 2026,
-      page: 1,
-      pageSize: 20,
-      sortBy: 'submittedDate',
-      sortDirection: 'desc',
-    });
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 150);
-  };
-
-  // Card click status filter toggle
-  const handleSelectStatusCard = (statusKey: string) => {
-    handleFilterChange({
-      status: statusKey,
-      page: 1,
-    });
-  };
-
-  // Drawer handlers
-  const handleOpenDetail = (req: LeaveRequest) => {
-    setSelectedRequest(req);
-    setIsDetailDrawerOpen(true);
-  };
-
-  const handleCloseDetail = () => {
-    setIsDetailDrawerOpen(false);
-    setSelectedRequest(null);
-  };
-
-  // Modal handlers
-  const handleOpenApproveModal = (req: LeaveRequest) => {
-    setApprovingRequest(req);
-  };
-
-  const handleOpenRejectModal = (req: LeaveRequest) => {
-    setRejectingRequest(req);
-  };
-
-  // Export CSV
-  const handleExportCSV = () => {
-    leaveService.exportLeavesCSV(queryResult.requests, `AlfaDigi_Leaves_${filters.datePreset}_2026.csv`);
-    showToast('Leave records exported to CSV successfully.', 'info');
-  };
-
-  // Side widget data
-  const currentlyOnLeaveList = useMemo(() => leaveService.getCurrentlyOnLeave(), []);
-  const upcomingLeavesList = useMemo(() => leaveService.getUpcomingLeaves('2026-08-31', 5), []);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full pb-12" id="hr-leave-management-screen">
-      {/* Toast Notification Banner */}
-      {toastMessage && (
-        <div className="fixed top-20 right-4 sm:right-8 z-50 animate-slideDown">
-          <div
-            className={`p-3.5 sm:p-4 rounded-2xl shadow-2xl border flex items-center gap-3 text-xs font-semibold backdrop-blur-md ${
-              toastMessage.type === 'success'
-                ? 'bg-white/90 backdrop-blur-xl text-emerald-700 border-emerald-200 shadow-emerald-500/20'
-                : toastMessage.type === 'error'
-                ? 'bg-white/90 backdrop-blur-xl text-rose-700 border-rose-200 shadow-rose-500/20'
-                : 'bg-white/90 backdrop-blur-xl text-indigo-600 border-indigo-200 shadow-indigo-500/20'
-            }`}
-          >
-            {toastMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-indigo-600 shrink-0" />
-            )}
-            <span className="truncate">{toastMessage.text}</span>
+    <div className="space-y-6 animate-fadeIn">
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {onNavigateToDashboard && (
             <button
               type="button"
-              onClick={() => setToastMessage(null)}
-              className="p-1 rounded-lg text-slate-500 hover:text-slate-900 ml-2"
+              onClick={onNavigateToDashboard}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 transition-colors cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
+          )}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+              <CalendarDays className="w-6 h-6 text-indigo-600" />
+              Leave Management
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">Lead-approved leave requests — final HR decision</p>
           </div>
         </div>
-      )}
+        <button
+          onClick={fetchLeaves}
+          disabled={isLoading}
+          className="p-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 transition-colors disabled:opacity-40 cursor-pointer"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
-      {/* 1. Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span>Leave Management</span>
-            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
-              {queryResult.dateRangeLabel}
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Review, track and manage employee leave requests.
-          </p>
-        </div>
+      {/* Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Awaiting HR', value: summary.awaiting, icon: <Clock className="w-4 h-4 text-amber-600" />, bg: 'bg-amber-500/[0.04] border-amber-200' },
+          { label: 'In Process', value: summary.inProcess, icon: <Loader2 className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-500/[0.04] border-blue-200' },
+          { label: 'Final Approved', value: summary.finalApproved, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-500/[0.04] border-emerald-200' },
+          { label: 'Rejected', value: summary.rejected, icon: <XCircle className="w-4 h-4 text-rose-600" />, bg: 'bg-rose-500/[0.04] border-rose-200' },
+        ].map((card, idx) => (
+          <div key={idx} className={`p-4 rounded-xl border ${card.bg} flex items-center justify-between`}>
+            <div className="flex items-center gap-2.5">
+              {card.icon}
+              <span className="text-xs font-medium text-slate-700">{card.label}</span>
+            </div>
+            <span className="text-sm font-bold text-slate-900 font-mono">{card.value}</span>
+          </div>
+        ))}
+      </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
-          {/* Calendar View Toggle */}
-          <button
-            type="button"
-            onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'calendar'
-                ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/30'
-                : 'bg-white/75 backdrop-blur-xl border-slate-200/80 text-slate-600 hover:bg-slate-100/60 hover:text-slate-900'
-            }`}
-            id="leave-view-mode-toggle"
-          >
-            {viewMode === 'list' ? (
-              <>
-                <CalendarDays className="w-4 h-4 text-indigo-600" />
-                <span>Calendar View</span>
-              </>
-            ) : (
-              <>
-                <ListFilter className="w-4 h-4 text-slate-900" />
-                <span>Table View</span>
-              </>
-            )}
-          </button>
-
-          {/* Leave Types Policy Button */}
-          <button
-            type="button"
-            onClick={() => setIsTypesModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/75 backdrop-blur-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 hover:text-slate-900 text-xs font-bold transition-colors cursor-pointer"
-            id="leave-types-modal-trigger"
-          >
-            <BookOpen className="w-4 h-4 text-indigo-600" />
-            <span>Leave Types</span>
-          </button>
-
-          {/* Export CSV */}
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/75 backdrop-blur-xl border border-slate-200/80 hover:bg-slate-100/60 text-slate-600 hover:text-slate-900 text-xs font-bold transition-colors cursor-pointer"
-            title="Export filtered records to CSV"
-            id="leave-export-csv-btn"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+      {/* Filter Bar */}
+      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="relative flex-1 w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search employee or leave type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 transition-all"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s === 'ALL' ? 'Awaiting HR Decision' : s}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
-      {/* 2. Top Summary Cards (Exactly 5 Cards) */}
-      <HRLeaveSummaryCards
-        stats={queryResult.stats}
-        currentStatusFilter={filters.status || 'ALL'}
-        onSelectStatusFilter={handleSelectStatusCard}
-      />
-
-      {/* 3. Filter Bar */}
-      <HRLeaveFilterBar
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onResetFilters={handleResetFilters}
-        totalResultsCount={queryResult.totalCount}
-      />
-
-      {/* Error Fallback State */}
-      {hasError ? (
-        <div
-          className="p-8 sm:p-12 text-center rounded-2xl bg-white/75 backdrop-blur-xl border border-rose-200 text-xs shadow-md"
-          id="leave-error-state"
-        >
-          <AlertCircle className="w-8 h-8 text-rose-600 mx-auto mb-2" />
-          <h3 className="text-sm font-bold text-slate-900 mb-1">Unable to load leave requests.</h3>
-          <p className="text-slate-500 mb-4">
-            An unexpected error occurred while retrieving leave records.
-          </p>
-          <button
-            type="button"
-            onClick={fetchData}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold inline-flex items-center gap-2 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retry</span>
-          </button>
-        </div>
-      ) : viewMode === 'calendar' ? (
-        /* 4. Calendar View */
-        <HRLeaveCalendarView
-          requests={queryResult.requests}
-          onViewRequest={handleOpenDetail}
-          year={filters.year || 2026}
-        />
-      ) : (
-        /* 5. List View & Analytics Cards */
-        <div className="space-y-6">
-          {/* Main Table / Mobile Cards */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <span>Leave Requests</span>
-                <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                  {queryResult.totalCount}
-                </span>
-              </h2>
-
-              {filters.status !== 'ALL' && (
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange({ status: 'ALL', page: 1 })}
-                  className="text-[11px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Filtering: <strong>{filters.status}</strong></span>
-                  <X className="w-3 h-3 text-rose-600" />
-                </button>
-              )}
-            </div>
-
-            <HRLeaveRequestTable
-              requests={queryResult.requests}
-              totalCount={queryResult.totalCount}
-              currentPage={queryResult.page}
-              pageSize={queryResult.pageSize}
-              totalPages={queryResult.totalPages}
-              isLoading={isLoading}
-              onPageChange={(page) => handleFilterChange({ page })}
-              onPageSizeChange={(pageSize) => handleFilterChange({ pageSize, page: 1 })}
-              onViewRequest={handleOpenDetail}
-              onResetFilters={handleResetFilters}
-            />
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center space-y-3">
+            <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin mx-auto" />
+            <p className="text-xs font-medium text-slate-500">Loading leave requests…</p>
           </div>
-
-          {/* Secondary 3-Card Grid (Currently On Leave, Upcoming Leaves, Leave Distribution) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            <HRCurrentlyOnLeaveCard
-              leaves={currentlyOnLeaveList}
-              onViewRequest={handleOpenDetail}
-              onViewAllOnLeave={() => {
-                handleFilterChange({ status: 'Approved', page: 1 });
-              }}
-            />
-
-            <HRUpcomingLeavesCard
-              upcomingLeaves={upcomingLeavesList}
-              onViewRequest={handleOpenDetail}
-              onViewCalendar={() => setViewMode('calendar')}
-            />
-
-            <HRLeaveDistributionCard
-              distribution={queryResult.stats.distribution}
-              totalApprovedDays={queryResult.stats.totalDaysApproved}
-            />
+        </div>
+      ) : error ? (
+        <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
+          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-rose-600">{error}</p>
+          <button onClick={fetchLeaves} className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer">Try again</button>
+        </div>
+      ) : filteredLeaves.length === 0 ? (
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <CalendarDays className="w-6 h-6 opacity-60" />
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-1">No leave requests</p>
+          <p className="text-xs text-slate-400">Leaves approved by leads will appear here for final HR decision.</p>
+        </div>
+      ) : (
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/50">
+                  <th className="px-5 py-3.5">Employee</th>
+                  <th className="px-5 py-3.5">Type</th>
+                  <th className="px-5 py-3.5">Dates</th>
+                  <th className="px-5 py-3.5">Days</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right pr-5">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/70">
+                {filteredLeaves.map((leave) => (
+                  <tr
+                    key={leave.id}
+                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    onClick={() => { setDetailModal(leave); setActionNote(''); }}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="text-xs font-semibold text-slate-700">{leave.employeeName}</div>
+                      <div className="text-[10px] text-slate-500">{leave.employeeCode} · {leave.department}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">{leave.leaveType}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">{leave.startDate} → {leave.endDate}</td>
+                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.totalDays}</td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={leave.status as 'Approved' | 'In Process' | 'Final Approved' | 'Rejected'} size="xs" />
+                    </td>
+                    <td className="px-5 py-3.5 text-right pr-5" onClick={(e) => e.stopPropagation()}>
+                      {leave.status === 'Approved' || leave.status === 'In Process' ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => performAction(leave.id, 'hr-approve')}
+                            disabled={actionInProgress === leave.id}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => performAction(leave.id, 'hr-inprocess')}
+                            disabled={actionInProgress === leave.id || leave.status === 'In Process'}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                          >
+                            In Process
+                          </button>
+                          <button
+                            onClick={() => performAction(leave.id, 'hr-reject')}
+                            disabled={actionInProgress === leave.id}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">Decided</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* 6. Leave Request Detail Slide-over Drawer */}
-      <HRLeaveRequestDetailDrawer
-        request={selectedRequest}
-        isOpen={isDetailDrawerOpen}
-        onClose={handleCloseDetail}
-        onOpenApproveModal={handleOpenApproveModal}
-        onOpenRejectModal={handleOpenRejectModal}
-      />
+      {/* Detail Modal */}
+      {detailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={() => setDetailModal(null)} />
+          <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-lg p-6 animate-scaleUp max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200/70 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                  <CalendarDays className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{detailModal.employeeName}</h3>
+                  <p className="text-[11px] text-slate-500">{detailModal.employeeCode} · {detailModal.department}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setDetailModal(null)} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 cursor-pointer">
+                <AlertCircle className="hidden" />
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
 
-      {/* 7. Approve Confirmation Modal */}
-      <HRLeaveApproveModal
-        request={approvingRequest}
-        isOpen={Boolean(approvingRequest)}
-        onClose={() => setApprovingRequest(null)}
-        onSuccess={(msg) => {
-          showToast(msg, 'success');
-        }}
-      />
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500 font-semibold uppercase">Leave Type</div>
+                  <div className="text-xs font-bold text-slate-700 mt-0.5">{detailModal.leaveType}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500 font-semibold uppercase">Duration</div>
+                  <div className="text-xs font-bold text-slate-700 mt-0.5">{detailModal.totalDays} day{detailModal.totalDays > 1 ? 's' : ''}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500 font-semibold uppercase">From</div>
+                  <div className="text-xs font-bold text-slate-700 mt-0.5">{detailModal.startDate}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500 font-semibold uppercase">To</div>
+                  <div className="text-xs font-bold text-slate-700 mt-0.5">{detailModal.endDate}</div>
+                </div>
+              </div>
 
-      {/* 8. Reject Reason Modal */}
-      <HRLeaveRejectModal
-        request={rejectingRequest}
-        isOpen={Boolean(rejectingRequest)}
-        onClose={() => setRejectingRequest(null)}
-        onSuccess={(msg) => {
-          showToast(msg, 'info');
-        }}
-      />
+              {detailModal.reason && (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500 font-semibold uppercase mb-1">Reason</div>
+                  <p className="text-xs text-slate-700 leading-relaxed">{detailModal.reason}</p>
+                </div>
+              )}
 
-      {/* 9. Leave Types Policy Modal */}
-      <HRLeaveTypesModal
-        isOpen={isTypesModalOpen}
-        onClose={() => setIsTypesModalOpen(false)}
-      />
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-[11px] font-bold text-emerald-800">Lead Approved</span>
+                  {detailModal.leadApprovalDate && (
+                    <span className="text-[10px] text-emerald-600 ml-auto">{detailModal.leadApprovalDate}</span>
+                  )}
+                </div>
+                {detailModal.leadApprovalNote && (
+                  <p className="text-[11px] text-emerald-700 mt-1">{detailModal.leadApprovalNote}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">HR Note (optional)</label>
+                <textarea
+                  value={actionNote}
+                  onChange={(e) => setActionNote(e.target.value)}
+                  rows={2}
+                  placeholder="Add a note for this decision..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 resize-none"
+                />
+              </div>
+            </div>
+
+            {detailModal.status === 'Approved' || detailModal.status === 'In Process' ? (
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200/70">
+                <button
+                  onClick={() => performAction(detailModal.id, 'hr-reject')}
+                  disabled={actionInProgress === detailModal.id}
+                  className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => performAction(detailModal.id, 'hr-inprocess')}
+                  disabled={actionInProgress === detailModal.id || detailModal.status === 'In Process'}
+                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  In Process
+                </button>
+                <button
+                  onClick={() => performAction(detailModal.id, 'hr-approve')}
+                  disabled={actionInProgress === detailModal.id}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  {actionInProgress === detailModal.id ? 'Saving…' : 'Final Approve'}
+                </button>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-slate-200/70 text-right">
+                <StatusBadge status={detailModal.status as 'Final Approved' | 'Rejected'} size="xs" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

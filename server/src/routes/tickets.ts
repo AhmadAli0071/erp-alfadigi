@@ -15,7 +15,7 @@ const createTicketSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: z.enum(['Open', 'Pending', 'In Progress', 'Resolved', 'Closed', 'Rejected']),
+  status: z.enum(['Open', 'Pending', 'In Progress', 'Resolved', 'HR In Process', 'Closed', 'Rejected']),
 });
 
 const addMessageSchema = z.object({
@@ -162,12 +162,140 @@ router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): 
   }
 });
 
-// PUT /api/tickets/:id/status — update ticket status
+// GET /api/tickets/hr — HR sees only lead-resolved tickets (default: awaiting HR decision)
+router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const status = String(req.query.status || 'ALL');
+
+    const filter: Record<string, unknown> =
+      status === 'ALL'
+        ? { status: { $in: ['Resolved', 'HR In Process'] } }
+        : { status };
+
+    const tickets = await Ticket.find(filter).sort({ createdAt: -1 }).populate('employeeId', 'name empId department');
+
+    res.json({
+      tickets: tickets.map((t) => ({
+        id: t._id,
+        ticketCode: t.ticketCode,
+        subject: t.subject,
+        description: t.description,
+        employeeName: (t.employeeId as unknown as { name: string }).name,
+        employeeCode: (t.employeeId as unknown as { empId: string }).empId,
+        department: (t.employeeId as unknown as { department: string }).department || t.department,
+        ticketType: t.ticketType,
+        priority: t.priority,
+        status: t.status,
+        messages: t.messages.map((m, i) => ({
+          id: `msg_${i}`,
+          senderName: m.senderName,
+          senderRole: m.senderRole,
+          message: m.message,
+          timestamp: m.timestamp?.toISOString() || '',
+        })),
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('Get HR tickets error:', err);
+    res.status(500).json({ error: 'Unable to load tickets.' });
+  }
+});
+
+// GET /api/tickets/hr-count — tickets awaiting HR decision count for badge
+router.get('/hr-count', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const count = await Ticket.countDocuments({ status: { $in: ['Resolved', 'HR In Process'] } });
+    res.json({ count });
+  } catch {
+    res.json({ count: 0 });
+  }
+});
+
+// PUT /api/tickets/:id/hr-inprocess — HR marks ticket as In Process
+router.put('/:id/hr-inprocess', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found.' });
+      return;
+    }
+
+    if (ticket.status !== 'Resolved' && ticket.status !== 'HR In Process') {
+      res.status(400).json({ error: 'Only lead-resolved tickets can be processed by HR.' });
+      return;
+    }
+
+    ticket.status = 'HR In Process';
+    await ticket.save();
+
+    res.json({ success: true, status: ticket.status });
+  } catch (err) {
+    console.error('HR in-process ticket error:', err);
+    res.status(500).json({ error: 'Unable to mark In Process.' });
+  }
+});
+
+// PUT /api/tickets/:id/hr-approve — HR final approval (Close)
+router.put('/:id/hr-approve', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found.' });
+      return;
+    }
+
+    if (ticket.status !== 'Resolved' && ticket.status !== 'HR In Process') {
+      res.status(400).json({ error: 'Only lead-resolved tickets can be approved by HR.' });
+      return;
+    }
+
+    ticket.status = 'Closed';
+    await ticket.save();
+
+    res.json({ success: true, status: ticket.status });
+  } catch (err) {
+    console.error('HR approve ticket error:', err);
+    res.status(500).json({ error: 'Unable to approve ticket.' });
+  }
+});
+
+// PUT /api/tickets/:id/hr-reject — HR final rejection
+router.put('/:id/hr-reject', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found.' });
+      return;
+    }
+
+    if (ticket.status !== 'Resolved' && ticket.status !== 'HR In Process') {
+      res.status(400).json({ error: 'Only lead-resolved tickets can be rejected by HR.' });
+      return;
+    }
+
+    ticket.status = 'Rejected';
+    await ticket.save();
+
+    res.json({ success: true, status: ticket.status });
+  } catch (err) {
+    console.error('HR reject ticket error:', err);
+    res.status(500).json({ error: 'Unable to reject ticket.' });
+  }
+});
+
+// PUT /api/tickets/:id/status — update ticket status (lead-level: cannot Close/Reject — that's HR's final decision)
 router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = updateStatusSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    if (parsed.data.status === 'Closed' || parsed.data.status === 'Rejected' || parsed.data.status === 'HR In Process') {
+      res.status(403).json({ error: 'Only HR can make the final decision (Close/Reject).' });
       return;
     }
 

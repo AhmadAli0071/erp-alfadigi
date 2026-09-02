@@ -331,7 +331,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
                   onChange={(e) => setSelectedNewStatus(e.target.value)}
                   className="w-full appearance-none pl-2.5 pr-7 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] font-semibold text-slate-700 cursor-pointer"
                 >
-                  {['Open', 'In Progress', 'Pending', 'Resolved', 'Closed'].map((s) => (
+                  {['Open', 'In Progress', 'Pending', 'Resolved'].map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

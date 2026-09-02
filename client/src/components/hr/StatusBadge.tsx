@@ -113,6 +113,26 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           icon: <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />,
           dot: 'bg-amber-400 animate-pulse',
         };
+      case 'In Process':
+      case 'HR In Process':
+      case 'In Progress':
+        return {
+          bg: 'bg-blue-50 text-blue-600 border-blue-200',
+          icon: <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />,
+          dot: 'bg-blue-500 animate-pulse',
+        };
+      case 'Final Approved':
+        return {
+          bg: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+          icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />,
+          dot: 'bg-emerald-500',
+        };
+      case 'Resolved':
+        return {
+          bg: 'bg-teal-50 text-teal-600 border-teal-200',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />,
+          dot: 'bg-teal-500',
+        };
       case 'Closed':
         return {
           bg: 'bg-slate-200/50 text-slate-500 border-slate-200',

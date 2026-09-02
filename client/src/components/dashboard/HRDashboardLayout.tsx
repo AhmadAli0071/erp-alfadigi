@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../../types/auth';
 import { HRSidebar } from '../hr/HRSidebar';
 import { HRHeader } from '../hr/HRHeader';
@@ -20,6 +20,30 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
   const [currentRoute, setCurrentRoute] = useState('/hr/dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
+  const [openTicketsCount, setOpenTicketsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [leavesRes, ticketsRes] = await Promise.all([
+          fetch('/api/leaves/hr-count', { headers }),
+          fetch('/api/tickets/hr-count', { headers }),
+        ]);
+        if (leavesRes.ok) {
+          const data = await leavesRes.json();
+          setPendingLeavesCount(data.count || 0);
+        }
+        if (ticketsRes.ok) {
+          const data = await ticketsRes.json();
+          setOpenTicketsCount(data.count || 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchCounts();
+  }, [currentRoute]);
 
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
@@ -60,8 +84,8 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
-        pendingLeavesCount={0}
-        openTicketsCount={0}
+        pendingLeavesCount={pendingLeavesCount}
+        openTicketsCount={openTicketsCount}
       />
 
       {/* Main App Content Area */}

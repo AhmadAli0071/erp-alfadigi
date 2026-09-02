@@ -16,7 +16,7 @@ export interface ITicket extends Document {
   department: string;
   ticketType: string;
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
-  status: 'Open' | 'Pending' | 'In Progress' | 'Resolved' | 'Closed' | 'Rejected';
+  status: 'Open' | 'Pending' | 'In Progress' | 'Resolved' | 'HR In Process' | 'Closed' | 'Rejected';
   assignedTo?: mongoose.Types.ObjectId;
   messages: ITicketMessage[];
   createdAt: Date;
@@ -46,7 +46,7 @@ const TicketSchema = new Schema<ITicket>(
     },
     status: {
       type: String,
-      enum: ['Open', 'Pending', 'In Progress', 'Resolved', 'Closed', 'Rejected'],
+      enum: ['Open', 'Pending', 'In Progress', 'Resolved', 'HR In Process', 'Closed', 'Rejected'],
       default: 'Open',
     },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },

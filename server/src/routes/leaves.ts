@@ -210,6 +210,156 @@ router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
+// GET /api/leaves/hr — HR sees lead-approved leaves (default: awaiting HR decision)
+router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const status = String(req.query.status || 'ALL');
+
+    const filter: Record<string, unknown> =
+      status === 'ALL'
+        ? { status: { $in: ['Approved', 'In Process'] } }
+        : { status };
+
+    const leaves = await Leave.find(filter).sort({ createdAt: -1 }).populate('employeeId', 'name empId department jobTitle');
+
+    res.json({
+      leaves: leaves.map((l) => ({
+        id: l._id,
+        employeeId: (l.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string; jobTitle: string }),
+        employeeName: (l.employeeId as unknown as { name: string }).name,
+        employeeCode: (l.employeeId as unknown as { empId: string }).empId,
+        department: (l.employeeId as unknown as { department: string }).department,
+        jobTitle: (l.employeeId as unknown as { jobTitle: string }).jobTitle,
+        leaveType: l.leaveType,
+        startDate: l.startDate,
+        endDate: l.endDate,
+        totalDays: l.totalDays,
+        reason: l.reason,
+        status: l.status,
+        leadApprovalNote: l.leadApprovalNote,
+        leadApprovalDate: l.leadApprovalDate,
+        hrApprovalNote: l.hrApprovalNote,
+        hrApprovalDate: l.hrApprovalDate,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('Get HR leaves error:', err);
+    res.status(500).json({ error: 'Unable to load leaves.' });
+  }
+});
+
+// GET /api/leaves/hr-count — pending HR review count for badge
+router.get('/hr-count', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const count = await Leave.countDocuments({ status: { $in: ['Approved', 'In Process'] } });
+    res.json({ count });
+  } catch {
+    res.json({ count: 0 });
+  }
+});
+
+// PUT /api/leaves/:id/hr-inprocess — HR marks leave as In Process
+router.put('/:id/hr-inprocess', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = approveRejectSchema.safeParse(req.body);
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) {
+      res.status(404).json({ error: 'Leave request not found.' });
+      return;
+    }
+
+    if (leave.status !== 'Approved' && leave.status !== 'In Process') {
+      res.status(400).json({ error: 'Only lead-approved leaves can be processed.' });
+      return;
+    }
+
+    const hrEmployee = await Employee.findOne({ email: req.user?.email?.toLowerCase() });
+    if (!hrEmployee) {
+      res.status(404).json({ error: 'HR not found.' });
+      return;
+    }
+
+    leave.status = 'In Process';
+    leave.hrApproverId = hrEmployee._id;
+    leave.hrApprovalNote = parsed.data?.note || '';
+    await leave.save();
+
+    res.json({ success: true, message: 'Leave marked as In Process.' });
+  } catch (err) {
+    console.error('HR in-process leave error:', err);
+    res.status(500).json({ error: 'Unable to mark In Process.' });
+  }
+});
+
+// PUT /api/leaves/:id/hr-approve — HR final approval
+router.put('/:id/hr-approve', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = approveRejectSchema.safeParse(req.body);
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) {
+      res.status(404).json({ error: 'Leave request not found.' });
+      return;
+    }
+
+    if (leave.status !== 'Approved' && leave.status !== 'In Process') {
+      res.status(400).json({ error: 'Only lead-approved leaves can be approved by HR.' });
+      return;
+    }
+
+    const hrEmployee = await Employee.findOne({ email: req.user?.email?.toLowerCase() });
+    if (!hrEmployee) {
+      res.status(404).json({ error: 'HR not found.' });
+      return;
+    }
+
+    leave.status = 'Final Approved';
+    leave.hrApproverId = hrEmployee._id;
+    leave.hrApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    leave.hrApprovalNote = parsed.data?.note || '';
+    await leave.save();
+
+    res.json({ success: true, message: 'Leave finally approved.' });
+  } catch (err) {
+    console.error('HR approve leave error:', err);
+    res.status(500).json({ error: 'Unable to approve leave.' });
+  }
+});
+
+// PUT /api/leaves/:id/hr-reject — HR final rejection
+router.put('/:id/hr-reject', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = approveRejectSchema.safeParse(req.body);
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) {
+      res.status(404).json({ error: 'Leave request not found.' });
+      return;
+    }
+
+    if (leave.status !== 'Approved' && leave.status !== 'In Process') {
+      res.status(400).json({ error: 'Only lead-approved leaves can be rejected by HR.' });
+      return;
+    }
+
+    const hrEmployee = await Employee.findOne({ email: req.user?.email?.toLowerCase() });
+    if (!hrEmployee) {
+      res.status(404).json({ error: 'HR not found.' });
+      return;
+    }
+
+    leave.status = 'Rejected';
+    leave.hrApproverId = hrEmployee._id;
+    leave.hrApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    leave.hrApprovalNote = parsed.data?.note || '';
+    await leave.save();
+
+    res.json({ success: true, message: 'Leave finally rejected.' });
+  } catch (err) {
+    console.error('HR reject leave error:', err);
+    res.status(500).json({ error: 'Unable to reject leave.' });
+  }
+});
+
 // GET /api/leaves/pending-count/:leadEmail — pending leave count for badge
 router.get('/pending-count/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

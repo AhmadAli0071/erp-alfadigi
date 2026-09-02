@@ -7,7 +7,7 @@ export interface ILeave extends Document {
   endDate: string;
   totalDays: number;
   reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+  status: 'Pending' | 'Approved' | 'In Process' | 'Final Approved' | 'Rejected' | 'Cancelled';
   leadApproverId?: mongoose.Types.ObjectId;
   leadApprovalDate?: string;
   leadApprovalNote?: string;
@@ -28,7 +28,7 @@ const LeaveSchema = new Schema<ILeave>(
     reason: { type: String, default: '' },
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
+      enum: ['Pending', 'Approved', 'In Process', 'Final Approved', 'Rejected', 'Cancelled'],
       default: 'Pending',
     },
     leadApproverId: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },
