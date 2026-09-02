@@ -9,6 +9,7 @@ import {
   Save,
   Shield,
   KeyRound,
+  Users,
 } from 'lucide-react';
 import { Employee, DepartmentName } from '../../types/hr';
 
@@ -16,6 +17,13 @@ interface HREmployeeEditModalProps {
   employee: Employee;
   onClose: () => void;
   onUpdated: () => void;
+}
+
+interface LeadOption {
+  id: string;
+  name: string;
+  department: string;
+  jobTitle: string;
 }
 
 const DEPARTMENT_OPTIONS = ['HR', 'Sales', 'Tech'];
@@ -33,6 +41,8 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
   const [jobTitle, setJobTitle] = useState(employee.jobTitle);
   const [phone, setPhone] = useState(employee.phone || '');
   const [status, setStatus] = useState(employee.status);
+  const [reportedTo, setReportedTo] = useState(employee.reportedTo?.id || '');
+  const [leads, setLeads] = useState<LeadOption[]>([]);
 
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +53,24 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch('/api/employees/leads', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLeads(data.leads || []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchLeads();
+  }, []);
 
   const getToken = () => {
     try {
@@ -64,7 +92,7 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ name, email, department, jobTitle, phone, status }),
+        body: JSON.stringify({ name, email, department, jobTitle, phone, status, reportedTo: reportedTo || null }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -267,6 +295,27 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
                   placeholder="+92 300 1234567"
                   className={inputClasses}
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Reports To (Lead)
+                </label>
+                <div className="relative">
+                  <select
+                    value={reportedTo}
+                    onChange={(e) => setReportedTo(e.target.value)}
+                    className={`${inputClasses} appearance-none cursor-pointer pr-8`}
+                  >
+                    <option value="">— No lead assigned —</option>
+                    {leads.map((lead) => (
+                      <option key={lead.id} value={lead.id}>
+                        {lead.name} — {lead.jobTitle} ({lead.department})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
               </div>
             </div>
           ) : (
