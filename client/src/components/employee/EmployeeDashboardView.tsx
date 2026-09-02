@@ -23,6 +23,7 @@ type ClockState = 'not_clocked_in' | 'working' | 'on_break' | 'clocked_out';
 
 interface TodayAttendance {
   clockIn: string | null;
+  clockInAt: string | null;
   clockOut: string | null;
   breakMinutes: number;
   breakStartedAt: string | null;
@@ -62,14 +63,32 @@ const formatMinutes = (mins: number): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+const formatSeconds = (totalSecs: number): string => {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ user, onNavigate }) => {
   const [clockState, setClockState] = useState<ClockState>('not_clocked_in');
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockOutTime, setClockOutTime] = useState<string | null>(null);
   const [workingMinutes, setWorkingMinutes] = useState(0);
   const [breakMinutes, setBreakMinutes] = useState(0);
+  const [clockInAt, setClockInAt] = useState<Date | null>(null);
+  const [breakStartedAt, setBreakStartedAt] = useState<Date | null>(null);
+  const [nowTick, setNowTick] = useState<number>(Date.now());
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Live ticking timer — updates every second
+  useEffect(() => {
+    if (clockState === 'working' || clockState === 'on_break') {
+      const t = setInterval(() => setNowTick(Date.now()), 1000);
+      return () => clearInterval(t);
+    }
+  }, [clockState]);
 
   const fetchTodayStatus = useCallback(async () => {
     try {
@@ -78,12 +97,16 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       const data = await res.json();
       if (data.attendance) {
         const att: TodayAttendance = data.attendance;
-        if (att.clockIn) setClockInTime(att.clockIn);
+        if (att.clockIn) {
+          setClockInTime(att.clockIn);
+          if (att.clockInAt) setClockInAt(new Date(att.clockInAt));
+        }
         if (att.clockOut) {
           setClockState('clocked_out');
           setClockOutTime(att.clockOut);
         } else if (att.breakStartedAt) {
           setClockState('on_break');
+          setBreakStartedAt(new Date(att.breakStartedAt));
         } else if (att.clockIn) {
           setClockState('working');
         }
@@ -115,6 +138,10 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       }
       setClockState('working');
       setClockInTime(data.attendance.clockIn);
+      setClockInAt(new Date());
+      setBreakMinutes(0);
+      setBreakStartedAt(null);
+      setNowTick(Date.now());
     } catch {
       setError('Unable to connect to server.');
     } finally {
@@ -139,8 +166,10 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       }
       if (ending) {
         setBreakMinutes(data.breakMinutes || breakMinutes);
+        setBreakStartedAt(null);
         setClockState('working');
       } else {
+        setBreakStartedAt(new Date());
         setClockState('on_break');
       }
     } catch {
@@ -168,6 +197,8 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       setClockOutTime(data.attendance.clockOut);
       setWorkingMinutes(data.attendance.workingMinutes);
       setBreakMinutes(data.attendance.breakMinutes ?? breakMinutes);
+      setBreakStartedAt(null);
+      setClockInAt(null);
     } catch {
       setError('Unable to connect to server.');
     } finally {
@@ -290,6 +321,21 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     </svg>
   );
 
+  /* ---------- Live timer calculation ---------- */
+  const liveElapsed = (() => {
+    if (!clockInAt || (clockState !== 'working' && clockState !== 'on_break')) return null;
+    const totalMs = nowTick - clockInAt.getTime();
+    const breakMs =
+      breakMinutes * 60000 +
+      (clockState === 'on_break' && breakStartedAt ? nowTick - breakStartedAt.getTime() : 0);
+    return Math.max(0, Math.floor((totalMs - breakMs) / 1000));
+  })();
+
+  const liveBreakSeconds =
+    clockState === 'on_break' && breakStartedAt
+      ? Math.max(0, Math.floor((nowTick - breakStartedAt.getTime()) / 1000))
+      : null;
+
   const summaryCards = [
     {
       label: 'Clock In',
@@ -305,8 +351,8 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     },
     {
       label: 'Working Hours',
-      value: formatMinutes(workingMinutes),
-      icon: <Timer className="w-4 h-4 text-indigo-600" />,
+      value: liveElapsed !== null ? formatSeconds(liveElapsed) : formatMinutes(workingMinutes),
+      icon: <Timer className={`w-4 h-4 text-indigo-600 ${liveElapsed !== null ? 'animate-pulse' : ''}`} />,
       color: 'bg-indigo-50 border-indigo-200',
     },
     {
@@ -401,6 +447,36 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
               loading={isLoading === 'out'}
             />
           </div>
+
+          {/* Live Timer */}
+          {liveElapsed !== null && (
+            <div className="mt-7 flex flex-col items-center gap-2">
+              <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 tabular-nums select-none">
+                {formatSeconds(liveElapsed)}
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+                {clockState === 'working' ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span className="text-emerald-600">Live — Working Time</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                    <span className="text-amber-600">
+                      On Break — {formatSeconds(liveBreakSeconds || 0)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {clockState === 'clocked_out' && (
             <div className="mt-6 flex items-center justify-center">

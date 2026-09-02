@@ -4,6 +4,7 @@ export interface IAttendance extends Document {
   employeeId: mongoose.Types.ObjectId;
   date: string;
   clockIn?: string;
+  clockInAt?: Date | null;
   clockOut?: string;
   breakMinutes: number;
   breakStartedAt?: Date | null;
@@ -19,6 +20,7 @@ const AttendanceSchema = new Schema<IAttendance>(
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     date: { type: String, required: true },
     clockIn: { type: String },
+    clockInAt: { type: Date, default: null },
     clockOut: { type: String },
     breakMinutes: { type: Number, default: 0 },
     breakStartedAt: { type: Date, default: null },

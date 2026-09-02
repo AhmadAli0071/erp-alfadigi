@@ -47,6 +47,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     let attendance;
     if (existing) {
       existing.clockIn = timeStr;
+      existing.clockInAt = now;
       existing.status = 'Present';
       attendance = await existing.save();
     } else {
@@ -54,11 +55,12 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
         employeeId: employee._id,
         date: today,
         clockIn: timeStr,
+        clockInAt: now,
         status: 'Present',
       });
     }
 
-    res.json({ success: true, attendance: { id: attendance._id, clockIn: timeStr, status: 'Present' } });
+    res.json({ success: true, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: 'Present' } });
   } catch (err) {
     console.error('Clock in error:', err);
     res.status(500).json({ error: 'Unable to clock in.' });
@@ -136,6 +138,7 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
         clockIn: attendance.clockIn,
         clockOut: timeStr,
         workingMinutes: working,
+        breakMinutes: attendance.breakMinutes,
         status: attendance.status,
       },
     });
@@ -243,6 +246,7 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
       attendance: attendance ? {
         id: attendance._id,
         clockIn: attendance.clockIn || null,
+        clockInAt: attendance.clockInAt || null,
         clockOut: attendance.clockOut || null,
         breakMinutes: attendance.breakMinutes,
         breakStartedAt: attendance.breakStartedAt || null,
