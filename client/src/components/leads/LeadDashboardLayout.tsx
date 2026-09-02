@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../../types/auth';
 import { LeadDepartment } from '../../types/lead';
 import { LeadSidebar } from './LeadSidebar';
 import { LeadHeader } from './LeadHeader';
-import { SalesDashboardView } from '../sales/SalesDashboardView';
-import { TechDashboardView } from '../tech/TechDashboardView';
+import { LeadDashboardHomeView } from './LeadDashboardHomeView';
 import { LeadAttendanceView } from './LeadAttendanceView';
 import { LeadLeaveView } from './LeadLeaveView';
 import { LeadTicketsView } from './LeadTicketsView';
@@ -19,8 +18,25 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   const [currentRoute, setCurrentRoute] = useState('/lead/dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const department = (user.department || 'Tech') as LeadDepartment;
+
+  // Real pending leave count for sidebar badge
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`/api/leaves/pending-count/${user.email}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCount(data.count || 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchPending();
+  }, [user.email, currentRoute]);
 
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
@@ -44,7 +60,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
-        pendingCount={0}
+        pendingCount={pendingCount}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 relative z-[1]">
@@ -59,11 +75,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
 
         <main className="flex-1 overflow-y-auto custom-scrollbar" id="lead-dashboard-content-area">
           {isDashboardRoute ? (
-            department === 'Sales' ? (
-              <SalesDashboardView user={user} onNavigate={handleNavigate} />
-            ) : (
-              <TechDashboardView user={user} onNavigate={handleNavigate} />
-            )
+            <LeadDashboardHomeView user={user} department={department} onNavigate={handleNavigate} />
           ) : isTeamRoute ? (
             <LeadTeamView user={user} department={department} onNavigate={handleNavigate} />
           ) : isAttendanceRoute ? (
