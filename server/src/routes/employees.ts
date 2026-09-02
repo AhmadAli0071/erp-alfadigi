@@ -3,6 +3,8 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { Employee } from '../models/Employee.js';
 import { User } from '../models/User.js';
+import { Attendance } from '../models/Attendance.js';
+import { Leave } from '../models/Leave.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -136,6 +138,63 @@ router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Pro
   } catch (err) {
     console.error('Get leads error:', err);
     res.status(500).json({ error: 'Unable to load leads.' });
+  }
+});
+
+// GET /api/employees/me/:email — my own profile (with lead info + quick stats)
+router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const employee = await Employee.findOne({
+      email: String(req.params.email).toLowerCase(),
+      isActive: true,
+    }).populate('reportedTo', 'name empId jobTitle department email');
+
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found.' });
+      return;
+    }
+
+    const lead = employee.reportedTo as unknown as
+      | { _id: { toString(): string }; name: string; empId: string; jobTitle: string; department: string; email: string }
+      | null;
+
+    // Quick stats: attendance this month + leaves
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+
+    const [attendanceCount, presentCount, totalLeaves, approvedLeaves] = await Promise.all([
+      Attendance.countDocuments({ employeeId: employee._id, date: { $gte: monthStartStr } }),
+      Attendance.countDocuments({ employeeId: employee._id, date: { $gte: monthStartStr }, status: { $in: ['Present', 'Late'] } }),
+      Leave.countDocuments({ employeeId: employee._id }),
+      Leave.countDocuments({ employeeId: employee._id, status: 'Final Approved' }),
+    ]);
+
+    res.json({
+      employee: {
+        id: employee._id,
+        empId: employee.empId,
+        name: employee.name,
+        email: employee.email,
+        phone: employee.phone,
+        department: employee.department,
+        jobTitle: employee.jobTitle,
+        joinedDate: employee.joinedDate,
+        status: employee.status,
+        reportedTo: lead
+          ? { id: lead._id.toString(), name: lead.name, empId: lead.empId, jobTitle: lead.jobTitle, department: lead.department, email: lead.email }
+          : null,
+      },
+      stats: {
+        attendanceDaysThisMonth: attendanceCount,
+        presentDaysThisMonth: presentCount,
+        totalLeaveRequests: totalLeaves,
+        approvedLeaves,
+      },
+    });
+  } catch (err) {
+    console.error('Get my profile error:', err);
+    res.status(500).json({ error: 'Unable to load profile.' });
   }
 });
 
