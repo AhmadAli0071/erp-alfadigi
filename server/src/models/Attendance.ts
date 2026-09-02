@@ -11,6 +11,7 @@ export interface IAttendance extends Document {
   workingMinutes: number;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
+  isAutoMarked?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,7 @@ const AttendanceSchema = new Schema<IAttendance>(
       default: 'Absent',
     },
     notes: { type: String, default: '' },
+    isAutoMarked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -2,7 +2,8 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { Attendance } from '../models/Attendance.js';
 import { Employee } from '../models/Employee.js';
-import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
+import { runAbsentScan } from '../jobs/autoAbsent.js';
 
 const router = Router();
 
@@ -619,6 +620,23 @@ router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise
   } catch (err) {
     console.error('HR attendance error:', err);
     res.status(500).json({ error: 'Unable to load attendance data.' });
+  }
+});
+
+// POST /api/attendance/run-absent-scan — manual auto-absent scan (HR only)
+// Body (optional): { date: "YYYY-MM-DD" } — defaults to last completed shift
+router.post('/run-absent-scan', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const explicitDate = req.body?.date ? String(req.body.date) : undefined;
+    if (explicitDate && !/^\d{4}-\d{2}-\d{2}$/.test(explicitDate)) {
+      res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
+      return;
+    }
+    const result = await runAbsentScan(explicitDate);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Absent scan error:', err);
+    res.status(500).json({ error: 'Absent scan failed.' });
   }
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/auth';
+import { ClockButtonsCard } from '../attendance/ClockButtonsCard';
 import {
   Calendar,
   Users,
@@ -298,6 +299,9 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
           <span className="text-slate-900">{getFormattedDate()}</span>
         </div>
       </div>
+
+      {/* My Attendance — Clock In/Out (lead is an employee too) */}
+      <ClockButtonsCard user={user} title="My Shift Today" />
 
       {/* KPI Cards — REAL */}
       <section aria-label="Team KPI Metrics">

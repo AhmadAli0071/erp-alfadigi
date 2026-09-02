@@ -8,6 +8,7 @@ import attendanceRoutes from './routes/attendance.js';
 import leaveRoutes from './routes/leaves.js';
 import ticketRoutes from './routes/tickets.js';
 import notificationRoutes from './routes/notifications.js';
+import { startAutoAbsentJob } from './jobs/autoAbsent.js';
 
 const app = express();
 
@@ -41,6 +42,8 @@ const start = async () => {
     console.log('⏳ Connecting to MongoDB...');
     await mongoose.connect(config.mongodbUri);
     console.log('✅ MongoDB connected');
+
+    startAutoAbsentJob();
 
     app.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);
