@@ -1,10 +1,52 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, CheckCheck, CalendarDays, Ticket as TicketIcon, Clock, Info } from 'lucide-react';
+import { Bell, CheckCheck, CalendarDays, Ticket as TicketIcon, Clock, Info, Volume2, VolumeX } from 'lucide-react';
 import { notificationService, AppNotification } from '../../services/notificationService';
 
 interface NotificationBellProps {
   onNavigate?: (route: string) => void;
 }
+
+/* ---------- Notification sound (Web Audio API — no external file) ---------- */
+const playNotificationSound = (): void => {
+  try {
+    const ctx = new AudioContext();
+    if (ctx.state === 'suspended') void ctx.resume();
+    const now = ctx.currentTime;
+
+    // Pleasant two-tone chime (E6 -> G6)
+    const notes = [
+      { freq: 1318.5, start: 0, dur: 0.18 },
+      { freq: 1568.0, start: 0.12, dur: 0.35 },
+    ];
+
+    notes.forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.22, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.05);
+    });
+
+    // Auto-close context after sound finishes
+    setTimeout(() => void ctx.close(), 1200);
+  } catch {
+    // audio not available
+  }
+};
+
+const isSoundEnabled = (): boolean => {
+  try {
+    return localStorage.getItem('alfa_digi_notif_sound') !== 'off';
+  } catch {
+    return true;
+  }
+};
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string }> = {
   leave: { icon: <CalendarDays className="w-3.5 h-3.5 text-blue-600" />, bg: 'bg-blue-50 border-blue-200' },
@@ -27,6 +69,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Connect to real-time SSE stream on mount
@@ -35,6 +78,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
     const unsubCount = notificationService.onUnreadCount(setUnreadCount);
     const unsubNotif = notificationService.onNotification((n) => {
       setNotifications((prev) => [n, ...prev].slice(0, 50));
+      if (isSoundEnabled()) playNotificationSound();
     });
     notificationService.refreshUnreadCount();
 
@@ -43,6 +87,15 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
       unsubNotif();
     };
   }, []);
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    try {
+      localStorage.setItem('alfa_digi_notif_sound', next ? 'on' : 'off');
+    } catch { /* ignore */ }
+    if (next) playNotificationSound();
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -110,14 +163,25 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
                 </span>
               )}
             </div>
-            <button
-              onClick={handleMarkAll}
-              disabled={unreadCount === 0}
-              className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-40 cursor-pointer"
-            >
-              <CheckCheck className="w-3 h-3" />
-              Mark all read
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSound}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  soundOn ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 bg-slate-100'
+                }`}
+                title={soundOn ? 'Sound on' : 'Sound off'}
+              >
+                {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={handleMarkAll}
+                disabled={unreadCount === 0}
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-40 cursor-pointer"
+              >
+                <CheckCheck className="w-3 h-3" />
+                Mark all read
+              </button>
+            </div>
           </div>
 
           {/* List */}
