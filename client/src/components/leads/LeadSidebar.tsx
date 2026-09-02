@@ -6,13 +6,10 @@ import {
   Clock,
   CalendarDays,
   Ticket,
-  Target,
   Briefcase,
-  FolderKanban,
   ChevronLeft,
   ChevronRight,
   X,
-  ListTodo,
 } from 'lucide-react';
 import { LeadDepartment } from '../../types/lead';
 
@@ -42,8 +39,6 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
   const salesNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
-    { id: 'leads', label: 'Leads', icon: <Target className="w-4 h-4 shrink-0" />, route: '/lead/leads' },
-    { id: 'tasks', label: 'Tasks', icon: <ListTodo className="w-4 h-4 shrink-0" />, route: '/lead/tasks' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
@@ -51,8 +46,6 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const techNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
-    { id: 'tasks', label: 'Tasks', icon: <ListTodo className="w-4 h-4 shrink-0" />, route: '/lead/tasks' },
-    { id: 'projects', label: 'Projects', icon: <FolderKanban className="w-4 h-4 shrink-0" />, route: '/lead/projects' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
