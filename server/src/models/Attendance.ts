@@ -6,6 +6,7 @@ export interface IAttendance extends Document {
   clockIn?: string;
   clockOut?: string;
   breakMinutes: number;
+  breakStartedAt?: Date | null;
   workingMinutes: number;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
@@ -20,6 +21,7 @@ const AttendanceSchema = new Schema<IAttendance>(
     clockIn: { type: String },
     clockOut: { type: String },
     breakMinutes: { type: Number, default: 0 },
+    breakStartedAt: { type: Date, default: null },
     workingMinutes: { type: Number, default: 0 },
     status: {
       type: String,

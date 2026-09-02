@@ -95,6 +95,14 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
+    // Auto-end active break before clocking out
+    if (attendance.breakStartedAt) {
+      const breakMs = new Date().getTime() - new Date(attendance.breakStartedAt).getTime();
+      const breakMins = Math.max(1, Math.round(breakMs / 60000));
+      attendance.breakMinutes = (attendance.breakMinutes || 0) + breakMins;
+      attendance.breakStartedAt = null;
+    }
+
     attendance.clockOut = timeStr;
 
     // Calculate working minutes
@@ -111,6 +119,7 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
     let working = clockOutMin - clockInMin;
     if (working < 0) working += 24 * 60; // overnight shift
     working -= attendance.breakMinutes;
+    if (working < 0) working = 0; // never negative
     attendance.workingMinutes = working;
 
     // Auto-assign status
@@ -136,6 +145,88 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
+// POST /api/attendance/break-start — start break
+router.post('/break-start', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = clockInSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found.' });
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const attendance = await Attendance.findOne({ employeeId: employee._id, date: today });
+
+    if (!attendance || !attendance.clockIn) {
+      res.status(400).json({ error: 'Clock in first before starting a break.' });
+      return;
+    }
+    if (attendance.clockOut) {
+      res.status(400).json({ error: 'Shift already completed.' });
+      return;
+    }
+    if (attendance.breakStartedAt) {
+      res.status(409).json({ error: 'Break already in progress.' });
+      return;
+    }
+
+    attendance.breakStartedAt = new Date();
+    await attendance.save();
+
+    res.json({ success: true, breakStartedAt: attendance.breakStartedAt });
+  } catch (err) {
+    console.error('Break start error:', err);
+    res.status(500).json({ error: 'Unable to start break.' });
+  }
+});
+
+// POST /api/attendance/break-end — end break and accumulate minutes
+router.post('/break-end', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = clockInSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found.' });
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const attendance = await Attendance.findOne({ employeeId: employee._id, date: today });
+
+    if (!attendance || !attendance.clockIn) {
+      res.status(400).json({ error: 'No active shift found.' });
+      return;
+    }
+    if (!attendance.breakStartedAt) {
+      res.status(400).json({ error: 'No break in progress.' });
+      return;
+    }
+
+    const breakMs = new Date().getTime() - new Date(attendance.breakStartedAt).getTime();
+    const breakMins = Math.max(1, Math.round(breakMs / 60000));
+
+    attendance.breakMinutes = (attendance.breakMinutes || 0) + breakMins;
+    attendance.breakStartedAt = null;
+    await attendance.save();
+
+    res.json({ success: true, breakMinutes: attendance.breakMinutes, lastBreakMinutes: breakMins });
+  } catch (err) {
+    console.error('Break end error:', err);
+    res.status(500).json({ error: 'Unable to end break.' });
+  }
+});
+
 // GET /api/attendance/today/:email — get today's attendance for an employee
 router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -154,6 +245,7 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
         clockIn: attendance.clockIn || null,
         clockOut: attendance.clockOut || null,
         breakMinutes: attendance.breakMinutes,
+        breakStartedAt: attendance.breakStartedAt || null,
         workingMinutes: attendance.workingMinutes,
         status: attendance.status,
       } : null,

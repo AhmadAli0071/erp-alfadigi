@@ -3,7 +3,6 @@ import { User } from '../../types/auth';
 import {
   Clock,
   Play,
-  Pause,
   Square,
   Timer,
   Coffee,
@@ -12,7 +11,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  RefreshCw,
+  Zap,
 } from 'lucide-react';
 
 interface EmployeeDashboardViewProps {
@@ -26,6 +25,7 @@ interface TodayAttendance {
   clockIn: string | null;
   clockOut: string | null;
   breakMinutes: number;
+  breakStartedAt: string | null;
   workingMinutes: number;
   status: string;
 }
@@ -68,7 +68,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
   const [clockOutTime, setClockOutTime] = useState<string | null>(null);
   const [workingMinutes, setWorkingMinutes] = useState(0);
   const [breakMinutes, setBreakMinutes] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTodayStatus = useCallback(async () => {
@@ -77,19 +77,18 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       if (!res.ok) return;
       const data = await res.json();
       if (data.attendance) {
-        const att = data.attendance;
-        if (att.clockIn && att.clockOut) {
+        const att: TodayAttendance = data.attendance;
+        if (att.clockIn) setClockInTime(att.clockIn);
+        if (att.clockOut) {
           setClockState('clocked_out');
-          setClockInTime(att.clockIn);
           setClockOutTime(att.clockOut);
-          setWorkingMinutes(att.workingMinutes);
-          setBreakMinutes(att.breakMinutes);
+        } else if (att.breakStartedAt) {
+          setClockState('on_break');
         } else if (att.clockIn) {
           setClockState('working');
-          setClockInTime(att.clockIn);
-          setWorkingMinutes(att.workingMinutes);
-          setBreakMinutes(att.breakMinutes);
         }
+        setWorkingMinutes(att.workingMinutes || 0);
+        setBreakMinutes(att.breakMinutes || 0);
       }
     } catch {
       // ignore
@@ -101,7 +100,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
   }, [fetchTodayStatus]);
 
   const handleClockIn = async () => {
-    setIsLoading(true);
+    setIsLoading('in');
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/attendance/clock-in`, {
@@ -119,12 +118,40 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     } catch {
       setError('Unable to connect to server.');
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
+    }
+  };
+
+  const handleBreakToggle = async () => {
+    const ending = clockState === 'on_break';
+    setIsLoading('break');
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/attendance/break-${ending ? 'end' : 'start'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ employeeEmail: user.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Break action failed.');
+        return;
+      }
+      if (ending) {
+        setBreakMinutes(data.breakMinutes || breakMinutes);
+        setClockState('working');
+      } else {
+        setClockState('on_break');
+      }
+    } catch {
+      setError('Unable to connect to server.');
+    } finally {
+      setIsLoading(null);
     }
   };
 
   const handleClockOut = async () => {
-    setIsLoading(true);
+    setIsLoading('out');
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/attendance/clock-out`, {
@@ -140,52 +167,128 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
       setClockState('clocked_out');
       setClockOutTime(data.attendance.clockOut);
       setWorkingMinutes(data.attendance.workingMinutes);
+      setBreakMinutes(data.attendance.breakMinutes ?? breakMinutes);
     } catch {
       setError('Unable to connect to server.');
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
     }
   };
 
-  const renderClockButton = () => {
-    switch (clockState) {
-      case 'not_clocked_in':
-        return (
-          <button
-            onClick={handleClockIn}
-            disabled={isLoading}
-            className="group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30 disabled:opacity-50 cursor-pointer"
-          >
-            <div className="flex items-center justify-center gap-3">
-              {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
-              <span>{isLoading ? 'Starting…' : 'Clock In'}</span>
-            </div>
-          </button>
-        );
-      case 'working':
-        return (
-          <button
-            onClick={handleClockOut}
-            disabled={isLoading}
-            className="group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm transition-all shadow-lg shadow-rose-600/25 hover:shadow-xl hover:shadow-rose-600/30 disabled:opacity-50 cursor-pointer"
-          >
-            <div className="flex items-center justify-center gap-3">
-              {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Square className="w-5 h-5" />}
-              <span>{isLoading ? 'Stopping…' : 'Clock Out'}</span>
-            </div>
-          </button>
-        );
-      case 'clocked_out':
-        return (
-          <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span className="text-sm font-bold text-emerald-700">Shift completed for today</span>
-          </div>
-        );
-      default:
-        return null;
-    }
+  /* ---------- Round Action Button ---------- */
+  interface RoundButtonProps {
+    label: string;
+    sublabel?: string;
+    icon: React.ReactNode;
+    variant: 'emerald' | 'amber' | 'rose';
+    onClick?: () => void;
+    disabled?: boolean;
+    active?: boolean;
+    loading?: boolean;
+  }
+
+  const variantConfig = {
+    emerald: {
+      grad: 'from-emerald-400 via-emerald-500 to-teal-600',
+      ring: 'ring-emerald-400/60',
+      border: 'border-emerald-200',
+      glow: 'shadow-[0_0_35px_-5px_rgba(16,185,129,0.55)]',
+      ping: 'bg-emerald-400/25',
+      icon: 'text-white',
+      label: 'text-emerald-700',
+    },
+    amber: {
+      grad: 'from-amber-400 via-orange-500 to-orange-600',
+      ring: 'ring-amber-400/60',
+      border: 'border-amber-200',
+      glow: 'shadow-[0_0_35px_-5px_rgba(245,158,11,0.55)]',
+      ping: 'bg-amber-400/25',
+      icon: 'text-white',
+      label: 'text-amber-700',
+    },
+    rose: {
+      grad: 'from-rose-400 via-rose-500 to-red-600',
+      ring: 'ring-rose-400/60',
+      border: 'border-rose-200',
+      glow: 'shadow-[0_0_35px_-5px_rgba(244,63,94,0.55)]',
+      ping: 'bg-rose-400/25',
+      icon: 'text-white',
+      label: 'text-rose-700',
+    },
   };
+
+  const RoundActionButton: React.FC<RoundButtonProps> = ({
+    label,
+    sublabel,
+    icon,
+    variant,
+    onClick,
+    disabled = false,
+    active = false,
+    loading = false,
+  }) => {
+    const cfg = variantConfig[variant];
+    return (
+      <div className="flex flex-col items-center gap-2.5">
+        <div className="relative">
+          {/* Lightning pulse rings — only when active */}
+          {active && !disabled && (
+            <>
+              <span className={`absolute inset-0 rounded-full ${cfg.ping} animate-ping`} />
+              <span className={`absolute -inset-1.5 rounded-full ${cfg.ping} opacity-60 animate-pulse`} />
+            </>
+          )}
+
+          {/* Outer decorative dashed ring */}
+          <div
+            className={`absolute -inset-2 rounded-full border-2 border-dashed transition-all duration-500 ${
+              active && !disabled ? `${cfg.border} animate-[spin_12s_linear_infinite]` : 'border-slate-200/70'
+            }`}
+          />
+
+          <button
+            onClick={onClick}
+            disabled={disabled || loading}
+            className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-full z-[1]
+              bg-gradient-to-br ${cfg.grad}
+              ring-4 ${active && !disabled ? cfg.ring : 'ring-transparent'}
+              border-4 border-white/70
+              ${active && !disabled ? `${cfg.glow} scale-100` : 'shadow-lg'}
+              flex items-center justify-center
+              transition-all duration-300 ease-out
+              ${!disabled && !loading ? 'hover:scale-110 hover:brightness-110 cursor-pointer active:scale-95' : ''}
+              ${disabled && !loading ? 'opacity-35 saturate-50 cursor-not-allowed' : ''}
+            `}
+          >
+            {/* Inner white highlight ring for glossy look */}
+            <span className="absolute inset-2 rounded-full border-2 border-white/30 pointer-events-none" />
+            {/* Lightning bolt sparkle */}
+            {active && !disabled && (
+              <Zap className="absolute -top-1 -right-1 w-5 h-5 text-amber-300 fill-amber-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.9)] animate-pulse" />
+            )}
+            <span className={loading ? 'animate-spin' : ''}>
+              {loading ? (
+                <RefreshSpinner />
+              ) : (
+                <span className={cfg.icon}>{icon}</span>
+              )}
+            </span>
+          </button>
+        </div>
+        <div className="text-center">
+          <div className={`text-xs font-extrabold tracking-wide ${disabled ? 'text-slate-400' : cfg.label}`}>{label}</div>
+          {sublabel && <div className="text-[10px] font-semibold text-slate-400 mt-0.5">{sublabel}</div>}
+        </div>
+      </div>
+    );
+  };
+
+  const RefreshSpinner = () => (
+    <svg className="w-8 h-8 text-white animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
 
   const summaryCards = [
     {
@@ -214,6 +317,15 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     },
   ];
 
+  const statusText =
+    clockState === 'not_clocked_in'
+      ? "You haven't clocked in yet — start your shift!"
+      : clockState === 'working'
+      ? `Working since ${clockInTime}`
+      : clockState === 'on_break'
+      ? `On break — enjoying coffee?`
+      : `Shift completed — ${formatMinutes(workingMinutes)} worked`;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
 
@@ -237,18 +349,67 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
         </div>
       )}
 
-      {/* Clock In/Out Card */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 mb-1">Today's Shift</h2>
-            <p className="text-xs text-slate-500">
-              {clockState === 'not_clocked_in' && "You haven't clocked in yet."}
-              {clockState === 'working' && `Working since ${clockInTime}`}
-              {clockState === 'clocked_out' && `Shift completed — ${formatMinutes(workingMinutes)} worked`}
-            </p>
+      {/* Clock Buttons Card */}
+      <div className="relative p-6 sm:p-8 rounded-3xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm overflow-hidden">
+        {/* Decorative gradient blobs */}
+        <div className="absolute -top-16 -left-16 w-48 h-48 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full bg-indigo-200/30 blur-3xl pointer-events-none" />
+
+        <div className="relative">
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-bold text-slate-900">Today's Shift</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{statusText}</p>
           </div>
-          {renderClockButton()}
+
+          <div className="flex items-start justify-center gap-8 sm:gap-14 flex-wrap">
+            <RoundActionButton
+              label="CLOCK IN"
+              sublabel={clockInTime ? `at ${clockInTime}` : 'Start shift'}
+              icon={<Play className="w-9 h-9 fill-white drop-shadow" />}
+              variant="emerald"
+              onClick={handleClockIn}
+              disabled={clockState !== 'not_clocked_in'}
+              active={clockState === 'not_clocked_in'}
+              loading={isLoading === 'in'}
+            />
+
+            <RoundActionButton
+              label={clockState === 'on_break' ? 'RESUME' : 'BREAK'}
+              sublabel={
+                clockState === 'on_break'
+                  ? 'End break'
+                  : breakMinutes > 0
+                  ? `${formatMinutes(breakMinutes)} taken`
+                  : 'Take a pause'
+              }
+              icon={<Coffee className="w-9 h-9 drop-shadow" />}
+              variant="amber"
+              onClick={handleBreakToggle}
+              disabled={clockState === 'not_clocked_in' || clockState === 'clocked_out'}
+              active={clockState === 'working' || clockState === 'on_break'}
+              loading={isLoading === 'break'}
+            />
+
+            <RoundActionButton
+              label="CLOCK OUT"
+              sublabel={clockOutTime ? `at ${clockOutTime}` : 'End shift'}
+              icon={<Square className="w-9 h-9 fill-white drop-shadow" />}
+              variant="rose"
+              onClick={handleClockOut}
+              disabled={clockState === 'not_clocked_in' || clockState === 'clocked_out'}
+              active={clockState === 'working' || clockState === 'on_break'}
+              loading={isLoading === 'out'}
+            />
+          </div>
+
+          {clockState === 'clocked_out' && (
+            <div className="mt-6 flex items-center justify-center">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-700">Shift completed for today — Great work!</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
