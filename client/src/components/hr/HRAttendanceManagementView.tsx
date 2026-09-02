@@ -1,21 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AttendanceRecord,
-  DepartmentName,
   Employee,
-  AttendanceStatus,
 } from '../../types/hr';
-import { MOCK_EMPLOYEES } from '../../mock/hrData';
-import { hrDashboardService } from '../../services/hrDashboardService';
-import {
-  AttendanceFilterParams,
-  AttendanceQueryResult,
-} from '../../services/hrAttendanceGenerator';
-import { StatusBadge } from './StatusBadge';
-import { HRAttendanceDetailDrawer } from './HRAttendanceDetailDrawer';
 import {
   Search,
-  Filter,
   Download,
   Calendar,
   Clock,
@@ -27,17 +16,68 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   Moon,
-  CalendarDays,
   UserCheck,
-  UserX,
   SlidersHorizontal,
   Table as TableIcon,
   LayoutGrid,
 } from 'lucide-react';
+import { StatusBadge } from './StatusBadge';
+import { HRAttendanceDetailDrawer } from './HRAttendanceDetailDrawer';
+
+const API_BASE = '/api';
+
+const getHeaders = (): Record<string, string> => {
+  try {
+    const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+};
+
+const todayISO = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+interface AttendanceQueryResult {
+  records: AttendanceRecord[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  employeeSummary?: {
+    employee: Employee | null;
+    periodLabel: string;
+    workingDays: number;
+    presentDays: number;
+    absentDays: number;
+    leaveDays: number;
+    wfhDays: number;
+    halfDays: number;
+    avgWorkingHours: string;
+    totalShortHours: string;
+    approvedExtraHours: string;
+    pendingExtraHours: string;
+  } | null;
+  companySummary?: {
+    periodLabel: string;
+    totalRecords: number;
+    presentCount: number;
+    absentCount: number;
+    leaveCount: number;
+    wfhCount: number;
+    halfDayCount: number;
+    avgWorkingHours: string;
+    totalShortHours: string;
+    totalApprovedExtraHours: string;
+    attendanceRate: number;
+  } | null;
+  dateRangeLabel: string;
+}
 
 interface HRAttendanceManagementViewProps {
   onNavigateToDashboard?: () => void;
@@ -54,21 +94,22 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 }) => {
   // Filter States
   const [datePreset, setDatePreset] = useState<string>(initialPreset);
-  const [customStartDate, setCustomStartDate] = useState<string>('2026-08-25');
-  const [customEndDate, setCustomEndDate] = useState<string>('2026-08-31');
-  const [appliedCustomStart, setAppliedCustomStart] = useState<string>('2026-08-25');
-  const [appliedCustomEnd, setAppliedCustomEnd] = useState<string>('2026-08-31');
+  const [customStartDate, setCustomStartDate] = useState<string>(todayISO());
+  const [customEndDate, setCustomEndDate] = useState<string>(todayISO());
+  const [appliedCustomStart, setAppliedCustomStart] = useState<string>(todayISO());
+  const [appliedCustomEnd, setAppliedCustomEnd] = useState<string>(todayISO());
 
   const [selectedDept, setSelectedDept] = useState<string>(initialDepartment);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(initialEmployeeId);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Real employees from API
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
   // Pagination & Sorting
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
-  const [sortBy, setSortBy] = useState<string>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Query Result State
   const [queryResult, setQueryResult] = useState<AttendanceQueryResult | null>(null);
@@ -87,17 +128,32 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   // Feedback Toast
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Fetch real employees for dropdowns
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/employees`, { headers: getHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        setEmployees(data.employees || []);
+      } catch {
+        // ignore
+      }
+    };
+    loadEmployees();
+  }, []);
+
   // Filtered employees list based on department selection
   const availableEmployees = useMemo(() => {
-    if (selectedDept === 'ALL') return MOCK_EMPLOYEES;
-    return MOCK_EMPLOYEES.filter((emp) => emp.department === selectedDept);
-  }, [selectedDept]);
+    if (selectedDept === 'ALL') return employees;
+    return employees.filter((emp) => emp.department === selectedDept);
+  }, [selectedDept, employees]);
 
   // Handle department change - reset employee if no longer valid
   const handleDepartmentChange = (dept: string) => {
     setSelectedDept(dept);
     if (dept !== 'ALL' && selectedEmployeeId !== 'ALL') {
-      const existsInDept = MOCK_EMPLOYEES.some(
+      const existsInDept = employees.some(
         (emp) => emp.id === selectedEmployeeId && emp.department === dept
       );
       if (!existsInDept) {
@@ -111,7 +167,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   const handleEmployeeChange = (empId: string) => {
     setSelectedEmployeeId(empId);
     if (empId !== 'ALL') {
-      const emp = MOCK_EMPLOYEES.find((e) => e.id === empId);
+      const emp = employees.find((e) => e.id === empId);
       if (emp && selectedDept !== 'ALL' && emp.department !== selectedDept) {
         setSelectedDept(emp.department);
       }
@@ -119,28 +175,31 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     setCurrentPage(1);
   };
 
-  // Fetch Attendance Records
+  // Fetch Attendance Records — REAL API
   const fetchAttendance = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: AttendanceFilterParams = {
-        datePreset: datePreset as any,
-        startDate: datePreset === 'custom' ? appliedCustomStart : undefined,
-        endDate: datePreset === 'custom' ? appliedCustomEnd : undefined,
-        employeeId: selectedEmployeeId,
+      const params = new URLSearchParams({
+        preset: datePreset,
         department: selectedDept,
+        employeeId: selectedEmployeeId,
         status: selectedStatus,
-        searchQuery,
-        page: currentPage,
-        pageSize,
-        sortBy,
-        sortDirection,
-      };
+        search: searchQuery.trim(),
+        page: String(currentPage),
+        pageSize: String(pageSize),
+      });
+      if (datePreset === 'custom') {
+        params.set('startDate', appliedCustomStart);
+        params.set('endDate', appliedCustomEnd);
+      }
 
-      const result = await hrDashboardService.queryAttendance(params);
+      const res = await fetch(`${API_BASE}/attendance/hr?${params.toString()}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch attendance');
+      const result: AttendanceQueryResult = await res.json();
       setQueryResult(result);
     } catch (err) {
       console.error('Failed to query attendance:', err);
+      setQueryResult(null);
     } finally {
       setIsLoading(false);
     }
@@ -154,8 +213,6 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     searchQuery,
     currentPage,
     pageSize,
-    sortBy,
-    sortDirection,
   ]);
 
   useEffect(() => {
@@ -195,13 +252,36 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     setCurrentPage(1);
   };
 
-  // Export CSV
+  // Export CSV — built from real records
   const handleExportCSV = () => {
     if (!queryResult || queryResult.records.length === 0) return;
-    const emp = MOCK_EMPLOYEES.find((e) => e.id === selectedEmployeeId);
+    const emp = employees.find((e) => e.id === selectedEmployeeId);
     const empPrefix = emp ? `${emp.name.replace(/\s+/g, '_')}_` : 'All_Employees_';
     const filename = `Attendance_${empPrefix}${datePreset}_${Date.now()}.csv`;
-    hrDashboardService.exportAttendanceCSV(queryResult.records, filename);
+
+    const headers = ['Date', 'Employee', 'Emp ID', 'Department', 'Clock In', 'Clock Out', 'Break', 'Working', 'Short', 'Extra', 'Status', 'Notes'];
+    const rows = queryResult.records.map((r) => [
+      r.attendanceDate,
+      r.employeeName,
+      r.employeeCode,
+      r.department,
+      r.clockInTime !== '—' ? `${r.clockInTime} (${r.clockInDate})` : '',
+      r.clockOutTime !== '—' ? `${r.clockOutTime} (${r.clockOutDate})` : '',
+      r.breakDuration,
+      r.workingHours,
+      r.shortHours,
+      r.extraHours,
+      r.status,
+      r.notes || '',
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 
     setToastMsg(`Exported ${queryResult.totalCount} attendance records to CSV.`);
     setTimeout(() => setToastMsg(null), 4000);
@@ -209,8 +289,8 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
   // Selected Employee object if any
   const selectedEmployeeObj = useMemo(() => {
-    return MOCK_EMPLOYEES.find((e) => e.id === selectedEmployeeId);
-  }, [selectedEmployeeId]);
+    return employees.find((e) => e.id === selectedEmployeeId);
+  }, [selectedEmployeeId, employees]);
 
   // Count active filters
   const activeFiltersCount = useMemo(() => {
