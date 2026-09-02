@@ -446,15 +446,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                       </td>
                       <td className="py-3.5 px-3 text-right pr-4">
                         <div className="flex items-center justify-end gap-2">
-                  <StatusBadge status={emp.status} size="xs" />
-                  <button
-                    type="button"
-                    onClick={() => setEditingEmployee(emp)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                    title="Edit employee"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                          <StatusBadge status={emp.status} size="xs" />
                           <button
                             type="button"
                             onClick={() => setEditingEmployee(emp)}

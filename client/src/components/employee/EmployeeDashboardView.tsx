@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/auth';
 import {
-  Calendar,
   Clock,
   Play,
   Pause,
@@ -13,7 +12,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  Zap,
+  RefreshCw,
 } from 'lucide-react';
 
 interface EmployeeDashboardViewProps {
@@ -22,6 +21,25 @@ interface EmployeeDashboardViewProps {
 }
 
 type ClockState = 'not_clocked_in' | 'working' | 'on_break' | 'clocked_out';
+
+interface TodayAttendance {
+  clockIn: string | null;
+  clockOut: string | null;
+  breakMinutes: number;
+  workingMinutes: number;
+  status: string;
+}
+
+const API_BASE = '/api';
+
+const getHeaders = (): Record<string, string> => {
+  try {
+    const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+};
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -38,326 +56,242 @@ const getFormattedDate = (): string => {
   });
 };
 
+const formatMinutes = (mins: number): string => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ user, onNavigate }) => {
   const [clockState, setClockState] = useState<ClockState>('not_clocked_in');
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockOutTime, setClockOutTime] = useState<string | null>(null);
-  const [breakStartTime, setBreakStartTime] = useState<string | null>(null);
-  const [totalBreakMinutes, setTotalBreakMinutes] = useState(0);
+  const [workingMinutes, setWorkingMinutes] = useState(0);
+  const [breakMinutes, setBreakMinutes] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatCurrentTime = (): string => {
-    return new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
+  const fetchTodayStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/attendance/today/${user.email}`, { headers: getHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.attendance) {
+        const att = data.attendance;
+        if (att.clockIn && att.clockOut) {
+          setClockState('clocked_out');
+          setClockInTime(att.clockIn);
+          setClockOutTime(att.clockOut);
+          setWorkingMinutes(att.workingMinutes);
+          setBreakMinutes(att.breakMinutes);
+        } else if (att.clockIn) {
+          setClockState('working');
+          setClockInTime(att.clockIn);
+          setWorkingMinutes(att.workingMinutes);
+          setBreakMinutes(att.breakMinutes);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [user.email]);
+
+  useEffect(() => {
+    fetchTodayStatus();
+  }, [fetchTodayStatus]);
+
+  const handleClockIn = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/attendance/clock-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ employeeEmail: user.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Unable to clock in.');
+        return;
+      }
+      setClockState('working');
+      setClockInTime(data.attendance.clockIn);
+    } catch {
+      setError('Unable to connect to server.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleClockIn = () => {
-    setClockState('working');
-    setClockInTime(formatCurrentTime());
+  const handleClockOut = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/attendance/clock-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ employeeEmail: user.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Unable to clock out.');
+        return;
+      }
+      setClockState('clocked_out');
+      setClockOutTime(data.attendance.clockOut);
+      setWorkingMinutes(data.attendance.workingMinutes);
+    } catch {
+      setError('Unable to connect to server.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handlePauseBreak = () => {
-    setClockState('on_break');
-    setBreakStartTime(formatCurrentTime());
+  const renderClockButton = () => {
+    switch (clockState) {
+      case 'not_clocked_in':
+        return (
+          <button
+            onClick={handleClockIn}
+            disabled={isLoading}
+            className="group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30 disabled:opacity-50 cursor-pointer"
+          >
+            <div className="flex items-center justify-center gap-3">
+              {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+              <span>{isLoading ? 'Starting…' : 'Clock In'}</span>
+            </div>
+          </button>
+        );
+      case 'working':
+        return (
+          <button
+            onClick={handleClockOut}
+            disabled={isLoading}
+            className="group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm transition-all shadow-lg shadow-rose-600/25 hover:shadow-xl hover:shadow-rose-600/30 disabled:opacity-50 cursor-pointer"
+          >
+            <div className="flex items-center justify-center gap-3">
+              {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Square className="w-5 h-5" />}
+              <span>{isLoading ? 'Stopping…' : 'Clock Out'}</span>
+            </div>
+          </button>
+        );
+      case 'clocked_out':
+        return (
+          <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <span className="text-sm font-bold text-emerald-700">Shift completed for today</span>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
-  const handleResumeWork = () => {
-    setClockState('working');
-    setBreakStartTime(null);
-    setTotalBreakMinutes((prev) => prev + 18);
-  };
-
-  const handleClockOut = () => {
-    setClockState('clocked_out');
-    setClockOutTime(formatCurrentTime());
-  };
+  const summaryCards = [
+    {
+      label: 'Clock In',
+      value: clockInTime || '—',
+      icon: <Play className="w-4 h-4 text-emerald-600" />,
+      color: 'bg-emerald-50 border-emerald-200',
+    },
+    {
+      label: 'Clock Out',
+      value: clockOutTime || '—',
+      icon: <Square className="w-4 h-4 text-rose-600" />,
+      color: 'bg-rose-50 border-rose-200',
+    },
+    {
+      label: 'Working Hours',
+      value: formatMinutes(workingMinutes),
+      icon: <Timer className="w-4 h-4 text-indigo-600" />,
+      color: 'bg-indigo-50 border-indigo-200',
+    },
+    {
+      label: 'Break',
+      value: formatMinutes(breakMinutes),
+      icon: <Coffee className="w-4 h-4 text-amber-600" />,
+      color: 'bg-amber-50 border-amber-200',
+    },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn" id="employee-dashboard-main-view">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
 
       {/* Welcome Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/70">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            {getGreeting()}, {user.name?.split(' ')[0] || 'Employee'}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
-            Here's your work overview for today.
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            {getGreeting()}, {user.name?.split(' ')[0]}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" />
+            {getFormattedDate()}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 text-xs font-semibold self-start sm:self-auto">
-          <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-          <span className="text-slate-900">{getFormattedDate()}</span>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-rose-700 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* Clock In/Out Card */}
+      <div className="p-6 sm:p-8 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 mb-1">Today's Shift</h2>
+            <p className="text-xs text-slate-500">
+              {clockState === 'not_clocked_in' && "You haven't clocked in yet."}
+              {clockState === 'working' && `Working since ${clockInTime}`}
+              {clockState === 'clocked_out' && `Shift completed — ${formatMinutes(workingMinutes)} worked`}
+            </p>
+          </div>
+          {renderClockButton()}
         </div>
       </div>
 
-      {/* Clock In/Out Card - Primary Action */}
-      <section aria-label="Today's Attendance" id="employee-clock-card">
-        <div className={`rounded-2xl p-6 sm:p-8 shadow-sm border transition-all ${
-          clockState === 'working' ? 'bg-emerald-50/50 border-emerald-200' :
-          clockState === 'on_break' ? 'bg-amber-50/50 border-amber-200' :
-          clockState === 'clocked_out' ? 'bg-slate-50/50 border-slate-200' :
-          'bg-white/80 backdrop-blur-xl border-slate-200/80'
-        }`}>
-          <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
-            {/* Left: Status Info */}
-            <div className="flex-1 text-center lg:text-left">
-              <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
-                <div className={`w-3 h-3 rounded-full ${
-                  clockState === 'working' ? 'bg-emerald-500 animate-pulse' :
-                  clockState === 'on_break' ? 'bg-amber-500 animate-pulse' :
-                  clockState === 'clocked_out' ? 'bg-slate-400' :
-                  'bg-slate-300'
-                }`} />
-                <span className={`text-xs font-bold uppercase tracking-wider ${
-                  clockState === 'working' ? 'text-emerald-700' :
-                  clockState === 'on_break' ? 'text-amber-700' :
-                  clockState === 'clocked_out' ? 'text-slate-600' :
-                  'text-slate-500'
-                }`}>
-                  {clockState === 'not_clocked_in' ? 'Not Clocked In' :
-                   clockState === 'working' ? 'Working' :
-                   clockState === 'on_break' ? 'On Break' :
-                   'Workday Complete'}
-                </span>
-              </div>
-
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
-                {clockState === 'not_clocked_in' && "You haven't clocked in yet"}
-                {clockState === 'working' && `Clocked in at ${clockInTime}`}
-                {clockState === 'on_break' && `On break since ${breakStartTime}`}
-                {clockState === 'clocked_out' && 'Workday Complete'}
-              </h3>
-
-              <p className="text-sm text-slate-500 font-medium">
-                {clockState === 'not_clocked_in' && 'Tap the button to start your workday'}
-                {clockState === 'working' && 'Keep up the great work!'}
-                {clockState === 'on_break' && 'Break time is deducted from working hours'}
-                {clockState === 'clocked_out' && `Clock in: ${clockInTime} • Clock out: ${clockOutTime}`}
-              </p>
-
-              {/* Working Time Display */}
-              {clockState !== 'not_clocked_in' && (
-                <div className="flex items-center justify-center lg:justify-start gap-4 mt-4">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/60 border border-slate-200/70">
-                    <Timer className="w-3.5 h-3.5 text-indigo-600" />
-                    <span className="text-xs font-bold text-slate-900">
-                      {clockState === 'clocked_out' ? '7h 32m' : 'Working'}
-                    </span>
-                  </div>
-                  {totalBreakMinutes > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/60 border border-slate-200/70">
-                      <Coffee className="w-3.5 h-3.5 text-amber-600" />
-                      <span className="text-xs font-bold text-slate-900">{totalBreakMinutes}m break</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Right: Action Buttons */}
-            <div className="flex flex-col items-center gap-3 shrink-0">
-              {clockState === 'not_clocked_in' && (
-                <button
-                  type="button"
-                  onClick={handleClockIn}
-                  className="w-40 h-40 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex flex-col items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                  id="btn-clock-in"
-                >
-                  <Play className="w-8 h-8" />
-                  <span className="text-sm font-bold">Clock In</span>
-                </button>
-              )}
-
-              {clockState === 'working' && (
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePauseBreak}
-                    className="w-32 h-32 rounded-full bg-amber-500 hover:bg-amber-400 text-white flex flex-col items-center justify-center gap-2 shadow-xl shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                    id="btn-pause-break"
-                  >
-                    <Pause className="w-6 h-6" />
-                    <span className="text-xs font-bold">Pause Break</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClockOut}
-                    className="w-32 h-32 rounded-full bg-rose-500 hover:bg-rose-400 text-white flex flex-col items-center justify-center gap-2 shadow-xl shadow-rose-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                    id="btn-clock-out"
-                  >
-                    <Square className="w-6 h-6" />
-                    <span className="text-xs font-bold">Clock Out</span>
-                  </button>
-                </div>
-              )}
-
-              {clockState === 'on_break' && (
-                <button
-                  type="button"
-                  onClick={handleResumeWork}
-                  className="w-40 h-40 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex flex-col items-center justify-center gap-2 shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                  id="btn-resume-work"
-                >
-                  <Play className="w-8 h-8" />
-                  <span className="text-sm font-bold">Resume Work</span>
-                </button>
-              )}
-
-              {clockState === 'clocked_out' && (
-                <div className="text-center">
-                  <div className="w-24 h-24 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto mb-3">
-                    <CheckCircle2 className="w-10 h-10 text-slate-400" />
-                  </div>
-                  <p className="text-xs font-semibold text-slate-500">Day complete</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Today's Summary Cards */}
-      <section aria-label="Today's Summary" id="employee-today-summary">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: 'Clock In', value: clockInTime || '—', icon: <Play className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-500/[0.04] border-emerald-200' },
-            { label: 'Clock Out', value: clockOutTime || '—', icon: <Square className="w-4 h-4 text-rose-600" />, bg: 'bg-rose-500/[0.04] border-rose-200' },
-            { label: 'Working Hours', value: clockState === 'clocked_out' ? '7h 32m' : '—', icon: <Timer className="w-4 h-4 text-indigo-600" />, bg: 'bg-indigo-500/[0.04] border-indigo-200' },
-            { label: 'Break Time', value: totalBreakMinutes > 0 ? `${totalBreakMinutes}m` : '—', icon: <Coffee className="w-4 h-4 text-amber-600" />, bg: 'bg-amber-500/[0.04] border-amber-200' },
-            { label: 'Status', value: clockState === 'not_clocked_in' ? '—' : clockState === 'working' ? 'Working' : clockState === 'on_break' ? 'On Break' : 'Complete', icon: <Clock className="w-4 h-4 text-violet-600" />, bg: 'bg-violet-500/[0.04] border-violet-200' },
-            { label: 'Shift', value: '6PM–3AM', icon: <CalendarDays className="w-4 h-4 text-sky-600" />, bg: 'bg-sky-500/[0.04] border-sky-200' },
-          ].map((card, idx) => (
-            <div key={idx} className={`p-4 rounded-xl border ${card.bg} flex items-center justify-between`}>
-              <div className="flex items-center gap-2.5">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="p-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className={`p-2 rounded-xl ${card.color} border`}>
                 {card.icon}
-                <span className="text-xs font-medium text-slate-700">{card.label}</span>
               </div>
-              <span className="text-sm font-bold text-slate-900 font-mono">{card.value}</span>
             </div>
+            <div className="text-lg font-extrabold text-slate-900 tracking-tight">{card.value}</div>
+            <div className="text-[11px] font-semibold text-slate-500 mt-1">{card.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="p-5 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm">
+        <h3 className="text-sm font-bold text-slate-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { label: 'View Attendance', icon: <Clock className="w-4 h-4" />, route: '/employee/attendance', color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
+            { label: 'Request Leave', icon: <CalendarDays className="w-4 h-4" />, route: '/employee/leaves', color: 'text-amber-600 bg-amber-50 border-amber-200' },
+            { label: 'Create Ticket', icon: <Ticket className="w-4 h-4" />, route: '/employee/tickets', color: 'text-rose-600 bg-rose-50 border-rose-200' },
+          ].map((action) => (
+            <button
+              key={action.label}
+              onClick={() => onNavigate(action.route)}
+              className="flex items-center justify-between p-4 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg border ${action.color}`}>
+                  {action.icon}
+                </div>
+                <span className="text-xs font-bold text-slate-700">{action.label}</span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+            </button>
           ))}
         </div>
-      </section>
-
-      {/* Bottom Grid: Leave Summary + Pending Tickets + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-        {/* Leave Summary */}
-        <div className="lg:col-span-4">
-          <section aria-label="Leave Summary" id="employee-leave-summary" className="h-full">
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 shadow-sm h-full flex flex-col">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
-                    <CalendarDays className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">Leave Balance</h3>
-                    <p className="text-xs text-slate-500">This year</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 flex items-center justify-center py-6">
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center mx-auto mb-2.5 text-slate-400">
-                    <CalendarDays className="w-5 h-5 opacity-60" />
-                  </div>
-                  <p className="text-xs font-semibold text-slate-600">No leave data available</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Leave balance will appear here.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onNavigate('/employee/leaves')}
-                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Request Leave</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </section>
-        </div>
-
-        {/* Pending Tickets */}
-        <div className="lg:col-span-4">
-          <section aria-label="Pending Tickets" id="employee-pending-tickets" className="h-full">
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 shadow-sm h-full flex flex-col">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
-                    <Ticket className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">My Tickets</h3>
-                    <p className="text-xs text-slate-500">Support requests</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 flex items-center justify-center py-6">
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center mx-auto mb-2.5 text-slate-400">
-                    <Ticket className="w-5 h-5 opacity-60" />
-                  </div>
-                  <p className="text-xs font-semibold text-slate-600">No tickets</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Your support tickets will appear here.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onNavigate('/employee/tickets')}
-                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Create Ticket</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </section>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="lg:col-span-4">
-          <section aria-label="Quick Actions" id="employee-quick-actions" className="h-full">
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 shadow-sm h-full flex flex-col">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">Quick Actions</h3>
-                    <p className="text-xs text-slate-500">Frequent actions</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 space-y-2.5 py-4">
-                {[
-                  { label: 'View Attendance', icon: <Clock className="w-4 h-4 text-emerald-600" />, route: '/employee/attendance', hoverBorder: 'hover:border-emerald-200 hover:bg-emerald-500/[0.04]' },
-                  { label: 'Request Leave', icon: <CalendarDays className="w-4 h-4 text-blue-600" />, route: '/employee/leaves', hoverBorder: 'hover:border-blue-200 hover:bg-blue-500/[0.04]' },
-                  { label: 'Create Ticket', icon: <Ticket className="w-4 h-4 text-purple-600" />, route: '/employee/tickets', hoverBorder: 'hover:border-purple-200 hover:bg-purple-500/[0.04]' },
-                  { label: 'View Profile', icon: <AlertCircle className="w-4 h-4 text-slate-600" />, route: '/employee/profile', hoverBorder: 'hover:border-slate-200 hover:bg-slate-500/[0.04]' },
-                ].map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => onNavigate(item.route)}
-                    className={`w-full p-3 rounded-xl bg-white/80 border border-slate-200/80 text-left transition-all flex items-center gap-3 group cursor-pointer ${item.hoverBorder}`}
-                  >
-                    <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70 group-hover:scale-105 transition-transform">
-                      {item.icon}
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
       </div>
-
     </div>
   );
 };
