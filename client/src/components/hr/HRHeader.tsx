@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../../types/auth';
-import { GlobalSearchResult, HRNotification } from '../../types/hr';
+import { GlobalSearchResult } from '../../types/hr';
 import { hrDashboardService } from '../../services/hrDashboardService';
+import { NotificationBell } from '../notifications/NotificationBell';
 import {
   Menu,
   Search,
-  Bell,
   User as UserIcon,
   Settings,
   LogOut,
   ChevronDown,
   X,
-  CheckCheck,
   ArrowRight,
   Shield,
 } from 'lucide-react';
@@ -36,18 +35,10 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const [notifications, setNotifications] = useState<HRNotification[]>([]);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  // Load notifications
-  useEffect(() => {
-    hrDashboardService.getNotifications().then(setNotifications);
-  }, []);
 
   // Handle Global Search query
   useEffect(() => {
@@ -73,9 +64,6 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setIsNotificationsOpen(false);
-      }
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setIsProfileOpen(false);
       }
@@ -84,26 +72,6 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const handleMarkAllRead = async () => {
-    await hrDashboardService.markAllNotificationsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const handleNotificationClick = async (notif: HRNotification) => {
-    if (!notif.isRead) {
-      await hrDashboardService.markNotificationRead(notif.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
-      );
-    }
-    if (notif.actionUrl) {
-      onNavigate(notif.actionUrl);
-      setIsNotificationsOpen(false);
-    }
-  };
 
   const handleSearchResultClick = (result: GlobalSearchResult) => {
     if (result.linkRoute) {
@@ -233,86 +201,7 @@ export const HRHeader: React.FC<HRHeaderProps> = ({
         </div>
 
         {/* Notification Bell */}
-        <div className="relative" ref={notifRef} id="notifications-menu-container">
-          <button
-            type="button"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 relative transition-colors focus:outline-none cursor-pointer"
-            aria-label={`Notifications (${unreadCount} unread)`}
-            id="header-notification-bell-btn"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white" />
-            )}
-          </button>
-
-          {/* Notifications Panel */}
-          {isNotificationsOpen && (
-            <div
-              className="absolute right-0 mt-2 w-80 sm:w-96 glass-pop rounded-2xl overflow-hidden z-50 animate-scaleUp text-slate-700"
-              id="notifications-dropdown-panel"
-            >
-              <div className="p-3.5 border-b border-slate-200/70 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-xs text-slate-900">Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100/70 text-indigo-600 border border-indigo-200">
-                      {unreadCount} New
-                    </span>
-                  )}
-                </div>
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleMarkAllRead}
-                    className="text-[10px] font-medium text-indigo-600 hover:text-indigo-600 flex items-center gap-1 focus:outline-none cursor-pointer"
-                  >
-                    <CheckCheck className="w-3 h-3" />
-                    Mark all read
-                  </button>
-                )}
-              </div>
-
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-200/70 custom-scrollbar">
-                {notifications.length > 0 ? (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotificationClick(notif)}
-                      className={`p-3 hover:bg-slate-100/50 transition-colors cursor-pointer flex items-start gap-2.5 ${
-                        !notif.isRead ? 'bg-indigo-500/[0.04]' : ''
-                      }`}
-                    >
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
-                          !notif.isRead ? 'bg-indigo-500' : 'bg-transparent'
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="text-xs font-semibold text-slate-900 truncate">
-                            {notif.title}
-                          </h4>
-                          <span className="text-[10px] text-slate-400 shrink-0">
-                            {notif.timeAgo}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
-                          {notif.message}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-6 text-center text-xs text-slate-400">
-                    No active notifications.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <NotificationBell onNavigate={onNavigate} />
 
         {/* HR Admin Profile */}
         <div className="relative" ref={profileRef} id="user-profile-menu-container">

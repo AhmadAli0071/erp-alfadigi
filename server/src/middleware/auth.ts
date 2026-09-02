@@ -14,12 +14,17 @@ export const authenticate = async (
 ): Promise<void> => {
   try {
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    // Also accept token from query param (needed for EventSource/SSE)
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : null;
+    const token = header && header.startsWith('Bearer ')
+      ? header.split(' ')[1]
+      : queryToken;
+
+    if (!token) {
       res.status(401).json({ error: 'Authentication required.' });
       return;
     }
 
-    const token = header.split(' ')[1];
     const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
 
     const user = await User.findById(decoded.userId);

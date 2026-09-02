@@ -2,9 +2,16 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { Ticket } from '../models/Ticket.js';
 import { Employee } from '../models/Employee.js';
+import { User } from '../models/User.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { notifyEmails, createNotification } from '../services/notificationService.js';
 
 const router = Router();
+
+const notifyHrAdmins = async (input: { title: string; message: string; relatedId?: string }): Promise<void> => {
+  const hrUsers = await User.find({ role: { $in: ['HR_ADMIN', 'SUPER_ADMIN'] }, isActive: true }).select('email');
+  await notifyEmails(hrUsers.map((u) => u.email), { ...input, type: 'ticket' });
+};
 
 const createTicketSchema = z.object({
   employeeEmail: z.string().email(),
@@ -55,6 +62,20 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
       priority: parsed.data.priority || 'Medium',
       status: 'Open',
     });
+
+    // Notify lead (if employee reports to someone)
+    if (employee.reportedTo) {
+      const lead = await Employee.findById(employee.reportedTo);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: 'New Ticket Created',
+          message: `${employee.name} created ticket ${ticket.ticketCode}: "${ticket.subject}" (${ticket.priority}).`,
+          type: 'ticket',
+          relatedId: String(ticket._id),
+        });
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -230,6 +251,30 @@ router.put('/:id/hr-inprocess', authenticate, async (req: AuthRequest, res: Resp
     ticket.status = 'HR In Process';
     await ticket.save();
 
+    // Notify owner + lead
+    const owner = await Employee.findById(ticket.employeeId);
+    if (owner) {
+      await createNotification({
+        userEmail: owner.email,
+        title: `Ticket ${ticket.ticketCode} In Process (HR)`,
+        message: `HR is reviewing your ticket "${ticket.subject}".`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      });
+    }
+    if (owner?.reportedTo) {
+      const lead = await Employee.findById(owner.reportedTo);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: `Ticket ${ticket.ticketCode} In Process (HR)`,
+          message: `HR is reviewing ${owner.name}'s ticket "${ticket.subject}".`,
+          type: 'ticket',
+          relatedId: String(ticket._id),
+        });
+      }
+    }
+
     res.json({ success: true, status: ticket.status });
   } catch (err) {
     console.error('HR in-process ticket error:', err);
@@ -253,6 +298,30 @@ router.put('/:id/hr-approve', authenticate, async (req: AuthRequest, res: Respon
 
     ticket.status = 'Closed';
     await ticket.save();
+
+    // Notify owner + lead
+    const owner = await Employee.findById(ticket.employeeId);
+    if (owner) {
+      await createNotification({
+        userEmail: owner.email,
+        title: `Ticket ${ticket.ticketCode} Approved`,
+        message: `HR approved and closed your ticket "${ticket.subject}".`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      });
+    }
+    if (owner?.reportedTo) {
+      const lead = await Employee.findById(owner.reportedTo);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: `Ticket ${ticket.ticketCode} Approved`,
+          message: `HR approved and closed ${owner.name}'s ticket "${ticket.subject}".`,
+          type: 'ticket',
+          relatedId: String(ticket._id),
+        });
+      }
+    }
 
     res.json({ success: true, status: ticket.status });
   } catch (err) {
@@ -278,6 +347,30 @@ router.put('/:id/hr-reject', authenticate, async (req: AuthRequest, res: Respons
     ticket.status = 'Rejected';
     await ticket.save();
 
+    // Notify owner + lead
+    const owner = await Employee.findById(ticket.employeeId);
+    if (owner) {
+      await createNotification({
+        userEmail: owner.email,
+        title: `Ticket ${ticket.ticketCode} Rejected`,
+        message: `HR rejected your ticket "${ticket.subject}".`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      });
+    }
+    if (owner?.reportedTo) {
+      const lead = await Employee.findById(owner.reportedTo);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: `Ticket ${ticket.ticketCode} Rejected`,
+          message: `HR rejected ${owner.name}'s ticket "${ticket.subject}".`,
+          type: 'ticket',
+          relatedId: String(ticket._id),
+        });
+      }
+    }
+
     res.json({ success: true, status: ticket.status });
   } catch (err) {
     console.error('HR reject ticket error:', err);
@@ -299,15 +392,42 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
-    const ticket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      { $set: { status: parsed.data.status } },
-      { new: true }
-    );
-
+    const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
       res.status(404).json({ error: 'Ticket not found.' });
       return;
+    }
+
+    const previousStatus = ticket.status;
+    ticket.status = parsed.data.status;
+    await ticket.save();
+
+    // Notify ticket owner employee
+    const owner = await Employee.findById(ticket.employeeId);
+    if (owner && previousStatus !== ticket.status) {
+      const statusMsg: Record<string, string> = {
+        'In Progress': 'is now In Progress',
+        'Pending': 'is Pending',
+        'Open': 'was reopened',
+        'Resolved': 'was Resolved by your lead — sent to HR for final decision',
+      };
+      await createNotification({
+        userEmail: owner.email,
+        title: `Ticket ${ticket.ticketCode} Update`,
+        message: `Your ticket "${ticket.subject}" ${statusMsg[ticket.status] || `changed to ${ticket.status}`}.`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      });
+    }
+
+    // If resolved by lead → notify HR admins
+    if (parsed.data.status === 'Resolved') {
+      const ownerName = owner?.name || 'An employee';
+      await notifyHrAdmins({
+        title: 'Ticket Awaiting HR Decision',
+        message: `${ownerName}'s ticket ${ticket.ticketCode} ("${ticket.subject}") was resolved by lead and needs your final decision.`,
+        relatedId: String(ticket._id),
+      });
     }
 
     res.json({ success: true, status: ticket.status });
@@ -347,6 +467,19 @@ router.post('/:id/message', authenticate, async (req: AuthRequest, res: Response
     });
 
     await ticket.save();
+
+    // Notify ticket owner if someone else replied
+    const owner = await Employee.findById(ticket.employeeId);
+    if (owner && owner.email.toLowerCase() !== employee.email.toLowerCase()) {
+      await createNotification({
+        userEmail: owner.email,
+        title: `New Reply on ${ticket.ticketCode}`,
+        message: `${employee.name} replied to your ticket "${ticket.subject}".`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      });
+    }
+
     const newMsg = ticket.messages[ticket.messages.length - 1];
 
     res.json({

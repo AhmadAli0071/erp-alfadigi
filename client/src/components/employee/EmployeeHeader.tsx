@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../../types/auth';
-import { Menu, Bell, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { Menu, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 interface EmployeeHeaderProps {
   user: User;
@@ -46,15 +47,7 @@ export const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => onNavigate('/employee/notifications')}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 transition-colors relative focus:outline-none cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell className="w-4.5 h-4.5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 border-2 border-white" />
-        </button>
+        <NotificationBell onNavigate={onNavigate} />
 
         <div className="relative" ref={profileRef}>
           <button

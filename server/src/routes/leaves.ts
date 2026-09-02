@@ -2,9 +2,16 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { Leave } from '../models/Leave.js';
 import { Employee } from '../models/Employee.js';
+import { User } from '../models/User.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { notifyEmails, createNotification } from '../services/notificationService.js';
 
 const router = Router();
+
+const notifyHrAdmins = async (input: { title: string; message: string; relatedId?: string }): Promise<void> => {
+  const hrUsers = await User.find({ role: { $in: ['HR_ADMIN', 'SUPER_ADMIN'] }, isActive: true }).select('email');
+  await notifyEmails(hrUsers.map((u) => u.email), { ...input, type: 'leave' });
+};
 
 const createLeaveSchema = z.object({
   employeeEmail: z.string().email(),
@@ -46,6 +53,20 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
       reason: parsed.data.reason || '',
       status: 'Pending',
     });
+
+    // Notify lead (if employee reports to someone)
+    if (employee.reportedTo) {
+      const lead = await Employee.findById(employee.reportedTo);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: 'New Leave Request',
+          message: `${employee.name} requested ${parsed.data.leaveType} (${diffDays} day${diffDays > 1 ? 's' : ''}).`,
+          type: 'leave',
+          relatedId: String(leave._id),
+        });
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -163,11 +184,29 @@ router.put('/:id/approve', authenticate, async (req: AuthRequest, res: Response)
       return;
     }
 
+    const employee = await Employee.findById(leave.employeeId);
+
     leave.status = 'Approved';
     leave.leadApproverId = leadEmployee._id;
     leave.leadApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.leadApprovalNote = parsed.data?.note || '';
     await leave.save();
+
+    // Notify employee + HR admins
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Leave Approved by Lead',
+        message: `${leadEmployee.name} approved your ${leave.leaveType}. Waiting for HR final decision.`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      });
+      await notifyHrAdmins({
+        title: 'Leave Awaiting HR Decision',
+        message: `${employee.name}'s ${leave.leaveType} was approved by lead and needs your final decision.`,
+        relatedId: String(leave._id),
+      });
+    }
 
     res.json({ success: true, message: 'Leave approved.' });
   } catch (err) {
@@ -197,11 +236,24 @@ router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
+    const employee = await Employee.findById(leave.employeeId);
+
     leave.status = 'Rejected';
     leave.leadApproverId = leadEmployee._id;
     leave.leadApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.leadApprovalNote = parsed.data?.note || '';
     await leave.save();
+
+    // Notify employee only (rejected leaves don't go to HR)
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Leave Rejected',
+        message: `${leadEmployee.name} rejected your ${leave.leaveType}.${parsed.data?.note ? ` Note: ${parsed.data.note}` : ''}`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      });
+    }
 
     res.json({ success: true, message: 'Leave rejected.' });
   } catch (err) {
@@ -280,10 +332,35 @@ router.put('/:id/hr-inprocess', authenticate, async (req: AuthRequest, res: Resp
       return;
     }
 
+    const employee = await Employee.findById(leave.employeeId);
+
     leave.status = 'In Process';
     leave.hrApproverId = hrEmployee._id;
     leave.hrApprovalNote = parsed.data?.note || '';
     await leave.save();
+
+    // Notify employee + lead
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Leave In Process (HR)',
+        message: `HR is reviewing your ${leave.leaveType}.`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      });
+    }
+    if (leave.leadApproverId) {
+      const lead = await Employee.findById(leave.leadApproverId);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: 'Leave In Process (HR)',
+          message: `HR is reviewing ${employee?.name || 'an employee'}'s ${leave.leaveType}.`,
+          type: 'leave',
+          relatedId: String(leave._id),
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Leave marked as In Process.' });
   } catch (err) {
@@ -313,11 +390,36 @@ router.put('/:id/hr-approve', authenticate, async (req: AuthRequest, res: Respon
       return;
     }
 
+    const employee = await Employee.findById(leave.employeeId);
+
     leave.status = 'Final Approved';
     leave.hrApproverId = hrEmployee._id;
     leave.hrApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.hrApprovalNote = parsed.data?.note || '';
     await leave.save();
+
+    // Notify employee + lead
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Leave Finally Approved',
+        message: `HR approved your ${leave.leaveType} (${leave.startDate} - ${leave.endDate}).`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      });
+    }
+    if (leave.leadApproverId) {
+      const lead = await Employee.findById(leave.leadApproverId);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: 'Leave Finally Approved',
+          message: `HR approved ${employee?.name || 'an employee'}'s ${leave.leaveType}.`,
+          type: 'leave',
+          relatedId: String(leave._id),
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Leave finally approved.' });
   } catch (err) {
@@ -347,11 +449,36 @@ router.put('/:id/hr-reject', authenticate, async (req: AuthRequest, res: Respons
       return;
     }
 
+    const employee = await Employee.findById(leave.employeeId);
+
     leave.status = 'Rejected';
     leave.hrApproverId = hrEmployee._id;
     leave.hrApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.hrApprovalNote = parsed.data?.note || '';
     await leave.save();
+
+    // Notify employee + lead
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Leave Rejected by HR',
+        message: `HR rejected your ${leave.leaveType}.${parsed.data?.note ? ` Note: ${parsed.data.note}` : ''}`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      });
+    }
+    if (leave.leadApproverId) {
+      const lead = await Employee.findById(leave.leadApproverId);
+      if (lead) {
+        await createNotification({
+          userEmail: lead.email,
+          title: 'Leave Rejected by HR',
+          message: `HR rejected ${employee?.name || 'an employee'}'s ${leave.leaveType}.`,
+          type: 'leave',
+          relatedId: String(leave._id),
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Leave finally rejected.' });
   } catch (err) {

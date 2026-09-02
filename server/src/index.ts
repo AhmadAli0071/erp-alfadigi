@@ -7,6 +7,7 @@ import employeeRoutes from './routes/employees.js';
 import attendanceRoutes from './routes/attendance.js';
 import leaveRoutes from './routes/leaves.js';
 import ticketRoutes from './routes/tickets.js';
+import notificationRoutes from './routes/notifications.js';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // MongoDB connection + server start
 const start = async () => {
