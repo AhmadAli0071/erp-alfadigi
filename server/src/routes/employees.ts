@@ -34,9 +34,11 @@ const resetPasswordSchema = z.object({
 });
 
 // GET /api/employees — list all employees
-router.get('/', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const employees = await Employee.find({ isActive: true })
+    const includeInactive = String(req.query.includeInactive || '') === '1';
+    const filter: Record<string, unknown> = includeInactive ? {} : { isActive: true };
+    const employees = await Employee.find(filter)
       .populate('reportedTo', 'name empId jobTitle')
       .sort({ createdAt: -1 });
     res.json({
@@ -361,6 +363,35 @@ router.delete(
     } catch (err) {
       console.error('Delete employee error:', err);
       res.status(500).json({ error: 'Unable to deactivate employee.' });
+    }
+  }
+);
+
+// PUT /api/employees/:id/reactivate — re-activate a deactivated employee (HR only)
+router.put(
+  '/:id/reactivate',
+  authenticate,
+  requireRole('HR_ADMIN', 'SUPER_ADMIN'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const employee = await Employee.findByIdAndUpdate(
+        req.params.id,
+        { $set: { isActive: true, status: 'Active' } },
+        { new: true }
+      );
+
+      if (!employee) {
+        res.status(404).json({ error: 'Employee not found.' });
+        return;
+      }
+
+      // Ensure the login account is also active
+      await User.updateOne({ email: employee.email }, { $set: { isActive: true } });
+
+      res.json({ success: true, message: 'Employee re-activated.' });
+    } catch (err) {
+      console.error('Reactivate employee error:', err);
+      res.status(500).json({ error: 'Unable to reactivate employee.' });
     }
   }
 );

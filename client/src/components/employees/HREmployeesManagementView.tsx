@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   UserCheck,
@@ -13,12 +13,32 @@ import {
   UserRound,
   UserPlus,
   Pencil,
+  UserCog,
+  CheckCircle2,
 } from 'lucide-react';
-import { hrDashboardService } from '../../services/hrDashboardService';
 import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
 import { HRCreateUserModal } from '../hr/HRCreateUserModal';
 import { HREmployeeEditModal } from '../hr/HREmployeeEditModal';
+
+const API_BASE = '/api';
+
+const getHeaders = (): Record<string, string> => {
+  try {
+    const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+};
+
+const formatJoinedDate = (val: string): string => {
+  if (!val) return '—';
+  const m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return val;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${Number(m[3])} ${months[Number(m[2]) - 1]} ${m[1]}`;
+};
 
 interface HREmployeesManagementViewProps {
   onNavigateToDashboard: () => void;
@@ -67,23 +87,69 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
   const [searchQuery, setSearchQuery] = useState('');
   const [department, setDepartment] = useState<DepartmentFilter>('ALL');
   const [status, setStatus] = useState<StatusFilter>('ALL');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null);
 
-  const fetchEmployees = async (showSpinner = true) => {
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const fetchEmployees = useCallback(async (showSpinner = true) => {
     if (showSpinner) setIsLoading(true);
     setError(null);
     try {
-      const response = await hrDashboardService.getDashboardData();
-      setEmployees(response.employees);
+      const res = await fetch(`${API_BASE}/employees?includeInactive=1`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setEmployees(data.employees || []);
     } catch {
       setError('Unable to load the employee directory.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEmployees(true);
-  }, []);
+  }, [fetchEmployees]);
+
+  const handleDeactivate = async (emp: Employee) => {
+    if (!window.confirm(`Deactivate ${emp.name} (${emp.empId})? They will lose access to the portal.`)) return;
+    setActionBusyId(emp.id);
+    try {
+      const res = await fetch(`${API_BASE}/employees/${emp.id}`, { method: 'DELETE', headers: getHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Unable to deactivate employee.');
+        return;
+      }
+      showToast(`${emp.name} deactivated.`);
+      await fetchEmployees(false);
+    } catch {
+      showToast('Unable to connect to server.');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleReactivate = async (emp: Employee) => {
+    setActionBusyId(emp.id);
+    try {
+      const res = await fetch(`${API_BASE}/employees/${emp.id}/reactivate`, { method: 'PUT', headers: getHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Unable to reactivate employee.');
+        return;
+      }
+      showToast(`${emp.name} re-activated.`);
+      await fetchEmployees(false);
+    } catch {
+      showToast('Unable to connect to server.');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 || department !== 'ALL' || status !== 'ALL';
@@ -442,7 +508,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                         </span>
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className="text-xs text-slate-500 whitespace-nowrap">{emp.joinedDate}</span>
+                        <span className="text-xs text-slate-500 whitespace-nowrap">{formatJoinedDate(emp.joinedDate)}</span>
                       </td>
                       <td className="py-3.5 px-3 text-right pr-4">
                         <div className="flex items-center justify-end gap-2">
@@ -455,6 +521,27 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
+                          {emp.status === 'Inactive' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleReactivate(emp)}
+                              disabled={actionBusyId === emp.id}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer disabled:opacity-40"
+                              title="Re-activate employee"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleDeactivate(emp)}
+                              disabled={actionBusyId === emp.id}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-40"
+                              title="Deactivate employee"
+                            >
+                              <UserCog className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -533,10 +620,47 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     <span>Reports to <span className="font-semibold text-slate-700">{emp.reportedTo.name}</span></span>
                   </div>
                 )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmployee(emp)}
+                    className="flex-1 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 text-[11px] font-bold transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  {emp.status === 'Inactive' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReactivate(emp)}
+                      disabled={actionBusyId === emp.id}
+                      className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      Re-activate
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDeactivate(emp)}
+                      disabled={actionBusyId === emp.id}
+                      className="flex-1 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      Deactivate
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </>
+      )}
+
+      {/* Toast feedback */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/90 backdrop-blur-xl border border-emerald-200 text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="font-medium text-slate-700">{toastMsg}</span>
+        </div>
       )}
 
       {showCreateUserModal && (
