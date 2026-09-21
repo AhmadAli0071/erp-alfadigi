@@ -32,7 +32,7 @@ interface AccountRow {
 interface EmployeeRow {
   id: string;
   name: string;
-  department: 'HR' | 'Sales' | 'Tech';
+  department: string;
   status: string;
   isActive: boolean;
 }
@@ -83,8 +83,19 @@ export const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = (
   }, [fetchAll]);
 
   const countRole = (r: AccountRow['role']) => accounts.filter((a) => a.role === r).length;
-  const countDept = (d: string) => employees.filter((e) => e.department === d).length;
   const activeEmployees = employees.filter((e) => e.isActive).length;
+  // Dynamic department breakdown — covers every department value in the data,
+  // including unassigned (missing/blank) employees.
+  const deptCards = (() => {
+    const counts = new Map<string, number>();
+    for (const e of employees) {
+      const key = e.department?.trim() || 'Unassigned';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([dept, count]) => ({ dept, count }))
+      .sort((a, b) => b.count - a.count);
+  })();
 
   const kpiCards = [
     { label: 'Total Employees', value: employees.length, sub: `${activeEmployees} active`, icon: <Users className="w-4 h-4 text-rose-300" />, accent: 'from-rose-500/20 to-transparent border-rose-400/20' },
@@ -98,12 +109,6 @@ export const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = (
     { role: 'HR_ADMIN' as const, label: 'HR Admins', icon: <ShieldCheck className="w-4 h-4 text-indigo-300" />, chip: 'border-indigo-400/30 bg-indigo-500/10 text-indigo-200' },
     { role: 'DEPARTMENT_LEAD' as const, label: 'Dept Leads', icon: <UserCog className="w-4 h-4 text-sky-300" />, chip: 'border-sky-400/30 bg-sky-500/10 text-sky-200' },
     { role: 'EMPLOYEE' as const, label: 'Employees', icon: <UserCheck className="w-4 h-4 text-emerald-300" />, chip: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' },
-  ];
-
-  const deptCards = [
-    { dept: 'HR', count: countDept('HR') },
-    { dept: 'Sales', count: countDept('Sales') },
-    { dept: 'Tech', count: countDept('Tech') },
   ];
 
   const quickActions = [
