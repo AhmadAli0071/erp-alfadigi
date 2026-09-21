@@ -27,18 +27,28 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
 }) => {
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
 
-  // Breakdown statistics for 24 employees
+  // Breakdown statistics derived from live dashboard KPIs
+  const totalRoster = kpis.totalEmployees;
+  const rosterDenominator = Math.max(1, totalRoster);
   const summaryItems = [
-    { label: 'Present', count: 18, color: '#10b981', ringColor: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { label: 'Absent', count: 3, color: '#f43f5e', ringColor: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
-    { label: 'On Leave', count: 2, color: '#3b82f6', ringColor: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { label: 'WFH', count: 2, color: '#0ea5e9', ringColor: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
-    { label: 'Half Day', count: 1, color: '#a855f7', ringColor: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-    { label: 'Late', count: 4, color: '#f59e0b', ringColor: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+    { label: 'Present', count: kpis.presentToday, color: '#10b981', ringColor: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    { label: 'Absent', count: kpis.absentToday, color: '#f43f5e', ringColor: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
+    { label: 'On Leave', count: kpis.onLeaveToday, color: '#3b82f6', ringColor: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+    { label: 'WFH', count: kpis.workFromHomeToday, color: '#0ea5e9', ringColor: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
+    { label: 'Half Day', count: kpis.halfDayToday, color: '#a855f7', ringColor: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+    { label: 'Late', count: kpis.lateOrShortHoursToday, color: '#f59e0b', ringColor: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
   ];
 
+  const turnoutPct = totalRoster ? Math.round((kpis.presentToday / totalRoster) * 100) : 0;
+  const coveragePct = (n: number) => `${(n / rosterDenominator) * 100}%`;
+
+  // Overnight shift spans today (evening) → tomorrow (early morning)
+  const shiftStartDay = new Date();
+  const shiftEndDay = new Date();
+  shiftEndDay.setDate(shiftEndDay.getDate() + 1);
+  const fmtShiftDay = (d: Date) => `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })}`;
+
   // Calculate SVG donut slice arcs
-  const totalRoster = 24;
   let accumulatedAngle = 0;
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
@@ -57,7 +67,7 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
                 Today's Attendance
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Live shift attendance distribution across 24 staff members
+                Live shift attendance distribution across {totalRoster} staff members
               </p>
             </div>
           </div>
@@ -92,10 +102,10 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
 
               {/* Segments */}
               {summaryItems.map((item) => {
-                const strokeDash = (item.count / totalRoster) * circumference;
+                const strokeDash = (item.count / rosterDenominator) * circumference;
                 const strokeOffset = circumference - strokeDash;
                 const rotation = accumulatedAngle;
-                accumulatedAngle += (item.count / totalRoster) * 360;
+                accumulatedAngle += (item.count / rosterDenominator) * 360;
 
                 const isHovered = hoveredSegment === item.label;
 
@@ -121,7 +131,7 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
             {/* Inner Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-2xl font-black text-slate-900 tracking-tight">
-                75%
+                {turnoutPct}%
               </span>
               <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
                 Turnout
@@ -162,13 +172,13 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
         <div className="mt-5 pt-4 border-t border-slate-200/70">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
             <span>Workforce Coverage</span>
-            <span className="font-mono text-slate-900">18 Present / 24 Staff</span>
+            <span className="font-mono text-slate-900">{kpis.presentToday} Present / {totalRoster} Staff</span>
           </div>
           <div className="w-full h-2 rounded-full bg-slate-100/60 flex overflow-hidden gap-0.5">
-            <div style={{ width: '75%' }} className="bg-emerald-500 h-full" title="Present (75%)" />
-            <div style={{ width: '12.5%' }} className="bg-rose-500 h-full" title="Absent (12.5%)" />
-            <div style={{ width: '8.3%' }} className="bg-blue-500 h-full" title="On Leave (8.3%)" />
-            <div style={{ width: '4.2%' }} className="bg-purple-500 h-full" title="Half Day (4.2%)" />
+            <div style={{ width: coveragePct(kpis.presentToday) }} className="bg-emerald-500 h-full" title={`Present (${turnoutPct}%)`} />
+            <div style={{ width: coveragePct(kpis.absentToday) }} className="bg-rose-500 h-full" title={`Absent (${totalRoster ? Math.round((kpis.absentToday / totalRoster) * 100) : 0}%)`} />
+            <div style={{ width: coveragePct(kpis.onLeaveToday) }} className="bg-blue-500 h-full" title={`On Leave (${totalRoster ? Math.round((kpis.onLeaveToday / totalRoster) * 100) : 0}%)`} />
+            <div style={{ width: coveragePct(kpis.halfDayToday) }} className="bg-purple-500 h-full" title={`Half Day (${totalRoster ? Math.round((kpis.halfDayToday / totalRoster) * 100) : 0}%)`} />
           </div>
         </div>
       </div>
@@ -199,11 +209,11 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
           <div className="grid grid-cols-2 gap-3 my-4">
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
               <span className="text-[11px] font-medium text-slate-500 block mb-0.5">Staff Detected</span>
-              <span className="text-xl font-black text-slate-900">3 Employees</span>
+              <span className="text-xl font-black text-slate-900">{kpis.pendingExtraHoursEmployeesCount} Employees</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
               <span className="text-[11px] font-medium text-slate-500 block mb-0.5">Total Overtime</span>
-              <span className="text-xl font-black text-amber-600 font-mono">1h 05m</span>
+              <span className="text-xl font-black text-amber-600 font-mono">{kpis.pendingExtraHoursTotalTime}</span>
             </div>
           </div>
 
@@ -259,7 +269,7 @@ export const HRAttendanceSummary: React.FC<HRAttendanceSummaryProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-500 italic">
-            * Overnight shift spans from 31 Aug (evening) to 01 Sep (early morning). Extra time before 6 PM or after 3 AM requires HR verification.
+            * Overnight shift spans from {fmtShiftDay(shiftStartDay)} (evening) to {fmtShiftDay(shiftEndDay)} (early morning). Extra time before 6 PM or after 3 AM requires HR verification.
           </p>
         </div>
       </div>

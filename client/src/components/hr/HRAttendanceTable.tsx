@@ -280,7 +280,16 @@ export const HRAttendanceTable: React.FC<HRAttendanceTableProps> = ({
 
                   {/* Break */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px] text-slate-500">
-                    {record.breakDuration}
+                    <div>{record.breakDuration}</div>
+                    {record.breakMinutesByType && (record.breakMinutesByType.lunch > 0 || record.breakMinutesByType.namaz > 0 || record.breakMinutesByType.washroom > 0) && (
+                      <div className="text-[9px] text-slate-400 font-semibold">
+                        {[
+                          record.breakMinutesByType.lunch > 0 ? `L ${record.breakMinutesByType.lunch}m` : null,
+                          record.breakMinutesByType.namaz > 0 ? `N ${record.breakMinutesByType.namaz}m` : null,
+                          record.breakMinutesByType.washroom > 0 ? `W ${record.breakMinutesByType.washroom}m` : null,
+                        ].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </td>
 
                   {/* Working Hours */}

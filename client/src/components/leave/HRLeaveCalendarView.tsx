@@ -17,13 +17,18 @@ interface HRLeaveCalendarViewProps {
   year?: number;
 }
 
+const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
 export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
   requests,
   onViewRequest,
-  year = 2026,
+  year = new Date().getFullYear(),
 }) => {
-  // Calendar month state (0-indexed: 7 is August 2026, 8 is September 2026)
-  const [currentMonth, setCurrentMonth] = useState<number>(7); // Default August 2026
+  const todayDate = new Date();
+  const todayStr = `${todayDate.getFullYear()}-${pad2(todayDate.getMonth() + 1)}-${pad2(todayDate.getDate())}`;
+
+  // Calendar month state (0-indexed), defaults to the current month
+  const [currentMonth, setCurrentMonth] = useState<number>(todayDate.getMonth());
   const [calendarMode, setCalendarMode] = useState<'month' | 'week' | 'list'>('month');
 
   const monthNames = [
@@ -50,7 +55,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
   };
 
   // Helper to format date numbers with leading zero
-  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const pad = pad2;
 
   // Build days for month view
   const firstDayOfMonth = new Date(year, currentMonth, 1).getDay();
@@ -69,7 +74,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
       dateStr,
       dayNum,
       isCurrentMonth: false,
-      isToday: dateStr === '2026-08-31',
+      isToday: dateStr === todayStr,
     });
   }
 
@@ -80,7 +85,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
       dateStr,
       dayNum: d,
       isCurrentMonth: true,
-      isToday: dateStr === '2026-08-31',
+      isToday: dateStr === todayStr,
     });
   }
 
@@ -94,7 +99,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
       dateStr,
       dayNum: d,
       isCurrentMonth: false,
-      isToday: dateStr === '2026-08-31',
+      isToday: dateStr === todayStr,
     });
   }
 
@@ -161,7 +166,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setCurrentMonth(7)} // August 2026
+              onClick={() => setCurrentMonth(todayDate.getMonth())}
               className="px-2.5 py-1 rounded-lg border border-slate-200/80 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 transition-colors cursor-pointer"
             >
               Today
@@ -288,20 +293,35 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
       )}
 
       {/* Mode 2: Week View */}
-      {calendarMode === 'week' && (
+      {calendarMode === 'week' && (() => {
+        const weekStart = new Date(todayDate);
+        const day = weekStart.getDay();
+        weekStart.setDate(weekStart.getDate() - day + (day === 0 ? -6 : 1));
+        const weekDays = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(weekStart);
+          d.setDate(weekStart.getDate() + i);
+          return {
+            dateStr: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+            dayName: d.toLocaleString('en-US', { weekday: 'short' }),
+            dayLabel: `${pad(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}`,
+          };
+        });
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        const weekLabel = `${pad(weekStart.getDate())} ${weekStart.toLocaleString('en-US', { month: 'short' })} – ${pad(weekEnd.getDate())} ${weekEnd.toLocaleString('en-US', { month: 'short' })} ${weekEnd.getFullYear()}`;
+
+        return (
         <div className="rounded-2xl bg-white/75 backdrop-blur-xl border border-slate-200/70 shadow-md overflow-hidden">
           <div className="p-4 bg-slate-50 border-b border-slate-200/70 text-xs text-slate-600 flex items-center justify-between">
-            <span className="font-bold text-slate-900">Current Week Schedule (31 Aug – 06 Sep 2026)</span>
+            <span className="font-bold text-slate-900">Current Week Schedule ({weekLabel})</span>
             <span className="text-slate-500">7 Days View</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70">
-            {['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06'].map(
-              (dateStr, idx) => {
+            {weekDays.map(
+              ({ dateStr, dayName, dayLabel }, idx) => {
                 const dayLeaves = getLeavesForDate(dateStr);
-                const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                const dayNum = dateStr.split('-')[2];
-                const isToday = dateStr === '2026-08-31';
+                const isToday = dateStr === todayStr;
 
                 return (
                   <div
@@ -312,14 +332,14 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
                   >
                     <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
                       <span className="text-xs font-bold text-slate-500 uppercase">
-                        {dayNames[idx]}
+                        {dayName}
                       </span>
                       <span
                         className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
                           isToday ? 'bg-indigo-600 text-white' : 'text-slate-600'
                         }`}
                       >
-                        {dayNum} Aug
+                        {dayLabel}
                       </span>
                     </div>
 
@@ -350,7 +370,8 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Mode 3: List / Agenda View */}
       {calendarMode === 'list' && (

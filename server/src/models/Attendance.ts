@@ -1,13 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type BreakType = 'LUNCH' | 'NAMAZ' | 'WASHROOM';
+
 export interface IAttendance extends Document {
   employeeId: mongoose.Types.ObjectId;
   date: string;
   clockIn?: string;
   clockInAt?: Date | null;
   clockOut?: string;
+  clockOutAt?: Date | null;
   breakMinutes: number;
   breakStartedAt?: Date | null;
+  breakType?: BreakType | null;
+  breakMinutesByType: { lunch: number; namaz: number; washroom: number };
   workingMinutes: number;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
@@ -23,8 +28,15 @@ const AttendanceSchema = new Schema<IAttendance>(
     clockIn: { type: String },
     clockInAt: { type: Date, default: null },
     clockOut: { type: String },
+    clockOutAt: { type: Date, default: null },
     breakMinutes: { type: Number, default: 0 },
     breakStartedAt: { type: Date, default: null },
+    breakType: { type: String, enum: ['LUNCH', 'NAMAZ', 'WASHROOM'], default: null },
+    breakMinutesByType: {
+      lunch: { type: Number, default: 0 },
+      namaz: { type: Number, default: 0 },
+      washroom: { type: Number, default: 0 },
+    },
     workingMinutes: { type: Number, default: 0 },
     status: {
       type: String,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import {
   CalendarDays,
@@ -14,14 +15,33 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { StatusBadge } from '../hr/StatusBadge';
+import { leaveTypeService } from '../../services/leaveTypeService';
 
 interface EmployeeLeaveViewProps {
   user: User;
   onNavigate: (route: string) => void;
 }
 
-const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Annual Leave', 'Unpaid Leave', 'Maternity / Paternity', 'Bereavement Leave', 'Special / Other Leave'];
-const STATUS_OPTIONS = ['ALL', 'Pending', 'Approved', 'Rejected'];
+const FALLBACK_LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Annual Leave', 'Unpaid Leave', 'Maternity / Paternity', 'Bereavement Leave', 'Special / Other Leave'];
+const STATUS_OPTIONS = ['ALL', 'Pending', 'Approved', 'Final Approved', 'Rejected', 'Cancelled'];
+
+const approvalStage = (status: string): { label: string; cls: string } => {
+  switch (status) {
+    case 'Pending':
+      return { label: 'Awaiting Lead', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+    case 'Approved':
+    case 'In Process':
+      return { label: 'Lead OK — Awaiting HR', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    case 'Final Approved':
+      return { label: 'HR Final Approved', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case 'Rejected':
+      return { label: 'Rejected', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+    case 'Cancelled':
+      return { label: 'Withdrawn', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
+    default:
+      return { label: '—', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
+  }
+};
 
 interface LeaveRecord {
   id: string;
@@ -60,6 +80,14 @@ export const EmployeeLeaveView: React.FC<EmployeeLeaveViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [leaveTypes, setLeaveTypes] = useState<string[]>(FALLBACK_LEAVE_TYPES);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchLeaves = useCallback(async () => {
     setIsLoading(true);
@@ -78,13 +106,26 @@ export const EmployeeLeaveView: React.FC<EmployeeLeaveViewProps> = ({
 
   useEffect(() => {
     fetchLeaves();
+
+    // Load active leave types configured by HR (fallback list on failure)
+    leaveTypeService
+      .getLeaveTypes()
+      .then((types) => {
+        if (types.length > 0) setLeaveTypes(types.map((t) => t.name));
+      })
+      .catch(() => {
+        /* keep fallback */
+      });
   }, [fetchLeaves]);
+
+  // Live refresh: SSE notification ya window focus par leaves refetch
+  useRealtimeRefresh(fetchLeaves);
 
   const filteredLeaves = selectedStatus === 'ALL' ? leaves : leaves.filter((l) => l.status === selectedStatus);
 
   const summary = {
     pending: leaves.filter((l) => l.status === 'Pending').length,
-    approved: leaves.filter((l) => l.status === 'Approved').length,
+    approved: leaves.filter((l) => l.status === 'Approved' || l.status === 'Final Approved').length,
     rejected: leaves.filter((l) => l.status === 'Rejected').length,
     total: leaves.length,
   };
@@ -138,8 +179,49 @@ export const EmployeeLeaveView: React.FC<EmployeeLeaveViewProps> = ({
     }
   };
 
+  const handleWithdraw = async (leaveId: string) => {
+    if (!window.confirm('Withdraw this leave request? This cannot be undone.')) return;
+    setActionInProgress(leaveId);
+    try {
+      const res = await fetch(`${API_BASE}/leaves/${leaveId}/withdraw`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast('Leave request withdrawn.', 'success');
+        fetchLeaves();
+      } else {
+        showToast(data.error || 'Could not withdraw the request.', 'error');
+      }
+    } catch {
+      showToast('Could not withdraw the request. Please try again.', 'error');
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+
+      {/* Toast feedback */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/90 backdrop-blur-xl border text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp ${
+            toast.type === 'success' ? 'border-emerald-200' : 'border-rose-200'
+          }`}
+          id="employee-leave-toast"
+        >
+          <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-rose-50 border-rose-200 text-rose-600'}`}>
+            {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          </div>
+          <div>
+            <div className="font-bold text-slate-900">{toast.type === 'success' ? 'Request Withdrawn' : 'Notice'}</div>
+            <div className="text-slate-600 font-medium">{toast.text}</div>
+          </div>
+        </div>
+      )}
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -243,24 +325,46 @@ export const EmployeeLeaveView: React.FC<EmployeeLeaveViewProps> = ({
                   <th className="px-5 py-3.5">To</th>
                   <th className="px-5 py-3.5">Days</th>
                   <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Approval Stage</th>
                   <th className="px-5 py-3.5 text-right pr-5">Submitted</th>
+                  <th className="px-5 py-3.5 text-right pr-5">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/70">
-                {filteredLeaves.map((leave) => (
-                  <tr key={leave.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.leaveType}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">{leave.startDate}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">{leave.endDate}</td>
-                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.totalDays}</td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={leave.status as 'Pending' | 'Approved' | 'Rejected'} size="xs" />
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500 text-right pr-5">
-                      {new Date(leave.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </td>
-                  </tr>
-                ))}
+                {filteredLeaves.map((leave) => {
+                  const stage = approvalStage(leave.status);
+                  return (
+                    <tr key={leave.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.leaveType}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-600">{leave.startDate}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-600">{leave.endDate}</td>
+                      <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.totalDays}</td>
+                      <td className="px-5 py-3.5">
+                        <StatusBadge status={leave.status} size="xs" />
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${stage.cls}`}>
+                          {stage.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500 text-right pr-5">
+                        {new Date(leave.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="px-5 py-3.5 text-right pr-5">
+                        {leave.status === 'Pending' && (
+                          <button
+                            type="button"
+                            onClick={() => handleWithdraw(leave.id)}
+                            disabled={actionInProgress === leave.id}
+                            className="px-3 py-1.5 rounded-lg bg-slate-100/80 hover:bg-rose-50 hover:text-rose-600 border border-slate-200/70 text-[10px] font-bold text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+                          >
+                            {actionInProgress === leave.id ? '…' : 'Withdraw'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -327,7 +431,7 @@ export const EmployeeLeaveView: React.FC<EmployeeLeaveViewProps> = ({
                     className="w-full appearance-none px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                   >
                     <option value="">Select leave type</option>
-                    {LEAVE_TYPES.map((type) => (
+                    {leaveTypes.map((type) => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import {
   AttendanceRecord,
   Employee,
@@ -38,10 +39,7 @@ const getHeaders = (): Record<string, string> => {
   }
 };
 
-const todayISO = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const todayISO = (): string => new Date().toISOString().split('T')[0];
 
 interface AttendanceQueryResult {
   records: AttendanceRecord[];
@@ -98,6 +96,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   const [customEndDate, setCustomEndDate] = useState<string>(todayISO());
   const [appliedCustomStart, setAppliedCustomStart] = useState<string>(todayISO());
   const [appliedCustomEnd, setAppliedCustomEnd] = useState<string>(todayISO());
+  const [showCustomPicker, setShowCustomPicker] = useState<boolean>(false);
 
   const [selectedDept, setSelectedDept] = useState<string>(initialDepartment);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(initialEmployeeId);
@@ -219,6 +218,9 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     fetchAttendance();
   }, [fetchAttendance]);
 
+  // Live refresh: SSE notification (attendance events) ya window focus par refetch
+  useRealtimeRefresh(fetchAttendance);
+
   // Quick Preset Options
   const presets = [
     { id: 'today', label: 'Today' },
@@ -239,7 +241,14 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     }
     setAppliedCustomStart(customStartDate);
     setAppliedCustomEnd(customEndDate);
+    setDatePreset('custom');
     setCurrentPage(1);
+    setShowCustomPicker(false);
+  };
+
+  const fmtShortDate = (iso: string): string => {
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
   };
 
   // Clear all filters
@@ -259,7 +268,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     const empPrefix = emp ? `${emp.name.replace(/\s+/g, '_')}_` : 'All_Employees_';
     const filename = `Attendance_${empPrefix}${datePreset}_${Date.now()}.csv`;
 
-    const headers = ['Date', 'Employee', 'Emp ID', 'Department', 'Clock In', 'Clock Out', 'Break', 'Working', 'Short', 'Extra', 'Status', 'Notes'];
+    const headers = ['Date', 'Employee', 'Emp ID', 'Department', 'Clock In', 'Clock Out', 'Break', 'Lunch (min)', 'Namaz (min)', 'Washroom (min)', 'Working', 'Short', 'Extra', 'Status', 'Notes'];
     const rows = queryResult.records.map((r) => [
       r.attendanceDate,
       r.employeeName,
@@ -268,6 +277,9 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       r.clockInTime !== '—' ? `${r.clockInTime} (${r.clockInDate})` : '',
       r.clockOutTime !== '—' ? `${r.clockOutTime} (${r.clockOutDate})` : '',
       r.breakDuration,
+      r.breakMinutesByType?.lunch ?? '',
+      r.breakMinutesByType?.namaz ?? '',
+      r.breakMinutesByType?.washroom ?? '',
       r.workingHours,
       r.shortHours,
       r.extraHours,
@@ -305,12 +317,12 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
   // Calculate days selected in custom range
   const customDaysCount = useMemo(() => {
-    if (datePreset !== 'custom') return 0;
+    if (!showCustomPicker) return 0;
     const s = new Date(customStartDate);
     const e = new Date(customEndDate);
     const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 3600 * 24)) + 1;
     return Math.max(1, diff);
-  }, [datePreset, customStartDate, customEndDate]);
+  }, [showCustomPicker, customStartDate, customEndDate]);
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12" id="hr-attendance-management-module">
@@ -370,81 +382,115 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
         </div>
       </div>
 
-      {/* 2. Quick Date Presets Bar (Section 26 & Section 2) */}
-      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-            Quick Date Filter
-          </span>
-          <span className="text-xs font-medium text-indigo-600">
-            {queryResult?.dateRangeLabel || 'Today'}
-          </span>
-        </div>
+      {/* 2. Quick Date Range Toolbar */}
+      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl px-3 py-2.5 shadow-sm flex flex-col lg:flex-row lg:items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-100 shrink-0 hidden sm:block">
+            <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+          </div>
 
-        {/* Scrollable / Wrapping Preset Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar flex-nowrap sm:flex-wrap">
-          {presets.map((preset) => {
-            const active = datePreset === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => {
-                  setDatePreset(preset.id);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  active
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                    : 'bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/70'
-                }`}
-                id={`date-preset-${preset.id}`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
+          <div className="flex items-center gap-0.5 bg-slate-100/80 rounded-xl p-1 overflow-x-auto custom-scrollbar">
+            {presets.filter((p) => p.id !== 'custom').map((preset) => {
+              const active = datePreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    setDatePreset(preset.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    active
+                      ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/60'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  id={`date-preset-${preset.id}`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Custom Date Range Selector (Section 4) */}
-        {datePreset === 'custom' && (
-          <div className="pt-3 border-t border-slate-200/70 flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-fadeIn">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500">From Date:</span>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
-                id="custom-start-date-input"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500">To Date:</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
-                id="custom-end-date-input"
-              />
-            </div>
-
+          <div className="relative shrink-0 ml-auto lg:ml-0">
             <button
               type="button"
-              onClick={handleApplyCustomRange}
-              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors cursor-pointer"
-              id="apply-custom-date-range-btn"
+              onClick={() => setShowCustomPicker((v) => !v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                datePreset === 'custom'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : showCustomPicker
+                    ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                    : 'bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200/70'
+              }`}
+              id="date-preset-custom"
             >
-              Apply
+              <Calendar className="w-3.5 h-3.5" />
+              {datePreset === 'custom'
+                ? `${fmtShortDate(appliedCustomStart)} – ${fmtShortDate(appliedCustomEnd)}`
+                : 'Custom'}
             </button>
 
-            <span className="text-xs text-slate-500 italic">
-              ({customDaysCount} {customDaysCount === 1 ? 'day' : 'days'} selected)
-            </span>
+            {showCustomPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowCustomPicker(false)} />
+                <div className="absolute right-0 top-full mt-2 z-50 w-[300px] bg-white rounded-2xl border border-slate-200/80 shadow-2xl p-4 animate-scaleUp space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Custom Range</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomPicker(false)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">From</span>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full mt-1 px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
+                        id="custom-start-date-input"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">To</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full mt-1 px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
+                        id="custom-end-date-input"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-slate-500 italic">
+                      {customDaysCount} {customDaysCount === 1 ? 'day' : 'days'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomRange}
+                      className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors cursor-pointer"
+                      id="apply-custom-date-range-btn"
+                    >
+                      Apply Range
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
+
+        <span className="hidden lg:inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+          <Clock className="w-3 h-3" />
+          {queryResult?.dateRangeLabel || 'Today'}
+        </span>
       </div>
 
       {/* 3. Advanced Filtering Toolbar (Desktop) */}
@@ -956,7 +1002,16 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
                       {/* Break */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px] text-slate-500">
-                        {record.breakDuration}
+                        <div>{record.breakDuration}</div>
+                        {record.breakMinutesByType && (record.breakMinutesByType.lunch > 0 || record.breakMinutesByType.namaz > 0 || record.breakMinutesByType.washroom > 0) && (
+                          <div className="text-[9px] text-slate-400 font-semibold">
+                            {[
+                              record.breakMinutesByType.lunch > 0 ? `L ${record.breakMinutesByType.lunch}m` : null,
+                              record.breakMinutesByType.namaz > 0 ? `N ${record.breakMinutesByType.namaz}m` : null,
+                              record.breakMinutesByType.washroom > 0 ? `W ${record.breakMinutesByType.washroom}m` : null,
+                            ].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
                       </td>
 
                       {/* Working Hours */}

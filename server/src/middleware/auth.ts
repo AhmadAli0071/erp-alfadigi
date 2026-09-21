@@ -14,8 +14,11 @@ export const authenticate = async (
 ): Promise<void> => {
   try {
     const header = req.headers.authorization;
-    // Also accept token from query param (needed for EventSource/SSE)
-    const queryToken = typeof req.query.token === 'string' ? req.query.token : null;
+    // Token via query param is accepted ONLY for the SSE stream endpoint
+    // (EventSource cannot set custom headers). Everywhere else it must come
+    // from the Authorization header so tokens don't leak into URLs/logs.
+    const isSseStream = typeof req.originalUrl === 'string' && req.originalUrl.includes('/notifications/stream');
+    const queryToken = isSseStream && typeof req.query.token === 'string' ? req.query.token : null;
     const token = header && header.startsWith('Bearer ')
       ? header.split(' ')[1]
       : queryToken;

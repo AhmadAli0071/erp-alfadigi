@@ -20,6 +20,7 @@ import { UserRole } from '../../types/auth';
 interface HRCreateUserModalProps {
   onClose: () => void;
   onUserCreated: (account: StoredUserAccount) => void;
+  allowSuperAdmin?: boolean;
 }
 
 const DEPARTMENT_OPTIONS = ['HR', 'Sales', 'Tech'];
@@ -49,6 +50,7 @@ const generatePassword = (): string => {
 export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
   onClose,
   onUserCreated,
+  allowSuperAdmin = false,
 }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -183,13 +185,13 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
                     Password
                   </p>
                   <p className="text-xs font-bold text-slate-900 font-mono truncate">
-                    {createdAccount.password}
+                    {password}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => handleCopy('password', createdAccount.password)}
+                onClick={() => handleCopy('password', password)}
                 className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer shrink-0"
                 title="Copy password"
               >
@@ -335,7 +337,10 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className={`${inputClasses} appearance-none cursor-pointer pr-8`}
                 >
-                  {ROLE_OPTIONS.map((r) => (
+                  {(allowSuperAdmin
+                    ? [{ value: 'SUPER_ADMIN' as UserRole, label: 'Super Admin', hint: 'Root access — full system control' }, ...ROLE_OPTIONS]
+                    : ROLE_OPTIONS
+                  ).map((r) => (
                     <option key={r.value} value={r.value}>
                       {r.label}
                     </option>

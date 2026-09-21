@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import { ClockButtonsCard } from '../attendance/ClockButtonsCard';
 import {
@@ -95,10 +96,7 @@ const getFormattedDate = (): string => {
   });
 };
 
-const localToday = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const utcToday = (): string => new Date().toISOString().split('T')[0];
 
 const formatMinutes = (mins: number): string => {
   const h = Math.floor(mins / 60);
@@ -172,7 +170,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
     try {
       const [teamRes, attRes, pendingRes, leavesRes, ticketsRes] = await Promise.all([
         fetch(`${API_BASE}/employees/team/${user.email}`, { headers: getHeaders() }),
-        fetch(`${API_BASE}/attendance/team/${user.email}?date=${localToday()}`, { headers: getHeaders() }),
+        fetch(`${API_BASE}/attendance/team/${user.email}?date=${utcToday()}`, { headers: getHeaders() }),
         fetch(`${API_BASE}/leaves/pending-count/${user.email}`, { headers: getHeaders() }),
         fetch(`${API_BASE}/leaves/team/${user.email}?status=Pending`, { headers: getHeaders() }),
         fetch(`${API_BASE}/tickets/team/${user.email}`, { headers: getHeaders() }),
@@ -209,9 +207,12 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
     fetchDashboard();
   }, [fetchDashboard]);
 
+  // Live refresh: SSE notification ya window focus par dashboard refetch
+  useRealtimeRefresh(fetchDashboard);
+
   const presentToday = attendance.filter((r) => PRESENT_STATUSES.includes(r.status)).length;
   const onBreak = attendance.filter((r) => r.status !== 'Absent' && !r.clockOut && r.breakMinutes > 0).length;
-  const openTickets = tickets.length;
+  const openTickets = tickets.filter((t: { status?: string }) => ['Open', 'Pending', 'In Progress', 'HR In Process'].includes(t.status || '')).length;
 
   const isLoadingState = isLoading;
 

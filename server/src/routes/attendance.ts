@@ -1,15 +1,101 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { Attendance } from '../models/Attendance.js';
+import { Attendance, BreakType } from '../models/Attendance.js';
 import { Employee } from '../models/Employee.js';
+import { User } from '../models/User.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { runAbsentScan } from '../jobs/autoAbsent.js';
+import { getAttendanceConfig } from '../jobs/autoAbsent.js';
+import { canAccessEmployee, isHr } from '../utils/access.js';
+import { notifyEmails, createNotification } from '../services/notificationService.js';
+import { ensureSettings } from '../utils/defaults.js';
 
 const router = Router();
+
+/** Notify lead (if any) + HR admins so team attendance boards stay live. */
+const notifyAttendanceEvent = async (
+  employee: { name: string; reportedTo?: unknown },
+  title: string,
+  message: string,
+  relatedId: string,
+): Promise<void> => {
+  if (employee.reportedTo) {
+    const lead = await Employee.findById(employee.reportedTo);
+    if (lead) {
+      await createNotification({ userEmail: lead.email, title, message, type: 'attendance', relatedId });
+    }
+  }
+  const hrUsers = await User.find({ role: { $in: ['HR_ADMIN', 'SUPER_ADMIN'] }, isActive: true }).select('email');
+  await notifyEmails(hrUsers.map((u) => u.email), { title, message, type: 'attendance', relatedId });
+};
+
+/**
+ * Late check: is the given PKT clock-in time later than shiftStart + grace?
+ * Times before the shift start are early/on-time; anything past the grace
+ * window (including after-midnight hours of an overnight shift) is late.
+ */
+const isLateClockIn = async (now: Date): Promise<{ late: boolean; grace: number }> => {
+  const cfg = await getAttendanceConfig();
+  const nowPkt = new Date(now.getTime() + 5 * 60 * 60000); // PKT = UTC+5
+  const nowMin = nowPkt.getUTCHours() * 60 + nowPkt.getUTCMinutes();
+  const startMin = cfg.start.h * 60 + cfg.start.m;
+  const elapsed = (nowMin - startMin + 1440) % 1440; // minutes since most recent shift start
+  return { late: elapsed > cfg.graceMinutes, grace: cfg.graceMinutes };
+};
 
 const clockInSchema = z.object({
   employeeEmail: z.string().email(),
 });
+
+const breakStartSchema = z.object({
+  employeeEmail: z.string().email(),
+  breakType: z.enum(['LUNCH', 'NAMAZ', 'WASHROOM']),
+  memberEmail: z.string().email().optional(),
+});
+
+const breakEndSchema = z.object({
+  employeeEmail: z.string().email(),
+  breakType: z.enum(['LUNCH', 'NAMAZ', 'WASHROOM']).optional(),
+  memberEmail: z.string().email().optional(),
+});
+
+const BREAK_LABELS: Record<BreakType, string> = {
+  LUNCH: 'Lunch',
+  NAMAZ: 'Namaz',
+  WASHROOM: 'Washroom',
+};
+
+/** Daily break budgets (minutes) from SystemSettings with safe fallbacks. */
+const getBreakBudgets = async (): Promise<{ lunch: number; namaz: number; washroom: number }> => {
+  try {
+    const s = await ensureSettings();
+    const budgets = ((s.attendance as Record<string, unknown>) || {}).breakTypeBudgets as Record<string, unknown> | undefined;
+    return {
+      lunch: Number(budgets?.lunch) || 60,
+      namaz: Number(budgets?.namaz) || 10,
+      washroom: Number(budgets?.washroom) || 10,
+    };
+  } catch {
+    return { lunch: 60, namaz: 10, washroom: 10 };
+  }
+};
+
+/**
+ * Resolve the logged-in user's Employee record: by matching email first,
+ * then via the Employee.userId link (covers Lead/HR accounts whose User
+ * email differs from their Employee email).
+ */
+const resolveEmployee = async (req: AuthRequest) => {
+  const email = selfEmail(req);
+  const byEmail = await Employee.findOne({ email, isActive: true });
+  if (byEmail) return byEmail;
+  const user = await User.findOne({ email, isActive: true });
+  if (user) return Employee.findOne({ userId: user._id, isActive: true });
+  return null;
+};
+
+/** Type-bucket key for an attendance doc. */
+const typeKey = (t: BreakType): 'lunch' | 'namaz' | 'washroom' => t.toLowerCase() as 'lunch' | 'namaz' | 'washroom';
 
 const clockOutSchema = z.object({
   employeeEmail: z.string().email(),
@@ -20,6 +106,9 @@ const teamAttendanceSchema = z.object({
   date: z.string().optional(),
 });
 
+/** Identity always comes from the JWT — the client-supplied email is ignored. */
+const selfEmail = (req: AuthRequest): string => req.user!.email.toLowerCase();
+
 // POST /api/attendance/clock-in
 router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -29,7 +118,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    const employee = await resolveEmployee(req);
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
@@ -38,6 +127,9 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
+
+    const { late } = await isLateClockIn(now);
+    const newStatus = late ? 'Late' : 'Present';
 
     const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
     if (existing && existing.clockIn) {
@@ -49,7 +141,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     if (existing) {
       existing.clockIn = timeStr;
       existing.clockInAt = now;
-      existing.status = 'Present';
+      existing.status = newStatus;
       attendance = await existing.save();
     } else {
       attendance = await Attendance.create({
@@ -57,11 +149,22 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
         date: today,
         clockIn: timeStr,
         clockInAt: now,
-        status: 'Present',
+        status: newStatus,
       });
     }
 
-    res.json({ success: true, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: 'Present' } });
+    if (late) {
+      await notifyAttendanceEvent(
+        employee,
+        'Late Arrival',
+        `${employee.name} clocked in LATE at ${timeStr} (after grace period).`,
+        String(attendance._id),
+      );
+    } else {
+      await notifyAttendanceEvent(employee, 'Team Member Clocked In', `${employee.name} clocked in at ${timeStr}.`, String(attendance._id));
+    }
+
+    res.json({ success: true, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: newStatus } });
   } catch (err) {
     console.error('Clock in error:', err);
     res.status(500).json({ error: 'Unable to clock in.' });
@@ -77,7 +180,7 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
-    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    const employee = await resolveEmployee(req);
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
@@ -103,10 +206,16 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
       const breakMs = new Date().getTime() - new Date(attendance.breakStartedAt).getTime();
       const breakMins = Math.max(1, Math.round(breakMs / 60000));
       attendance.breakMinutes = (attendance.breakMinutes || 0) + breakMins;
+      if (attendance.breakType) {
+        const key = typeKey(attendance.breakType);
+        attendance.breakMinutesByType[key] = (attendance.breakMinutesByType?.[key] || 0) + breakMins;
+      }
       attendance.breakStartedAt = null;
+      attendance.breakType = null;
     }
 
     attendance.clockOut = timeStr;
+    attendance.clockOutAt = new Date();
 
     // Calculate working minutes
     const parseTime = (t: string) => {
@@ -125,12 +234,15 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
     if (working < 0) working = 0; // never negative
     attendance.workingMinutes = working;
 
-    // Auto-assign status
-    if (working >= 480) attendance.status = 'Present';
-    else if (working >= 240) attendance.status = 'Half Day';
+    // Auto-assign status (settings-driven, same thresholds as the auto clock-out sweep)
+    const attCfg = await getAttendanceConfig();
+    if (working >= attCfg.requiredWorkingHours * 60) attendance.status = 'Present';
+    else if (working >= attCfg.requiredWorkingHours * 30) attendance.status = 'Half Day';
     else attendance.status = 'Short Hours';
 
     await attendance.save();
+
+    await notifyAttendanceEvent(employee, 'Team Member Clocked Out', `${employee.name} clocked out at ${timeStr} (${attendance.status}).`, String(attendance._id));
 
     res.json({
       success: true,
@@ -149,16 +261,28 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// POST /api/attendance/break-start — start break
+// POST /api/attendance/break-start — start a typed break (LUNCH / NAMAZ / WASHROOM)
 router.post('/break-start', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const parsed = clockInSchema.safeParse(req.body);
+    const parsed = breakStartSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
+    const breakType = parsed.data.breakType;
 
-    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    // Lead/HR may act on a team member by passing memberEmail (access-checked).
+    const memberEmail = parsed.data.memberEmail?.toLowerCase();
+    let employee;
+    if (memberEmail && memberEmail !== selfEmail(req)) {
+      if (!(await canAccessEmployee(req, memberEmail))) {
+        res.status(403).json({ error: 'You can only manage breaks for your own team members.' });
+        return;
+      }
+      employee = await Employee.findOne({ email: memberEmail, isActive: true });
+    } else {
+      employee = await resolveEmployee(req);
+    }
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
@@ -180,26 +304,73 @@ router.post('/break-start', authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
+    // NAMAZ / WASHROOM: block when the daily budget is fully used.
+    // LUNCH: always allowed — extra minutes are deducted from working hours.
+    if (breakType !== 'LUNCH') {
+      const budgets = await getBreakBudgets();
+      const used = attendance.breakMinutesByType?.[typeKey(breakType)] || 0;
+      if (used >= budgets[typeKey(breakType)]) {
+        res.status(409).json({ error: `Daily ${BREAK_LABELS[breakType].toLowerCase()} break budget is used up.` });
+        return;
+      }
+    }
+
     attendance.breakStartedAt = new Date();
+    attendance.breakType = breakType;
+    if (!attendance.breakMinutesByType) attendance.breakMinutesByType = { lunch: 0, namaz: 0, washroom: 0 };
     await attendance.save();
 
-    res.json({ success: true, breakStartedAt: attendance.breakStartedAt });
+    await notifyAttendanceEvent(
+      employee,
+      'Team Member On Break',
+      `${employee.name} went on ${BREAK_LABELS[breakType]} break at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
+      String(attendance._id),
+    );
+
+    // When a lead/HR starts the break on the member's behalf, tell the member.
+    if (memberEmail && memberEmail !== selfEmail(req)) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Break Started',
+        message: `${req.user!.name} started your ${BREAK_LABELS[breakType]} break at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
+        type: 'attendance',
+        relatedId: String(attendance._id),
+      });
+    }
+
+    res.json({
+      success: true,
+      breakStartedAt: attendance.breakStartedAt,
+      breakType: attendance.breakType,
+      breakMinutesByType: attendance.breakMinutesByType,
+    });
   } catch (err) {
     console.error('Break start error:', err);
     res.status(500).json({ error: 'Unable to start break.' });
   }
 });
 
-// POST /api/attendance/break-end — end break and accumulate minutes
+// POST /api/attendance/break-end — end the active break and accumulate minutes per type
 router.post('/break-end', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const parsed = clockInSchema.safeParse(req.body);
+    const parsed = breakEndSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
 
-    const employee = await Employee.findOne({ email: parsed.data.employeeEmail.toLowerCase(), isActive: true });
+    // Lead/HR may end a team member's break by passing memberEmail (access-checked).
+    const memberEmail = parsed.data.memberEmail?.toLowerCase();
+    let employee;
+    if (memberEmail && memberEmail !== selfEmail(req)) {
+      if (!(await canAccessEmployee(req, memberEmail))) {
+        res.status(403).json({ error: 'You can only manage breaks for your own team members.' });
+        return;
+      }
+      employee = await Employee.findOne({ email: memberEmail, isActive: true });
+    } else {
+      employee = await resolveEmployee(req);
+    }
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
@@ -219,12 +390,39 @@ router.post('/break-end', authenticate, async (req: AuthRequest, res: Response):
 
     const breakMs = new Date().getTime() - new Date(attendance.breakStartedAt).getTime();
     const breakMins = Math.max(1, Math.round(breakMs / 60000));
+    const breakType: BreakType = attendance.breakType || 'LUNCH';
 
+    if (!attendance.breakMinutesByType) attendance.breakMinutesByType = { lunch: 0, namaz: 0, washroom: 0 };
+    const key = typeKey(breakType);
+    attendance.breakMinutesByType[key] = (attendance.breakMinutesByType[key] || 0) + breakMins;
     attendance.breakMinutes = (attendance.breakMinutes || 0) + breakMins;
     attendance.breakStartedAt = null;
+    attendance.breakType = null;
     await attendance.save();
 
-    res.json({ success: true, breakMinutes: attendance.breakMinutes, lastBreakMinutes: breakMins });
+    // Over-limit flag: minutes beyond the daily budget for this type
+    const budgets = await getBreakBudgets();
+    const overLimit = attendance.breakMinutesByType[key] > budgets[key];
+
+    // When a lead/HR ends the member's break, tell the member.
+    if (memberEmail && memberEmail !== selfEmail(req)) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Break Ended',
+        message: `${req.user!.name} ended your ${BREAK_LABELS[breakType]} break (${breakMins} min). Time to resume work.`,
+        type: 'attendance',
+        relatedId: String(attendance._id),
+      });
+    }
+
+    res.json({
+      success: true,
+      breakMinutes: attendance.breakMinutes,
+      breakMinutesByType: attendance.breakMinutesByType,
+      lastBreakType: breakType,
+      lastBreakMinutes: breakMins,
+      overLimit,
+    });
   } catch (err) {
     console.error('Break end error:', err);
     res.status(500).json({ error: 'Unable to end break.' });
@@ -234,7 +432,13 @@ router.post('/break-end', authenticate, async (req: AuthRequest, res: Response):
 // GET /api/attendance/today/:email — get today's attendance for an employee
 router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const employee = await Employee.findOne({ email: String(req.params.email).toLowerCase(), isActive: true });
+    const targetEmail = String(req.params.email).toLowerCase();
+    if (!(await canAccessEmployee(req, targetEmail))) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: targetEmail, isActive: true });
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
@@ -242,8 +446,10 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
 
     const today = new Date().toISOString().split('T')[0];
     const attendance = await Attendance.findOne({ employeeId: employee._id, date: today });
+    const breakBudgets = await getBreakBudgets();
 
     res.json({
+      breakBudgets,
       attendance: attendance ? {
         id: attendance._id,
         clockIn: attendance.clockIn || null,
@@ -251,6 +457,8 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
         clockOut: attendance.clockOut || null,
         breakMinutes: attendance.breakMinutes,
         breakStartedAt: attendance.breakStartedAt || null,
+        breakType: attendance.breakType || null,
+        breakMinutesByType: attendance.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
         workingMinutes: attendance.workingMinutes,
         status: attendance.status,
       } : null,
@@ -265,7 +473,13 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
 router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadEmail);
+    if (!isHr(req) && leadParam.toLowerCase() !== selfEmail(req)) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
     const date = String(req.query.date || new Date().toISOString().split('T')[0]);
+    const startDateParam = String(req.query.startDate || '');
+    const endDateParam = String(req.query.endDate || '');
 
     const leadEmployee = leadParam.includes('@')
       ? await Employee.findOne({ email: leadParam.toLowerCase(), isActive: true })
@@ -279,6 +493,45 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
     const teamMembers = await Employee.find({ reportedTo: leadEmployee._id, isActive: true });
     const teamIds = teamMembers.map((m) => m._id);
 
+    // Optional date-range mode (e.g. last 7 / 30 days)
+    if (startDateParam && endDateParam) {
+      const rangeRecords = await Attendance.find({
+        employeeId: { $in: teamIds },
+        date: { $gte: startDateParam, $lte: endDateParam },
+      })
+        .sort({ date: -1 })
+        .populate('employeeId', 'name empId email department jobTitle');
+
+      const teamInfo = new Map(teamMembers.map((m) => [String(m._id), m]));
+
+      res.json({
+        range: { start: startDateParam, end: endDateParam },
+        records: rangeRecords.map((r) => {
+          const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; email: string; department: string; jobTitle: string } | null;
+          const info = emp ? teamInfo.get(String(emp._id)) : undefined;
+          return {
+            employeeId: String(r.employeeId._id || r.employeeId),
+            employeeName: emp?.name || info?.name || 'Unknown',
+            employeeCode: emp?.empId || info?.empId || '—',
+            employeeEmail: emp?.email || info?.email || '',
+            department: emp?.department || info?.department || '',
+            jobTitle: emp?.jobTitle || info?.jobTitle || '',
+            date: r.date,
+            clockIn: r.clockIn || null,
+            clockOut: r.clockOut || null,
+            breakMinutes: r.breakMinutes || 0,
+            workingMinutes: r.workingMinutes || 0,
+            status: r.status,
+            onBreak: !!r.breakStartedAt,
+            breakStartedAt: r.breakStartedAt || null,
+            breakType: r.breakType || null,
+            breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
+          };
+        }),
+      });
+      return;
+    }
+
     const records = await Attendance.find({
       employeeId: { $in: teamIds },
       date,
@@ -290,6 +543,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
         employeeId: m._id.toString(),
         employeeName: m.name,
         employeeCode: m.empId,
+        employeeEmail: m.email,
         department: m.department,
         jobTitle: m.jobTitle,
         date,
@@ -298,6 +552,10 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
         breakMinutes: record?.breakMinutes || 0,
         workingMinutes: record?.workingMinutes || 0,
         status: record?.status || 'Absent',
+        onBreak: !!record?.breakStartedAt,
+        breakStartedAt: record?.breakStartedAt || null,
+        breakType: record?.breakType || null,
+        breakMinutesByType: record?.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
       };
     });
 
@@ -311,16 +569,25 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
 // GET /api/attendance/history/:email — get attendance history for an employee
 router.get('/history/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const employee = await Employee.findOne({ email: String(req.params.email).toLowerCase(), isActive: true });
+    const targetEmail = String(req.params.email).toLowerCase();
+    if (!(await canAccessEmployee(req, targetEmail))) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+
+    const employee = await Employee.findOne({ email: targetEmail, isActive: true });
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
       return;
     }
 
-    const days = parseInt(String(req.query.days) || '30', 10);
-    const records = await Attendance.find({ employeeId: employee._id })
-      .sort({ date: -1 })
-      .limit(days);
+    const days = Math.min(Math.max(parseInt(String(req.query.days) || '30', 10) || 30, 1), 365);
+    const start = new Date();
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+    const startStr = start.toISOString().split('T')[0];
+
+    const records = await Attendance.find({ employeeId: employee._id, date: { $gte: startStr } })
+      .sort({ date: -1 });
 
     res.json({
       employee: { id: employee._id, name: employee.name, empId: employee.empId },
@@ -348,9 +615,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const STANDARD_SHIFT_MINUTES = 540; // 6 PM – 3 AM = 9 hours
 
 const toISODate = (d: Date): string => {
-  const yr = d.getFullYear();
-  const mon = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const yr = d.getUTCFullYear();
+  const mon = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${yr}-${mon}-${day}`;
 };
 
@@ -366,8 +633,7 @@ const dateShort = (iso: string): string => {
 
 const addDays = (iso: string, days: number): string => {
   const [yr, mon, day] = iso.split('-').map(Number);
-  const d = new Date(yr, mon - 1, day);
-  d.setDate(d.getDate() + days);
+  const d = new Date(Date.UTC(yr, mon - 1, day + days));
   return toISODate(d);
 };
 
@@ -392,7 +658,7 @@ const parseClockToMinutes = (timeStr: string): number => {
 const resolvePresetRange = (preset: string, startDate?: string, endDate?: string): { start: string; end: string; label: string } => {
   const today = toISODate(new Date());
   const [ty, tm, td] = today.split('-').map(Number);
-  const dow = new Date(ty, tm - 1, td).getDay(); // 0 = Sun
+  const dow = new Date(Date.UTC(ty, tm - 1, td)).getUTCDay(); // 0 = Sun
 
   switch (preset) {
     case 'today':
@@ -423,10 +689,10 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
       return { start, end: today, label: `This Month — ${MONTHS[tm - 1]} ${ty}` };
     }
     case 'last_month': {
-      const d = new Date(ty, tm - 2, 1);
+      const d = new Date(Date.UTC(ty, tm - 2, 1));
       const start = toISODate(d);
       const [ly, lm] = start.split('-').map(Number);
-      const lastDay = new Date(ly, lm, 0).getDate();
+      const lastDay = new Date(Date.UTC(ly, lm, 0)).getUTCDate();
       const end = `${ly}-${String(lm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       return { start, end, label: `Last Month — ${MONTHS[lm - 1]} ${ly}` };
     }
@@ -442,8 +708,8 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
 
 const PRESENT_STATUSES = ['Present', 'Late', 'Short Hours', 'On Duty', 'Pending OT'];
 
-// GET /api/attendance/hr — HR attendance management with filters, pagination & summaries
-router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/attendance/hr — HR attendance management with filters, pagination & summaries (HR only)
+router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const q = req.query;
     const preset = String(q.preset || 'today');
@@ -510,7 +776,12 @@ router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise
         timeline.push({ id: 'tl_in', time: r.clockIn, date: dateShort(r.date), type: 'CLOCK_IN', label: 'Shift Punch In', notes: 'Clocked in via dashboard' });
       }
       if (r.breakMinutes > 0) {
-        timeline.push({ id: 'tl_break', time: '—', date: dateShort(r.date), type: 'PAUSE', label: 'Break Taken', notes: `Total break duration: ${minutesToHM(r.breakMinutes)}` });
+        const byType = r.breakMinutesByType;
+        const parts: string[] = [];
+        if (byType && byType.lunch > 0) parts.push(`Lunch ${minutesToHM(byType.lunch)}`);
+        if (byType && byType.namaz > 0) parts.push(`Namaz ${minutesToHM(byType.namaz)}`);
+        if (byType && byType.washroom > 0) parts.push(`Washroom ${minutesToHM(byType.washroom)}`);
+        timeline.push({ id: 'tl_break', time: '—', date: dateShort(r.date), type: 'PAUSE', label: 'Break Taken', notes: parts.length ? parts.join(' · ') : `Total break duration: ${minutesToHM(r.breakMinutes)}` });
       }
       if (r.clockOut) {
         timeline.push({ id: 'tl_out', time: r.clockOut, date: dateShort(isOvernight ? addDays(r.date, 1) : r.date), type: 'CLOCK_OUT', label: 'Shift Punch Out', notes: isOvernight ? 'Overnight shift — punched out after midnight' : 'Clocked out via dashboard' });
@@ -532,6 +803,7 @@ router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise
         clockOutTime: r.clockOut || '—',
         clockOutDate: dateShort(isOvernight ? addDays(r.date, 1) : r.date),
         breakDuration: minutesToHM(r.breakMinutes || 0),
+        breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
         workingHours: minutesToHM(worked),
         extraHours: minutesToHM(extra),
         shortHours: minutesToHM(short),
@@ -591,6 +863,10 @@ router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise
         return a + (w < STANDARD_SHIFT_MINUTES && PRESENT_STATUSES.includes(r.status) ? STANDARD_SHIFT_MINUTES - w : 0);
       }, 0);
       const totalEmployees = await Employee.countDocuments({ isActive: true });
+      const [sy, sm, sd] = start.split('-').map(Number);
+      const [ey, em, ed] = end.split('-').map(Number);
+      const rangeDays = Math.max(1, Math.round((Date.UTC(ey, em - 1, ed) - Date.UTC(sy, sm - 1, sd)) / 86400000) + 1);
+      const expectedRecords = totalEmployees * rangeDays;
 
       companySummary = {
         periodLabel: label,
@@ -603,7 +879,7 @@ router.get('/hr', authenticate, async (req: AuthRequest, res: Response): Promise
         avgWorkingHours: workedRecords.length ? minutesToHM(Math.round(totalWorked / workedRecords.length)) : '00:00',
         totalShortHours: minutesToHM(totalShort),
         totalApprovedExtraHours: '00:00',
-        attendanceRate: totalEmployees ? Math.round((countBy(PRESENT_STATUSES) / totalEmployees) * 100) : 0,
+        attendanceRate: expectedRecords ? Math.min(100, Math.round((countBy(PRESENT_STATUSES) / expectedRecords) * 100)) : 0,
       };
     }
 

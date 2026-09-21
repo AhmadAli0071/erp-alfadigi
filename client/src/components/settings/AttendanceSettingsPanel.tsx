@@ -1,16 +1,35 @@
 import React from 'react';
-import { AttendanceSettings } from '../../types/settings';
-import { Clock, ShieldAlert, Coffee, Hourglass, Check } from 'lucide-react';
+import { AttendanceSettings, BreakTypeBudgets } from '../../types/settings';
+import { Clock, ShieldAlert, Coffee, Hourglass, Check, Utensils, Moon, Toilet } from 'lucide-react';
 
 interface AttendanceSettingsPanelProps {
   settings: AttendanceSettings;
   onChange: (updated: Partial<AttendanceSettings>) => void;
 }
 
+const BREAK_BUDGET_FIELDS: {
+  key: keyof BreakTypeBudgets;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  chip: string;
+  max: number;
+  hint: string;
+}[] = [
+  { key: 'lunch', label: 'Lunch Break', icon: Utensils, chip: 'bg-orange-100 text-orange-700', max: 180, hint: 'After budget is used, extra breaks still allowed but cut from working hours.' },
+  { key: 'namaz', label: 'Namaz Break', icon: Moon, chip: 'bg-emerald-100 text-emerald-700', max: 60, hint: 'Multiple short breaks allowed until the daily budget is finished.' },
+  { key: 'washroom', label: 'Washroom Break', icon: Toilet, chip: 'bg-sky-100 text-sky-700', max: 60, hint: 'Multiple short breaks allowed until the daily budget is finished.' },
+];
+
 export const AttendanceSettingsPanel: React.FC<AttendanceSettingsPanelProps> = ({
   settings,
   onChange,
 }) => {
+  const budgets: BreakTypeBudgets = {
+    lunch: settings.breakTypeBudgets?.lunch ?? 60,
+    namaz: settings.breakTypeBudgets?.namaz ?? 10,
+    washroom: settings.breakTypeBudgets?.washroom ?? 10,
+  };
+
   return (
     <div className="space-y-6" id="settings-panel-attendance">
       <div className="border-b border-slate-200/70 pb-4">
@@ -95,6 +114,39 @@ export const AttendanceSettingsPanel: React.FC<AttendanceSettingsPanelProps> = (
             <span className="text-xs text-slate-500 whitespace-nowrap">Minutes</span>
           </div>
           <p className="text-[11px] text-slate-400">Punches within this window (e.g. up to 6:05 PM) are marked Present.</p>
+        </div>
+      </div>
+
+      {/* Break Type Budgets */}
+      <div className="pt-4 border-t border-slate-200/70 space-y-4">
+        <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Break Budgets (Daily)</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {BREAK_BUDGET_FIELDS.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.key} className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`p-1.5 rounded-lg ${f.chip}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-xs font-semibold text-slate-900">{f.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={f.max}
+                    value={budgets[f.key]}
+                    onChange={(e) => onChange({ breakTypeBudgets: { ...budgets, [f.key]: Math.max(0, Number(e.target.value) || 0) } })}
+                    className="w-full bg-white border border-slate-200/80 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 font-mono"
+                    id={`attendance-break-budget-${f.key}`}
+                  />
+                  <span className="text-xs text-slate-500 whitespace-nowrap">min/day</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-snug">{f.hint}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
 

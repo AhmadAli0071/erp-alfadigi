@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LeaveFilterParams } from '../../types/leave';
-import { MOCK_EMPLOYEES } from '../../mock/hrData';
-import { MOCK_LEAVE_TYPES } from '../../mock/leaveData';
+import { leaveService } from '../../services/leaveService';
 import {
   Search,
   Filter,
@@ -20,6 +19,18 @@ interface HRLeaveFilterBarProps {
   totalResultsCount: number;
 }
 
+interface EmployeeOption {
+  id: string;
+  name: string;
+  empId: string;
+  department: string;
+}
+
+const currentYear = new Date().getFullYear();
+
+const toDateInputValue = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
   filters,
   onFilterChange,
@@ -28,8 +39,33 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
 }) => {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
-  const [localCustomStart, setLocalCustomStart] = useState(filters.startDate || '2026-08-01');
-  const [localCustomEnd, setLocalCustomEnd] = useState(filters.endDate || '2026-08-31');
+  const [localCustomStart, setLocalCustomStart] = useState(
+    filters.startDate || toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  );
+  const [localCustomEnd, setLocalCustomEnd] = useState(
+    filters.endDate || toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0))
+  );
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const token = localStorage.getItem('alfa_digi_erp_token');
+        const res = await fetch('/api/employees', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEmployees(data.employees || []);
+        }
+      } catch {
+        // dropdown stays empty if the request fails
+      }
+      setLeaveTypes(leaveService.getLeaveTypes().map((lt) => ({ id: lt.id, name: lt.name })));
+    };
+    loadFilterOptions();
+  }, []);
 
   const datePresets = [
     { id: 'today', label: 'Today' },
@@ -41,7 +77,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
     { id: 'custom', label: 'Custom Range' },
   ];
 
-  const years = [2025, 2026, 2027];
+  const years = [currentYear - 1, currentYear, currentYear + 1];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +100,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
     filters.leaveType !== 'ALL' ||
     filters.status !== 'ALL' ||
     filters.datePreset !== 'this_month' ||
-    filters.year !== 2026;
+    filters.year !== currentYear;
 
   // Filter components reusable between desktop and mobile bottom-sheet
   const filterControls = (
@@ -117,7 +153,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
             id="leave-filter-employee-select"
           >
             <option value="ALL">All Employees</option>
-            {MOCK_EMPLOYEES.map((emp) => (
+            {employees.map((emp) => (
               <option key={emp.id} value={emp.id}>
                 {emp.name} ({emp.empId} — {emp.department})
               </option>
@@ -157,7 +193,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
             id="leave-filter-type-select"
           >
             <option value="ALL">All Leave Types</option>
-            {MOCK_LEAVE_TYPES.map((lt) => (
+            {leaveTypes.map((lt) => (
               <option key={lt.id} value={lt.name}>
                 {lt.name}
               </option>
@@ -220,7 +256,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1">
             <span className="text-[11px] text-slate-500">Year:</span>
             <select
-              value={filters.year || 2026}
+              value={filters.year || currentYear}
               onChange={(e) => onFilterChange({ year: Number(e.target.value), page: 1 })}
               className="bg-transparent text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
               id="leave-filter-year-select"

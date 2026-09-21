@@ -1,6 +1,9 @@
 import {
   AttendanceRecord,
+  AttendanceStatus,
   AttendanceTrendPoint,
+  CompanyAttendanceSummary,
+  DepartmentName,
   DepartmentSummaryItem,
   Employee,
   GlobalSearchResult,
@@ -15,6 +18,8 @@ import {
   AttendanceQueryResult,
   queryAttendanceRecords,
 } from './hrAttendanceGenerator';
+import { AppNotification } from './notificationService';
+import { formatDateShort } from './hrAttendanceGenerator';
 
 const API_BASE = '/api';
 
@@ -26,6 +31,43 @@ const getHeaders = (): Record<string, string> => {
     return {};
   }
 };
+
+interface EmployeesResponse {
+  employees?: Employee[];
+}
+
+interface AttendanceHrResponse {
+  records?: AttendanceRecord[];
+  companySummary?: CompanyAttendanceSummary | null;
+}
+
+interface LeavesHrResponse {
+  leaves?: HrLeaveRecord[];
+}
+
+interface CountResponse {
+  count?: number;
+}
+
+interface NotificationsResponse {
+  notifications?: AppNotification[];
+}
+
+interface HrLeaveRecord {
+  id: string;
+  employeeId: string | { _id?: string };
+  employeeName?: string;
+  employeeCode?: string;
+  department?: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  status: string;
+  hrActionable?: boolean;
+  leadApprovalDate?: string;
+  createdAt: string;
+}
 
 export interface HRDashboardData {
   kpis: HRDashboardKPIs;
@@ -46,6 +88,8 @@ export const EMPTY_DASHBOARD_KPIS: HRDashboardKPIs = {
   lateOrShortHoursToday: 0,
   halfDayToday: 0,
   workFromHomeToday: 0,
+  avgWorkingHoursToday: '00:00',
+  shortHoursTotalToday: '00:00',
   pendingRequestsCount: 0,
   openTicketsCount: 0,
   pendingTicketsCount: 0,
@@ -56,9 +100,72 @@ export const EMPTY_DASHBOARD_KPIS: HRDashboardKPIs = {
   pendingExtraHoursEmployeesCount: 0,
 };
 
+const PRESENT_LIKE_STATUSES: AttendanceStatus[] = ['Present', 'Late', 'Short Hours', 'On Duty', 'Pending OT'];
+
+const DEPARTMENTS: DepartmentName[] = ['HR', 'Sales', 'Tech'];
+
+const timeAgo = (iso?: string): string => {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Math.max(0, Date.now() - then);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+};
+
+const formatDayLabel = (value: string): string => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value).slice(0, 10) : formatDateShort(d);
+};
+
+const parseHM = (value?: string): number => {
+  if (!value) return 0;
+  const [h, m] = value.split(':').map((part) => parseInt(part, 10));
+  return (Number.isNaN(h) ? 0 : h) * 60 + (Number.isNaN(m) ? 0 : m);
+};
+
+const formatHM = (totalMinutes: number): string => {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+const fetchJson = async <TResponse>(url: string): Promise<TResponse | null> => {
+  try {
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) return null;
+    return (await res.json()) as TResponse;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeLeaveEmployeeId = (value: HrLeaveRecord['employeeId']): string => {
+  if (typeof value === 'string') return value;
+  return value?._id ? String(value._id) : '';
+};
+
+const NOTIFICATION_CATEGORY: Record<AppNotification['type'], HRActivityItem['category']> = {
+  leave: 'LEAVE',
+  ticket: 'TICKET',
+  attendance: 'ATTENDANCE',
+  general: 'SYSTEM',
+};
+
+const NOTIFICATION_BADGE_TYPE: Record<AppNotification['type'], HRNotification['type']> = {
+  leave: 'LEAVE',
+  ticket: 'TICKET',
+  attendance: 'CORRECTION',
+  general: 'INFO',
+};
+
 class HRDashboardService {
   private pendingActionsState: PendingActionItem[] = [];
-  private notificationsState: HRNotification[] = [];
+  private notificationsState: AppNotification[] = [];
   private attendanceState: AttendanceRecord[] = [];
   private activitiesState: HRActivityItem[] = [];
   private employeesState: Employee[] = [];
@@ -68,35 +175,134 @@ class HRDashboardService {
       throw new Error('Unable to load dashboard data.');
     }
 
-    // Fetch employees from real API
-    let employees: Employee[] = [];
-    try {
-      const res = await fetch(`${API_BASE}/employees`, { headers: getHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        employees = data.employees || [];
-      }
-    } catch {
-      employees = [];
-    }
+    const [employeesRes, attendanceRes, leavesRes, ticketsRes, notificationsRes] = await Promise.all([
+      fetchJson<EmployeesResponse>(`${API_BASE}/employees`),
+      fetchJson<AttendanceHrResponse>(`${API_BASE}/attendance/hr?preset=today&pageSize=100`),
+      fetchJson<LeavesHrResponse>(`${API_BASE}/leaves/hr?status=ALL`),
+      fetchJson<CountResponse>(`${API_BASE}/tickets/hr-count`),
+      fetchJson<NotificationsResponse>(`${API_BASE}/notifications`),
+    ]);
+
+    const employees = employeesRes?.employees ?? [];
+    const records = attendanceRes?.records ?? [];
+    const companySummary = attendanceRes?.companySummary ?? null;
+    const leaves = leavesRes?.leaves ?? [];
+    const awaitingTickets = ticketsRes?.count ?? 0;
+    const notifications = notificationsRes?.notifications ?? [];
 
     this.employeesState = employees;
+    this.attendanceState = records;
+    this.notificationsState = notifications;
+
+    // ----- Pending actions (leaves awaiting HR action: lead-approved, in-process, or direct-to-HR pending) -----
+    const pendingActions: PendingActionItem[] = leaves
+      .filter((l) => ['Approved', 'In Process'].includes(l.status) || (l.status === 'Pending' && l.hrActionable === true))
+      .map((l) => ({
+      id: String(l.id),
+      type: 'LEAVE_REQUEST',
+      employeeId: normalizeLeaveEmployeeId(l.employeeId),
+      employeeName: l.employeeName || 'Unknown',
+      employeeCode: l.employeeCode || '—',
+      department: ((l.department || 'HR') as DepartmentName),
+      requestType: l.leaveType,
+      details: `${l.totalDays} ${l.totalDays === 1 ? 'Day' : 'Days'} (${formatDayLabel(l.startDate)} → ${formatDayLabel(l.endDate)})`,
+      date: formatDayLabel(l.startDate),
+      status: 'Pending',
+      submissionTime: timeAgo(l.createdAt) || 'Recently',
+      appliedByLead: l.leadApprovalDate ? timeAgo(l.leadApprovalDate) : undefined,
+    }));
+    this.pendingActionsState = pendingActions;
+
+    // ----- Attendance KPIs (today) -----
+    const countByStatus = (status: AttendanceStatus): number =>
+      records.filter((r) => r.status === status).length;
+
+    const lateCount = countByStatus('Late');
+    const shortCount = countByStatus('Short Hours');
+    const lateOrShortHoursToday = lateCount + shortCount;
+
+    const presentLike = companySummary
+      ? companySummary.presentCount
+      : records.filter((r) => PRESENT_LIKE_STATUSES.includes(r.status)).length;
+    const presentToday = Math.max(0, presentLike - lateOrShortHoursToday);
+    const onLeaveToday = companySummary ? companySummary.leaveCount : countByStatus('Leave');
+    const workFromHomeToday = companySummary ? companySummary.wfhCount : countByStatus('Work From Home');
+    const halfDayToday = companySummary ? companySummary.halfDayCount : countByStatus('Half Day');
+    const absentCounted = companySummary ? companySummary.absentCount : countByStatus('Absent');
+    const accounted = presentLike + workFromHomeToday + onLeaveToday + halfDayToday;
+    const absentToday = Math.max(absentCounted, employees.length - accounted, 0);
+
+    const workedRecords = records.filter((r) => parseHM(r.workingHours) > 0);
+    const avgWorkingMinutes = workedRecords.length
+      ? Math.round(workedRecords.reduce((acc, r) => acc + parseHM(r.workingHours), 0) / workedRecords.length)
+      : 0;
+    const shortTotalMinutes = records.reduce((acc, r) => acc + parseHM(r.shortHours), 0);
+    const extraRecords = records.filter((r) => parseHM(r.extraHours) > 0);
+    const extraTotalMinutes = extraRecords.reduce((acc, r) => acc + parseHM(r.extraHours), 0);
+    const extraEmployees = new Set(extraRecords.map((r) => r.employeeId));
+
+    // ----- Department summary (today) -----
+    const departmentSummary: DepartmentSummaryItem[] = DEPARTMENTS.map((dept) => {
+      const total = employees.filter((e) => e.department === dept).length;
+      const deptRecords = records.filter((r) => r.department === dept);
+      const present = deptRecords.filter((r) => PRESENT_LIKE_STATUSES.includes(r.status)).length;
+      const onLeave = deptRecords.filter((r) => r.status === 'Leave').length;
+      const wfh = deptRecords.filter((r) => r.status === 'Work From Home').length;
+      const absent = Math.max(0, total - present - onLeave - wfh);
+      return {
+        department: dept,
+        totalEmployees: total,
+        present,
+        absent,
+        onLeave,
+        wfh,
+        attendanceRate: total ? Math.round((present / total) * 100) : 0,
+      };
+    });
+
+    // ----- Recent activities from real notifications -----
+    const recentActivities: HRActivityItem[] = notifications.slice(0, 6).map((n) => ({
+      id: n.id,
+      title: n.title,
+      description: n.message,
+      timestamp: timeAgo(n.createdAt) || 'Recently',
+      category: NOTIFICATION_CATEGORY[n.type] ?? 'SYSTEM',
+      actorName: 'System',
+      actorRole: 'System',
+    }));
+    this.activitiesState = recentActivities;
+
+    const pendingLeavesCount = pendingActions.length;
+    const pendingTicketsCount = awaitingTickets;
+
+    const kpis: HRDashboardKPIs = {
+      totalEmployees: employees.length,
+      presentToday,
+      absentToday,
+      onLeaveToday,
+      lateOrShortHoursToday,
+      halfDayToday,
+      workFromHomeToday,
+      avgWorkingHoursToday: formatHM(avgWorkingMinutes),
+      shortHoursTotalToday: formatHM(shortTotalMinutes),
+      pendingRequestsCount: pendingLeavesCount + pendingTicketsCount,
+      openTicketsCount: awaitingTickets,
+      pendingTicketsCount,
+      pendingLeavesCount,
+      pendingCorrectionsCount: 0,
+      pendingOvertimeCount: 0,
+      pendingExtraHoursTotalTime: extraTotalMinutes > 0 ? formatHM(extraTotalMinutes) : '—',
+      pendingExtraHoursEmployeesCount: extraEmployees.size,
+    };
 
     return {
-      kpis: {
-        ...EMPTY_DASHBOARD_KPIS,
-        totalEmployees: employees.length,
-        pendingRequestsCount: this.pendingActionsState.filter(a => a.status === 'Pending').length,
-        pendingLeavesCount: this.pendingActionsState.filter(a => a.type === 'LEAVE_REQUEST' && a.status === 'Pending').length,
-        pendingCorrectionsCount: this.pendingActionsState.filter(a => a.type === 'ATTENDANCE_CORRECTION' && a.status === 'Pending').length,
-        pendingOvertimeCount: this.pendingActionsState.filter(a => a.type === 'EXTRA_HOURS' && a.status === 'Pending').length,
-      },
-      todayAttendance: [...this.attendanceState],
-      pendingActions: [...this.pendingActionsState],
+      kpis,
+      todayAttendance: [...records],
+      pendingActions: [...pendingActions],
       leaveOverview: [],
-      departmentSummary: [],
+      departmentSummary,
       attendanceTrend: [],
-      recentActivities: [...this.activitiesState],
+      recentActivities,
       employees,
     };
   }
@@ -137,24 +343,34 @@ class HRDashboardService {
     URL.revokeObjectURL(url);
   }
 
+  private async putLeaveAction(leaveId: string, action: 'hr-approve' | 'hr-reject', note?: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/leaves/${leaveId}/${action}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ note: note || '' }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   public async approveAction(actionId: string, note?: string): Promise<{ success: boolean; message: string }> {
-    await new Promise((resolve) => setTimeout(resolve, 200));
     const target = this.pendingActionsState.find((a) => a.id === actionId);
     if (!target) return { success: false, message: 'Action item not found.' };
 
-    target.status = 'Approved';
+    const ok = await this.putLeaveAction(actionId, 'hr-approve', note);
+    if (!ok) return { success: false, message: 'Server could not approve this leave request.' };
 
-    if (target.type === 'EXTRA_HOURS') {
-      const att = this.attendanceState.find((r) => r.employeeId === target.employeeId);
-      if (att && att.status === 'Pending OT') att.status = 'Present';
-    }
+    this.pendingActionsState = this.pendingActionsState.filter((a) => a.id !== actionId);
 
     this.activitiesState.unshift({
       id: `act_log_${Date.now()}`,
       title: `${target.requestType} Approved`,
-      description: `HR Admin approved ${target.employeeName}'s ${target.requestType.toLowerCase()}${note ? ` (${note})` : ''}.`,
+      description: `Final HR approval granted for ${target.employeeName}'s ${target.requestType.toLowerCase()}${note ? ` — "${note}"` : ''}.`,
       timestamp: 'Just now',
-      category: target.type === 'LEAVE_REQUEST' ? 'LEAVE' : 'ATTENDANCE',
+      category: 'LEAVE',
       actorName: 'HR Admin',
       actorRole: 'HR Admin',
     });
@@ -163,18 +379,20 @@ class HRDashboardService {
   }
 
   public async rejectAction(actionId: string, reason?: string): Promise<{ success: boolean; message: string }> {
-    await new Promise((resolve) => setTimeout(resolve, 200));
     const target = this.pendingActionsState.find((a) => a.id === actionId);
     if (!target) return { success: false, message: 'Action item not found.' };
 
-    target.status = 'Rejected';
+    const ok = await this.putLeaveAction(actionId, 'hr-reject', reason);
+    if (!ok) return { success: false, message: 'Server could not reject this leave request.' };
+
+    this.pendingActionsState = this.pendingActionsState.filter((a) => a.id !== actionId);
 
     this.activitiesState.unshift({
       id: `act_log_${Date.now()}`,
       title: `${target.requestType} Rejected`,
       description: `HR Admin rejected ${target.employeeName}'s request${reason ? `: "${reason}"` : ''}.`,
       timestamp: 'Just now',
-      category: target.type === 'LEAVE_REQUEST' ? 'LEAVE' : 'ATTENDANCE',
+      category: 'LEAVE',
       actorName: 'HR Admin',
       actorRole: 'HR Admin',
     });
@@ -183,16 +401,38 @@ class HRDashboardService {
   }
 
   public async getNotifications(): Promise<HRNotification[]> {
-    return [...this.notificationsState];
+    const data = await fetchJson<NotificationsResponse>(`${API_BASE}/notifications`);
+    const items = data?.notifications ?? [];
+    this.notificationsState = items;
+    return items.map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      timeAgo: timeAgo(n.createdAt) || 'Recently',
+      type: NOTIFICATION_BADGE_TYPE[n.type],
+      isRead: n.isRead,
+      actionUrl: undefined,
+      relatedId: n.relatedId,
+    }));
   }
 
   public async markNotificationRead(id: string): Promise<void> {
-    const notif = this.notificationsState.find((n) => n.id === id);
-    if (notif) notif.isRead = true;
+    try {
+      await fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT', headers: getHeaders() });
+      const notif = this.notificationsState.find((n) => n.id === id);
+      if (notif) notif.isRead = true;
+    } catch {
+      // ignore
+    }
   }
 
   public async markAllNotificationsRead(): Promise<void> {
-    this.notificationsState.forEach((n) => (n.isRead = true));
+    try {
+      await fetch(`${API_BASE}/notifications/read-all`, { method: 'PUT', headers: getHeaders() });
+      this.notificationsState.forEach((n) => (n.isRead = true));
+    } catch {
+      // ignore
+    }
   }
 
   public async searchGlobal(query: string): Promise<GlobalSearchResult[]> {

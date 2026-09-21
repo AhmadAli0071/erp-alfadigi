@@ -1,11 +1,30 @@
 import React from 'react';
 import { Clock, ArrowRight, AlertTriangle, Sparkles } from 'lucide-react';
+import { HRDashboardKPIs } from '../../types/hr';
 
 interface HRWorkingHoursCardProps {
+  kpis?: HRDashboardKPIs;
   onNavigate: (route: string) => void;
 }
 
-export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ onNavigate }) => {
+const STANDARD_SHIFT_MINUTES = 540; // 9h standard shift
+
+const parseHM = (value?: string): number => {
+  if (!value) return 0;
+  const [h, m] = value.split(':').map((part) => parseInt(part, 10));
+  return (Number.isNaN(h) ? 0 : h) * 60 + (Number.isNaN(m) ? 0 : m);
+};
+
+export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ kpis, onNavigate }) => {
+  const hasData = (value?: string) => !!value && parseHM(value) > 0;
+
+  const avgMinutes = parseHM(kpis?.avgWorkingHoursToday);
+  const shortTotal = kpis?.shortHoursTotalToday || '00:00';
+  const extraTotal = kpis?.pendingExtraHoursTotalTime || '—';
+  const extraCount = kpis?.pendingExtraHoursEmployeesCount || 0;
+
+  const progressPct = Math.min(100, Math.round((avgMinutes / STANDARD_SHIFT_MINUTES) * 100));
+
   return (
     <section
       className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 shadow-sm"
@@ -39,14 +58,18 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ onNaviga
         {/* Average Working Hours */}
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
           <span className="text-[11px] font-medium text-slate-500 block mb-1">Average Working Hours</span>
-          <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">—</div>
-          <span className="text-[10px] text-slate-500 font-medium">No data</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">
+            {hasData(kpis?.avgWorkingHoursToday) ? kpis?.avgWorkingHoursToday : '—'}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            {hasData(kpis?.avgWorkingHoursToday) ? "Today's workforce average" : 'No data'}
+          </span>
         </div>
 
         {/* Required */}
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
           <span className="text-[11px] font-medium text-slate-500 block mb-1">Required</span>
-          <div className="text-xl sm:text-2xl font-extrabold text-indigo-600 font-mono">8h</div>
+          <div className="text-xl sm:text-2xl font-extrabold text-indigo-600 font-mono">9h</div>
           <span className="text-[10px] text-slate-500 font-medium">Standard baseline</span>
         </div>
 
@@ -56,18 +79,26 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ onNaviga
             <span className="text-[11px] font-medium text-slate-500">Short Hours</span>
             <AlertTriangle className="w-3 h-3 text-amber-600" />
           </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-amber-600 font-mono">—</div>
-          <span className="text-[10px] text-slate-500 font-medium">No data</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-amber-600 font-mono">
+            {hasData(shortTotal) ? shortTotal : '—'}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            {hasData(shortTotal) ? 'Cumulative deficit today' : 'No shortfall'}
+          </span>
         </div>
 
         {/* Extra Hours Pending */}
         <div className="p-3.5 rounded-xl bg-indigo-500/[0.04] border border-indigo-200">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-slate-500">Extra Hours Pending</span>
+            <span className="text-[11px] font-medium text-slate-500">Extra Hours Logged</span>
             <Sparkles className="w-3 h-3 text-indigo-600" />
           </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-indigo-600 font-mono">—</div>
-          <span className="text-[10px] text-slate-500 font-medium">No data</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-indigo-600 font-mono">
+            {hasData(kpis?.pendingExtraHoursTotalTime) ? extraTotal : '—'}
+          </div>
+          <span className="text-[10px] text-slate-500 font-medium">
+            {hasData(kpis?.pendingExtraHoursTotalTime) ? `By ${extraCount} employee${extraCount === 1 ? '' : 's'}` : 'No overtime today'}
+          </span>
         </div>
       </div>
 
@@ -75,13 +106,14 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ onNaviga
       <div className="space-y-1.5 pt-2">
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span>Shift Progress</span>
-          <span className="text-slate-500">No working-hours data available</span>
+          <span className="text-slate-500">
+            {avgMinutes > 0 ? `${progressPct}% of 9h standard shift` : 'No working-hours data available'}
+          </span>
         </div>
         <div className="w-full bg-slate-100/60 h-2 rounded-full overflow-hidden">
-          <div className="bg-indigo-500 h-full rounded-full w-0" />
+          <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${avgMinutes > 0 ? progressPct : 0}%` }} />
         </div>
       </div>
     </section>
   );
 };
-

@@ -48,14 +48,14 @@ export const HRExportModal: React.FC<HRExportModalProps> = ({
     try {
       setIsExporting(true);
       setNotice(null);
-      const res拼 = await reportService.exportReport(category, selectedFormat, data);
-      if (res拼.success) {
-        setNotice({ type: 'success', message: res拼.message });
+      const res = await reportService.exportReport(category, selectedFormat, data);
+      if (res.success) {
+        setNotice({ type: 'success', message: res.message });
         setTimeout(() => {
           onClose();
         }, 1500);
       } else {
-        setNotice({ type: 'error', message: res拼.message });
+        setNotice({ type: 'error', message: res.message });
       }
     } finally {
       setIsExporting(false);

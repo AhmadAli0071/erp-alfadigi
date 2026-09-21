@@ -4,6 +4,7 @@ import { BrandLogo } from '../common/BrandLogo';
 import { HRDashboardLayout } from './HRDashboardLayout';
 import { LeadDashboardLayout } from '../leads/LeadDashboardLayout';
 import { EmployeeDashboardLayout } from '../employee/EmployeeDashboardLayout';
+import { SuperAdminDashboardLayout } from './SuperAdminDashboardLayout';
 import {
   ShieldAlert,
   Users,
@@ -27,6 +28,11 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({
   user,
   onLogout,
 }) => {
+  // If the logged-in user is Super Admin, render the exclusive Super Admin control center
+  if (user.role === 'SUPER_ADMIN') {
+    return <SuperAdminDashboardLayout user={user} onLogout={onLogout} />;
+  }
+
   // If the logged-in user is HR Admin, render Screen 2: HR Admin Dashboard
   if (user.role === 'HR_ADMIN') {
     return <HRDashboardLayout user={user} onLogout={onLogout} />;

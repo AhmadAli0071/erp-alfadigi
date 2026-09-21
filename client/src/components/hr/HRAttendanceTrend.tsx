@@ -9,7 +9,7 @@ interface HRAttendanceTrendProps {
 export const HRAttendanceTrend: React.FC<HRAttendanceTrendProps> = ({ trendData }) => {
   const [activeHoverPoint, setActiveHoverPoint] = useState<AttendanceTrendPoint | null>(null);
 
-  const maxVal = 24; // Total workforce
+  const maxVal = Math.max(1, ...trendData.map((pt) => pt.present + pt.absent + pt.leave));
 
   return (
     <div
@@ -28,7 +28,7 @@ export const HRAttendanceTrend: React.FC<HRAttendanceTrendProps> = ({ trendData 
               Attendance Trend (Last 7 Days)
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              Daily turnout analysis across 24 workforce members
+              Daily turnout analysis across the workforce
             </p>
           </div>
         </div>

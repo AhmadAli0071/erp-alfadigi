@@ -76,7 +76,7 @@ export const HRDepartmentOverview: React.FC<HRDepartmentOverviewProps> = ({
                     {d.name}
                   </span>
                   <span className="text-xs font-bold text-slate-500">
-                    {hasData ? `${Math.round((deptData.presentCount / deptData.totalEmployees) * 100)}%` : '—'}
+                    {hasData ? `${Math.round((deptData.present / deptData.totalEmployees) * 100)}%` : '—'}
                   </span>
                 </div>
 
@@ -89,7 +89,7 @@ export const HRDepartmentOverview: React.FC<HRDepartmentOverviewProps> = ({
                 <div className="w-full bg-slate-100/60 h-1.5 rounded-full overflow-hidden my-2.5">
                   <div
                     style={{
-                      width: hasData ? `${Math.round((deptData.presentCount / deptData.totalEmployees) * 100)}%` : '0%',
+                      width: hasData ? `${Math.round((deptData.present / deptData.totalEmployees) * 100)}%` : '0%',
                     }}
                     className={`h-full rounded-full ${d.barColor}`}
                   />
@@ -99,10 +99,10 @@ export const HRDepartmentOverview: React.FC<HRDepartmentOverviewProps> = ({
               {/* Attendance breakdown */}
               <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/70 text-slate-500">
                 <span className="text-slate-600 font-semibold">
-                  Present: {hasData ? deptData.presentCount : '—'}
+                  Present: {hasData ? deptData.present : '—'}
                 </span>
                 <span className="text-slate-500">
-                  On Leave: {hasData ? deptData.onLeaveCount : '—'}
+                  On Leave: {hasData ? deptData.onLeave : '—'}
                 </span>
               </div>
             </div>

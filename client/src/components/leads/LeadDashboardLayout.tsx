@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import { LeadDepartment } from '../../types/lead';
 import { LeadSidebar } from './LeadSidebar';
@@ -19,24 +20,37 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [openTicketsCount, setOpenTicketsCount] = useState(0);
 
   const department = (user.department || 'Tech') as LeadDepartment;
 
-  // Real pending leave count for sidebar badge
+  // Real pending leave count + open team tickets count for sidebar badges
+  const fetchCounts = async () => {
+    try {
+      const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const [leaveRes, ticketsRes] = await Promise.all([
+        fetch(`/api/leaves/pending-count/${user.email}`, { headers }),
+        fetch(`/api/tickets/team/${user.email}`, { headers }),
+      ]);
+      if (leaveRes.ok) {
+        const data = await leaveRes.json();
+        setPendingCount(data.count || 0);
+      }
+      if (ticketsRes.ok) {
+        const data = await ticketsRes.json();
+        const active = (data.tickets || []).filter((t: { status?: string }) => !['Closed', 'Rejected', 'Cancelled'].includes(t.status || '')).length;
+        setOpenTicketsCount(active);
+      }
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => {
-    const fetchPending = async () => {
-      try {
-        const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`/api/leaves/pending-count/${user.email}`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setPendingCount(data.count || 0);
-        }
-      } catch { /* ignore */ }
-    };
-    fetchPending();
+    fetchCounts();
   }, [user.email, currentRoute]);
+
+  // Live refresh: SSE notification ya window focus par sidebar badge counts refetch
+  useRealtimeRefresh(fetchCounts);
 
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
@@ -61,6 +75,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         pendingCount={pendingCount}
+        openTicketsCount={openTicketsCount}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 relative z-[1]">

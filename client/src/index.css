@@ -7,10 +7,36 @@
 
   /* ---------- Brand palette ---------- */
   --color-canvas: #f7f9fc;
-  --color-primary: #5b5fef;
-  --color-primary-hover: #6d71ff;
-  --color-primary-soft: #eef0fe;
-  --color-primary-ring: rgba(91, 95, 239, 0.18);
+  --color-primary: #f37221;
+  --color-primary-hover: #f5843d;
+  --color-primary-soft: #fbeee4;
+  --color-primary-ring: rgba(243, 114, 33, 0.18);
+
+  /* ---------- Alfa brand scale (from logo) — overrides Tailwind indigo ---------- */
+  --color-indigo-50: #fdf6f2;
+  --color-indigo-100: #fbeee4;
+  --color-indigo-200: #fcd7c0;
+  --color-indigo-300: #f9b890;
+  --color-indigo-400: #f6965a;
+  --color-indigo-500: #f5843d;
+  --color-indigo-600: #f37221;
+  --color-indigo-700: #c55916;
+  --color-indigo-800: #9f4913;
+  --color-indigo-900: #833d11;
+  --color-indigo-950: #52260a;
+
+  /* ---------- Alfa brand scale — overrides Tailwind blue ---------- */
+  --color-blue-50: #fdf6f2;
+  --color-blue-100: #fbeee4;
+  --color-blue-200: #fcd7c0;
+  --color-blue-300: #f9b890;
+  --color-blue-400: #f6965a;
+  --color-blue-500: #f5843d;
+  --color-blue-600: #f37221;
+  --color-blue-700: #c55916;
+  --color-blue-800: #9f4913;
+  --color-blue-900: #833d11;
+  --color-blue-950: #52260a;
 
   /* ---------- Soft shadow system (light, low opacity) ---------- */
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -51,8 +77,8 @@ body {
 }
 
 ::selection {
-  background: rgba(91, 95, 239, 0.16);
-  color: #312e81;
+  background: rgba(243, 114, 33, 0.16);
+  color: #7c2d12;
 }
 
 /* ==================================================================
@@ -90,16 +116,16 @@ body {
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.14);
 }
 
-/* Decorative page background — extremely subtle indigo glow */
+/* Decorative page background — extremely subtle brand glow */
 .app-bg {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(48rem 24rem at 12% -8%, rgba(91, 95, 239, 0.07), transparent 60%),
-    radial-gradient(40rem 22rem at 88% -12%, rgba(129, 140, 248, 0.06), transparent 60%),
-    radial-gradient(36rem 20rem at 50% 110%, rgba(91, 95, 239, 0.045), transparent 60%);
+    radial-gradient(48rem 24rem at 12% -8%, rgba(243, 114, 33, 0.07), transparent 60%),
+    radial-gradient(40rem 22rem at 88% -12%, rgba(246, 150, 90, 0.06), transparent 60%),
+    radial-gradient(36rem 20rem at 50% 110%, rgba(243, 114, 33, 0.045), transparent 60%);
 }
 
 /* ==================================================================
@@ -123,7 +149,7 @@ body {
 
 .glass-input:focus {
   outline: none;
-  border-color: #5b5fef;
+  border-color: #f37221;
   box-shadow: 0 0 0 4px var(--color-primary-ring);
   background: #ffffff;
 }
@@ -262,7 +288,7 @@ body {
   .abstract-ring {
     position: absolute;
     border-radius: 50%;
-    border: 1px solid rgba(91, 95, 239, 0.14);
+    border: 1px solid rgba(243, 114, 33, 0.14);
     pointer-events: none;
   }
 }

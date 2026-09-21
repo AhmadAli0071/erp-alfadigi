@@ -5,7 +5,10 @@ import { Employee } from '../models/Employee.js';
 import { User } from '../models/User.js';
 import { Attendance } from '../models/Attendance.js';
 import { Leave } from '../models/Leave.js';
+import { Ticket } from '../models/Ticket.js';
+import { Notification } from '../models/Notification.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
+import { canAccessEmployee, isHr } from '../utils/access.js';
 
 const router = Router();
 
@@ -36,7 +39,8 @@ const resetPasswordSchema = z.object({
 // GET /api/employees — list all employees
 router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const includeInactive = String(req.query.includeInactive || '') === '1';
+    // Only HR may include deactivated employees
+    const includeInactive = isHr(req) && String(req.query.includeInactive || '') === '1';
     const filter: Record<string, unknown> = includeInactive ? {} : { isActive: true };
     const employees = await Employee.find(filter)
       .populate('reportedTo', 'name empId jobTitle')
@@ -86,6 +90,15 @@ router.get('/team/:leadId', authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
+    // Leads may only view their own team (HR can view any team)
+    if (!isHr(req)) {
+      const requester = await Employee.findOne({ email: req.user!.email.toLowerCase(), isActive: true });
+      if (!requester || requester._id.toString() !== leadEmployee._id.toString()) {
+        res.status(403).json({ error: 'Insufficient permissions.' });
+        return;
+      }
+    }
+
     const teamMembers = await Employee.find({
       reportedTo: leadEmployee._id,
       isActive: true,
@@ -119,15 +132,10 @@ router.get('/team/:leadId', authenticate, async (req: AuthRequest, res: Response
 // GET /api/employees/leads — get all department leads (for dropdown)
 router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const leads = await Employee.find({
-      status: 'Active',
-      $or: [
-        { jobTitle: { $regex: /lead/i } },
-        { jobTitle: { $regex: /director/i } },
-        { jobTitle: { $regex: /head/i } },
-        { jobTitle: { $regex: /manager/i } },
-      ],
-    }).sort({ name: 1 });
+    // Leads are defined by USER ROLE (DEPARTMENT_LEAD) — not by job title keywords
+    const leadUsers = await User.find({ role: 'DEPARTMENT_LEAD', isActive: true }).select('email');
+    const leadEmails = leadUsers.map((u) => u.email?.toLowerCase()).filter(Boolean);
+    const leads = await Employee.find({ email: { $in: leadEmails }, status: 'Active', isActive: true }).sort({ name: 1 });
 
     res.json({
       leads: leads.map((e) => ({
@@ -146,8 +154,14 @@ router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Pro
 // GET /api/employees/me/:email — my own profile (with lead info + quick stats)
 router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const targetEmail = String(req.params.email).toLowerCase();
+    if (!(await canAccessEmployee(req, targetEmail))) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+
     const employee = await Employee.findOne({
-      email: String(req.params.email).toLowerCase(),
+      email: targetEmail,
       isActive: true,
     }).populate('reportedTo', 'name empId jobTitle department email');
 
@@ -160,10 +174,9 @@ router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): 
       | { _id: { toString(): string }; name: string; empId: string; jobTitle: string; department: string; email: string }
       | null;
 
-    // Quick stats: attendance this month + leaves
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    const monthStartStr = monthStart.toISOString().split('T')[0];
+    // Quick stats: attendance this month + leaves (UTC-based, matching stored dates)
+    const now = new Date();
+    const monthStartStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
     const [attendanceCount, presentCount, totalLeaves, approvedLeaves] = await Promise.all([
       Attendance.countDocuments({ employeeId: employee._id, date: { $gte: monthStartStr } }),
@@ -208,6 +221,12 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promis
       res.status(404).json({ error: 'Employee not found.' });
       return;
     }
+
+    if (!(await canAccessEmployee(req, employee.email))) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+
     res.json({
       id: employee._id.toString(),
       empId: employee.empId,
@@ -247,20 +266,31 @@ router.post(
         return;
       }
 
-      const count = await Employee.countDocuments();
-      const empId = `EMP-${String(count + 1).padStart(3, '0')}`;
-
-      const employee = await Employee.create({
-        userId: userId || undefined,
-        empId,
-        name,
-        email: email.toLowerCase(),
-        department,
-        jobTitle,
-        phone: phone || '',
-        joinedDate,
-        status: 'Active',
-      });
+      let employee;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const count = await Employee.countDocuments();
+        const empId = `EMP-${String(count + 1 + attempt).padStart(3, '0')}`;
+        try {
+          employee = await Employee.create({
+            userId: userId || undefined,
+            empId,
+            name,
+            email: email.toLowerCase(),
+            department,
+            jobTitle,
+            phone: phone || '',
+            joinedDate,
+            status: 'Active',
+          });
+          break;
+        } catch (err) {
+          const dupCode = (err as { code?: number })?.code;
+          if (dupCode !== 11000 || attempt === 4) throw err;
+        }
+      }
+      if (!employee) {
+        throw new Error('Employee creation failed.');
+      }
 
       res.status(201).json({
         success: true,
@@ -301,6 +331,14 @@ router.put(
         updateData.reportedTo = updateData.reportedTo || null;
       }
 
+      const existingEmployee = await Employee.findById(req.params.id);
+      if (!existingEmployee) {
+        res.status(404).json({ error: 'Employee not found.' });
+        return;
+      }
+      const previousEmail = existingEmployee.email;
+      const previousName = existingEmployee.name;
+
       const employee = await Employee.findByIdAndUpdate(
         req.params.id,
         { $set: updateData },
@@ -312,12 +350,17 @@ router.put(
         return;
       }
 
-      // Sync email/name changes to User model
+      // Sync email/name changes to the User login — look up by the ORIGINAL email,
+      // since the User record still holds the old value when the email changed
       if (updateData.email || updateData.name) {
-        const userUpdate: Record<string, string> = {};
-        if (updateData.email) userUpdate.email = updateData.email.toLowerCase();
-        if (updateData.name) userUpdate.name = updateData.name;
-        await User.findOneAndUpdate({ email: employee.email }, { $set: userUpdate });
+        const emailChanged = !!updateData.email && updateData.email.toLowerCase() !== previousEmail;
+        const nameChanged = !!updateData.name && updateData.name !== previousName;
+        if (emailChanged || nameChanged) {
+          const userUpdate: Record<string, string> = {};
+          if (updateData.email) userUpdate.email = updateData.email.toLowerCase();
+          if (updateData.name) userUpdate.name = updateData.name;
+          await User.findOneAndUpdate({ email: previousEmail }, { $set: userUpdate });
+        }
       }
 
       res.json({
@@ -359,10 +402,66 @@ router.delete(
         return;
       }
 
+      // Deactivate the login account so a deactivated employee cannot sign in
+      await User.updateOne({ email: employee.email }, { $set: { isActive: false } });
+
       res.json({ success: true, message: 'Employee deactivated.' });
     } catch (err) {
       console.error('Delete employee error:', err);
       res.status(500).json({ error: 'Unable to deactivate employee.' });
+    }
+  }
+);
+
+// DELETE /api/employees/:id/permanent — permanently remove employee + all linked data (HR only)
+router.delete(
+  '/:id/permanent',
+  authenticate,
+  requireRole('HR_ADMIN', 'SUPER_ADMIN'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const employee = await Employee.findById(req.params.id);
+      if (!employee) {
+        res.status(404).json({ error: 'Employee not found.' });
+        return;
+      }
+
+      if (employee.email.toLowerCase() === req.user!.email.toLowerCase()) {
+        res.status(400).json({ error: 'You cannot permanently delete your own account.' });
+        return;
+      }
+
+      const linkedUser = await User.findOne({ email: employee.email.toLowerCase() });
+      if (linkedUser?.role === 'SUPER_ADMIN' && req.user!.role !== 'SUPER_ADMIN') {
+        res.status(403).json({ error: 'Only a Super Admin can permanently delete a Super Admin.' });
+        return;
+      }
+
+      const deletedUser = linkedUser ? await User.deleteOne({ _id: linkedUser._id }) : null;
+      const deletedEmp = await Employee.deleteOne({ _id: employee._id });
+      const attendance = await Attendance.deleteMany({ employeeId: employee._id });
+      const leaves = await Leave.deleteMany({ employeeId: employee._id });
+      const tickets = await Ticket.deleteMany({ employeeId: employee._id });
+      const notifications = await Notification.deleteMany({ userEmail: employee.email.toLowerCase() });
+      await Employee.updateMany({ reportedTo: employee._id }, { $set: { reportedTo: null } });
+
+      console.warn(`[audit] Employee permanently deleted: ${employee.email} (${employee.empId}) by ${req.user?.email} from IP ${req.ip}`);
+
+      res.json({
+        success: true,
+        message: `${employee.name} permanently deleted.`,
+        removed: {
+          user: deletedUser ? deletedUser.deletedCount : 0,
+          employee: deletedEmp.deletedCount,
+          attendance: attendance.deletedCount,
+          leaves: leaves.deletedCount,
+          tickets: tickets.deletedCount,
+          notifications: notifications.deletedCount,
+        },
+      });
+    } catch (err) {
+      console.error('Permanent delete employee error:', err);
+      res.status(500).json({ error: 'Unable to permanently delete employee.' });
     }
   }
 );

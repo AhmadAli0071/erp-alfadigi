@@ -12,6 +12,84 @@ import {
   MOCK_LEAVE_TYPES,
   getOrCreateEmployeeBalance,
 } from '../mock/leaveData';
+import { formatDateLabel, formatDateShort, formatISODate } from './hrAttendanceGenerator';
+
+const monthName = (d: Date): string => d.toLocaleString('en-US', { month: 'long' });
+
+const resolveLeaveDateRange = (
+  preset: string,
+  customStart?: string,
+  customEnd?: string,
+  year?: number
+): { start: string; end: string; label: string } => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (preset) {
+    case 'today':
+      return { start: formatISODate(today), end: formatISODate(today), label: `Today (${formatDateLabel(today)})` };
+    case 'this_week': {
+      const startOfWeek = new Date(today);
+      const day = startOfWeek.getDay();
+      startOfWeek.setDate(startOfWeek.getDate() - day + (day === 0 ? -6 : 1));
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      return {
+        start: formatISODate(startOfWeek),
+        end: formatISODate(endOfWeek),
+        label: `This Week (${formatDateShort(startOfWeek)} – ${formatDateShort(endOfWeek)})`,
+      };
+    }
+    case 'last_week': {
+      const endOfLastWeek = new Date(today);
+      const day = endOfLastWeek.getDay();
+      endOfLastWeek.setDate(endOfLastWeek.getDate() - day + (day === 0 ? -7 : 0));
+      const startOfLastWeek = new Date(endOfLastWeek);
+      startOfLastWeek.setDate(endOfLastWeek.getDate() - 6);
+      return {
+        start: formatISODate(startOfLastWeek),
+        end: formatISODate(endOfLastWeek),
+        label: `Last Week (${formatDateShort(startOfLastWeek)} – ${formatDateShort(endOfLastWeek)})`,
+      };
+    }
+    case 'this_month': {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return {
+        start: formatISODate(startOfMonth),
+        end: formatISODate(endOfMonth),
+        label: `This Month (${monthName(startOfMonth)} ${startOfMonth.getFullYear()})`,
+      };
+    }
+    case 'last_month': {
+      const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      return {
+        start: formatISODate(startOfLastMonth),
+        end: formatISODate(endOfLastMonth),
+        label: `Last Month (${monthName(startOfLastMonth)} ${startOfLastMonth.getFullYear()})`,
+      };
+    }
+    case 'this_year': {
+      const y = year || today.getFullYear();
+      return { start: `${y}-01-01`, end: `${y}-12-31`, label: `Full Year ${y}` };
+    }
+    case 'custom':
+      if (customStart && customEnd) {
+        return { start: customStart, end: customEnd, label: `${customStart} to ${customEnd}` };
+      }
+      return { start: formatISODate(today), end: formatISODate(today), label: `Today (${formatDateLabel(today)})` };
+    default: {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return {
+        start: formatISODate(startOfMonth),
+        end: formatISODate(endOfMonth),
+        label: `This Month (${monthName(startOfMonth)} ${startOfMonth.getFullYear()})`,
+      };
+    }
+  }
+};
 
 class LeaveService {
   private requests: LeaveRequest[] = [...INITIAL_LEAVE_REQUESTS];
@@ -52,14 +130,14 @@ class LeaveService {
     return this.requests.find((r) => r.id === id);
   }
 
-  public getCurrentlyOnLeave(targetDate: string = '2026-08-31'): LeaveRequest[] {
+  public getCurrentlyOnLeave(targetDate: string = formatISODate(new Date())): LeaveRequest[] {
     return this.requests.filter((r) => {
       if (r.status !== 'Approved') return false;
       return r.startDate <= targetDate && r.endDate >= targetDate;
     });
   }
 
-  public getUpcomingLeaves(targetDate: string = '2026-08-31', limit: number = 5): LeaveRequest[] {
+  public getUpcomingLeaves(targetDate: string = formatISODate(new Date()), limit: number = 5): LeaveRequest[] {
     return this.requests
       .filter((r) => r.status === 'Approved' && r.startDate > targetDate)
       .sort((a, b) => a.startDate.localeCompare(b.startDate))
@@ -76,51 +154,25 @@ class LeaveService {
       datePreset = 'this_month',
       startDate,
       endDate,
-      year = 2026,
+      year = new Date().getFullYear(),
       page = 1,
       pageSize = 20,
       sortBy = 'submittedDate',
       sortDirection = 'desc',
     } = params;
 
-    // Determine date boundary based on preset/custom
-    let filterStart = startDate;
-    let filterEnd = endDate;
-
-    if (datePreset === 'today') {
-      filterStart = '2026-08-31';
-      filterEnd = '2026-08-31';
-    } else if (datePreset === 'this_week') {
-      filterStart = '2026-08-31';
-      filterEnd = '2026-09-06';
-    } else if (datePreset === 'last_week') {
-      filterStart = '2026-08-24';
-      filterEnd = '2026-08-30';
-    } else if (datePreset === 'this_month') {
-      filterStart = '2026-08-01';
-      filterEnd = '2026-08-31';
-    } else if (datePreset === 'last_month') {
-      filterStart = '2026-07-01';
-      filterEnd = '2026-07-31';
-    } else if (datePreset === 'this_year') {
-      filterStart = `${year}-01-01`;
-      filterEnd = `${year}-12-31`;
-    }
-
-    let dateRangeLabel = 'This Month (August 2026)';
-    if (datePreset === 'today') dateRangeLabel = 'Today (31 Aug 2026)';
-    else if (datePreset === 'this_week') dateRangeLabel = 'This Week (31 Aug – 06 Sep 2026)';
-    else if (datePreset === 'last_week') dateRangeLabel = 'Last Week (24 Aug – 30 Aug 2026)';
-    else if (datePreset === 'last_month') dateRangeLabel = 'Last Month (July 2026)';
-    else if (datePreset === 'this_year') dateRangeLabel = `Full Year ${year}`;
-    else if (datePreset === 'custom' && filterStart && filterEnd) {
-      dateRangeLabel = `${filterStart} to ${filterEnd}`;
-    }
+    // Determine date boundary based on preset/custom (computed from the current date)
+    const { start: filterStart, end: filterEnd, label: dateRangeLabel } = resolveLeaveDateRange(
+      datePreset,
+      startDate,
+      endDate,
+      year
+    );
 
     // Filter requests
     const filtered = this.requests.filter((req) => {
       // Year check
-      const reqYear = new Date(req.startDate).getFullYear() || 2026;
+      const reqYear = new Date(req.startDate).getFullYear();
       if (year && reqYear !== year && datePreset === 'this_year') {
         return false;
       }

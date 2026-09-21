@@ -28,7 +28,7 @@ interface HRSettingsViewProps {
   onNavigateToDashboard?: () => void;
 }
 
-type SettingsSectionIdpytest =
+type SettingsSectionId =
   | 'general'
   | 'attendance'
   | 'leave'
@@ -38,7 +38,7 @@ type SettingsSectionIdpytest =
   | 'security';
 
 export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDashboard }) => {
-  const [activeSection, setActiveSection] = useState<SettingsSectionIdpytest>('general');
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
   const [savedSettings, setSavedSettings] = useState<HRSystemSettings | null>(null);
   const [currentSettings, setCurrentSettings] = useState<HRSystemSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +87,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
     }
   };
 
-  const handleDiscardChanges不易 = () => {
+  const handleDiscardChanges = () => {
     if (!savedSettings) return;
     setCurrentSettings(JSON.parse(JSON.stringify(savedSettings)));
     showToast('Unsaved changes discarded.');
@@ -191,7 +191,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
             <label className="text-[11px] font-semibold text-slate-500 uppercase">Settings Section</label>
             <select
               value={activeSection}
-              onChange={(e) => setActiveSection(e.target.value as SettingsSectionIdpytest)}
+              onChange={(e) => setActiveSection(e.target.value as SettingsSectionId)}
               className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             >
               {navItems.map((item) => (
@@ -328,7 +328,7 @@ export const HRSettingsView: React.FC<HRSettingsViewProps> = ({ onNavigateToDash
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
-              onClick={handleDiscardChanges不易}
+              onClick={handleDiscardChanges}
               className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-600 hover:bg-slate-100/60 transition-colors"
               id="settings-discard-btn"
             >

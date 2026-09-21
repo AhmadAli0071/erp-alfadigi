@@ -1,52 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, CheckCheck, CalendarDays, Ticket as TicketIcon, Clock, Info, Volume2, VolumeX } from 'lucide-react';
+import { Bell, BellRing, CheckCheck, CalendarDays, Ticket as TicketIcon, Clock, Info, Volume2, VolumeX, Monitor } from 'lucide-react';
 import { notificationService, AppNotification } from '../../services/notificationService';
 
 interface NotificationBellProps {
   onNavigate?: (route: string) => void;
+  /** Route for the "View all" button. Pass null to hide it (roles without a notifications page). */
+  viewAllRoute?: string | null;
 }
-
-/* ---------- Notification sound (Web Audio API — no external file) ---------- */
-const playNotificationSound = (): void => {
-  try {
-    const ctx = new AudioContext();
-    if (ctx.state === 'suspended') void ctx.resume();
-    const now = ctx.currentTime;
-
-    // Pleasant two-tone chime (E6 -> G6)
-    const notes = [
-      { freq: 1318.5, start: 0, dur: 0.18 },
-      { freq: 1568.0, start: 0.12, dur: 0.35 },
-    ];
-
-    notes.forEach(({ freq, start, dur }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, now + start);
-      gain.gain.linearRampToValueAtTime(0.22, now + start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now + start);
-      osc.stop(now + start + dur + 0.05);
-    });
-
-    // Auto-close context after sound finishes
-    setTimeout(() => void ctx.close(), 1200);
-  } catch {
-    // audio not available
-  }
-};
-
-const isSoundEnabled = (): boolean => {
-  try {
-    return localStorage.getItem('alfa_digi_notif_sound') !== 'off';
-  } catch {
-    return true;
-  }
-};
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string }> = {
   leave: { icon: <CalendarDays className="w-3.5 h-3.5 text-blue-600" />, bg: 'bg-blue-50 border-blue-200' },
@@ -65,11 +25,13 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
-export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }) => {
+export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate, viewAllRoute = '/employee/notifications' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled);
+  const [soundOn, setSoundOn] = useState<boolean>(notificationService.isSoundEnabled);
+  const [desktopOn, setDesktopOn] = useState<boolean>(notificationService.isDesktopEnabled);
+  const [desktopPerm, setDesktopPerm] = useState<string>(notificationService.getBrowserPermission);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Connect to real-time SSE stream on mount
@@ -78,7 +40,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
     const unsubCount = notificationService.onUnreadCount(setUnreadCount);
     const unsubNotif = notificationService.onNotification((n) => {
       setNotifications((prev) => [n, ...prev].slice(0, 50));
-      if (isSoundEnabled()) playNotificationSound();
     });
     notificationService.refreshUnreadCount();
 
@@ -91,10 +52,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
   const toggleSound = () => {
     const next = !soundOn;
     setSoundOn(next);
-    try {
-      localStorage.setItem('alfa_digi_notif_sound', next ? 'on' : 'off');
-    } catch { /* ignore */ }
-    if (next) playNotificationSound();
+    notificationService.setSoundEnabled(next);
+    if (next) notificationService.playChime();
+  };
+
+  const enableDesktop = async () => {
+    const granted = await notificationService.requestDesktopPermission();
+    setDesktopPerm(notificationService.getBrowserPermission());
+    setDesktopOn(notificationService.isDesktopEnabled);
+    if (granted) {
+      // Test notification so the user sees it works
+      notificationService.showTestNotification();
+    }
+  };
+
+  const toggleDesktop = () => {
+    if (desktopPerm !== 'granted') {
+      void enableDesktop();
+      return;
+    }
+    const next = !desktopOn;
+    setDesktopOn(next);
+    notificationService.setDesktopEnabled(next);
   };
 
   // Close on outside click
@@ -131,7 +110,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
 
   const handleViewAll = () => {
     setIsOpen(false);
-    if (onNavigate) onNavigate('/employee/notifications');
+    if (viewAllRoute && onNavigate) onNavigate(viewAllRoute);
   };
 
   return (
@@ -147,6 +126,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-rose-500/40 animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
+        )}
+        {unreadCount === 0 && desktopPerm === 'default' && (
+          <span className="absolute -top-0.5 -right-0.5 w-[10px] h-[10px] rounded-full bg-amber-400 border-2 border-white animate-pulse" title="Desktop notifications setup pending" />
         )}
       </button>
 
@@ -164,6 +146,21 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
               )}
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleDesktop}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  desktopOn && desktopPerm === 'granted' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 bg-slate-100'
+                }`}
+                title={
+                  desktopPerm === 'unsupported'
+                    ? 'Desktop notifications not supported'
+                    : desktopPerm === 'granted'
+                      ? desktopOn ? 'Desktop notifications on' : 'Desktop notifications off'
+                      : 'Enable desktop notifications'
+                }
+              >
+                {desktopOn && desktopPerm === 'granted' ? <BellRing className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
+              </button>
               <button
                 onClick={toggleSound}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -183,6 +180,30 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate }
               </button>
             </div>
           </div>
+
+          {/* Desktop permission prompt */}
+          {desktopPerm === 'denied' && (
+            <div className="flex items-start gap-2 px-4 py-2.5 bg-rose-50/80 border-b border-slate-200/70">
+              <BellRing className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-bold text-rose-700">Notifications blocked hain</p>
+                <p className="text-[10px] text-rose-600 leading-snug mt-0.5">
+                  Address bar ke left 🔒/ⓘ icon pe click karein → Site settings → Notifications → "Allow" karein, phir page refresh karein.
+                </p>
+              </div>
+            </div>
+          )}
+          {desktopPerm === 'default' && (
+            <button
+              onClick={enableDesktop}
+              className="w-full flex items-center gap-2 px-4 py-2.5 bg-indigo-50/70 hover:bg-indigo-50 border-b border-slate-200/70 text-left transition-colors cursor-pointer"
+            >
+              <BellRing className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="text-[11px] font-semibold text-indigo-700">
+                Enable desktop notifications — click karein, Chrome "Allow" poochega
+              </span>
+            </button>
+          )}
 
           {/* List */}
           <div className="max-h-80 overflow-y-auto custom-scrollbar">

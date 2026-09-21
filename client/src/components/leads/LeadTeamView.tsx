@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import { LeadDepartment } from '../../types/lead';
 import {
@@ -90,6 +91,9 @@ export const LeadTeamView: React.FC<LeadTeamViewProps> = ({
   useEffect(() => {
     fetchTeam();
   }, [user.email]);
+
+  // Live refresh: SSE notification ya window focus par team refetch
+  useRealtimeRefresh(fetchTeam);
 
   const filtered = team.filter((m) => {
     const q = searchQuery.toLowerCase();

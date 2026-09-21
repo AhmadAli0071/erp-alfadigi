@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrandLogo } from '../common/BrandLogo';
+import { notificationService } from '../../services/notificationService';
 import {
   LayoutDashboard,
   Clock,
@@ -29,12 +30,20 @@ export const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
 }) => {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    notificationService.refreshUnreadCount();
+    const unsub = notificationService.onUnreadCount((count) => setUnreadCount(count));
+    return () => unsub();
+  }, []);
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/employee/dashboard' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/employee/attendance' },
     { id: 'leaves', label: 'Leaves', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/employee/leaves' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/employee/tickets' },
-    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4 shrink-0" />, route: '/employee/notifications' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4 shrink-0" />, route: '/employee/notifications', badge: unreadCount },
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4 shrink-0" />, route: '/employee/profile' },
   ];
 
@@ -59,7 +68,7 @@ export const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
           </div>
         ) : (
           <div className="w-full flex items-center justify-center cursor-pointer" onClick={() => handleItemClick('/employee/dashboard')} title="Alfa Digi ERP">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-500/30">A</div>
+            <img src="/alfa-logo.png" alt="Alfa Digi" className="w-12 h-12 object-contain" draggable={false} />
           </div>
         )}
 
@@ -92,6 +101,14 @@ export const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
                 {item.icon}
               </span>
               {!isCollapsed && <span className="truncate">{item.label}</span>}
+              {!isCollapsed && 'badge' in item && typeof item.badge === 'number' && item.badge > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-sm">
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
+              {isCollapsed && 'badge' in item && typeof item.badge === 'number' && item.badge > 0 && (
+                <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
+              )}
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-indigo-500/80" />
               )}

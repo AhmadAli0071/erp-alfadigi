@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../../types/auth';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import { EmployeeAttendanceView } from '../employee/EmployeeAttendanceView';
 import { HRSidebar } from '../hr/HRSidebar';
 import { HRHeader } from '../hr/HRHeader';
 import { HRDashboardView } from './HRDashboardView';
@@ -23,27 +25,31 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
 
+  const fetchCounts = async () => {
+    try {
+      const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const [leavesRes, ticketsRes] = await Promise.all([
+        fetch('/api/leaves/hr-count', { headers }),
+        fetch('/api/tickets/hr-count', { headers }),
+      ]);
+      if (leavesRes.ok) {
+        const data = await leavesRes.json();
+        setPendingLeavesCount(data.count || 0);
+      }
+      if (ticketsRes.ok) {
+        const data = await ticketsRes.json();
+        setOpenTicketsCount(data.count || 0);
+      }
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [leavesRes, ticketsRes] = await Promise.all([
-          fetch('/api/leaves/hr-count', { headers }),
-          fetch('/api/tickets/hr-count', { headers }),
-        ]);
-        if (leavesRes.ok) {
-          const data = await leavesRes.json();
-          setPendingLeavesCount(data.count || 0);
-        }
-        if (ticketsRes.ok) {
-          const data = await ticketsRes.json();
-          setOpenTicketsCount(data.count || 0);
-        }
-      } catch { /* ignore */ }
-    };
     fetchCounts();
   }, [currentRoute]);
+
+  // Live refresh: SSE notification ya window focus par sidebar badge counts refetch
+  useRealtimeRefresh(fetchCounts);
 
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
@@ -117,6 +123,14 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
               <HRAttendanceManagementView
                 onNavigateToDashboard={() => handleNavigate('/hr/dashboard')}
                 initialPreset={getAttendancePreset()}
+              />
+            </div>
+          ) : currentRoute.startsWith('/hr/my-attendance') ? (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <EmployeeAttendanceView
+                user={user}
+                onNavigate={handleNavigate}
+                backRoute="/hr/dashboard"
               />
             </div>
           ) : isLeaveRoute ? (

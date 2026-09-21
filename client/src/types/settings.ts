@@ -6,6 +6,12 @@ export interface GeneralSettings {
   timeFormat: string;
 }
 
+export interface BreakTypeBudgets {
+  lunch: number;
+  namaz: number;
+  washroom: number;
+}
+
 export interface AttendanceSettings {
   shiftStart: string; // e.g. "06:00 PM"
   shiftEnd: string; // e.g. "03:00 AM"
@@ -13,6 +19,7 @@ export interface AttendanceSettings {
   gracePeriodMinutes: number; // e.g. 5
   breakDeductionEnabled: boolean;
   unlimitedBreakDurationEnabled: boolean;
+  breakTypeBudgets: BreakTypeBudgets;
 }
 
 export interface OvertimeSettings {

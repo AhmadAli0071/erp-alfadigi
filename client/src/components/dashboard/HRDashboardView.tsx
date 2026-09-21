@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import { ClockButtonsCard } from '../attendance/ClockButtonsCard';
 import { User } from '../../types/auth';
 import { PendingActionItem } from '../../types/hr';
 import { hrDashboardService, HRDashboardData } from '../../services/hrDashboardService';
@@ -48,6 +50,9 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
     loadDashboardData(true);
   }, []);
 
+  // Live refresh: SSE notification (leave/ticket events) ya window focus par dashboard refetch
+  useRealtimeRefresh(() => loadDashboardData(false));
+
   const showToast = (text: string, type: 'success' | 'info' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => {
@@ -61,6 +66,8 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
     if (res.success) {
       showToast(res.message || 'Action item approved and recorded in audit log.', 'success');
       loadDashboardData(false);
+    } else {
+      showToast(res.message || 'Could not approve this request. Please try again.', 'info');
     }
   };
 
@@ -70,6 +77,8 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
     if (res.success) {
       showToast(res.message || 'Action item rejected and notified to employee.', 'info');
       loadDashboardData(false);
+    } else {
+      showToast(res.message || 'Could not reject this request. Please try again.', 'info');
     }
   };
 
@@ -119,6 +128,9 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
 
       {/* 1. Welcome Section (Section 4) */}
       <HRWelcomeSection adminName={user.name} />
+
+      {/* My Shift Today — HR clock-in/out like every other employee */}
+      <ClockButtonsCard user={user} title="My Shift Today" />
 
       {/* 2. Primary KPI Cards (Section 5) - Exactly 6 cards */}
       <HRKpiGrid kpis={data.kpis} onSelectKpiFilter={handleKpiFilter} />

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ReportCategory, ReportFilterParams } from '../../types/report';
+import { leaveTypeService } from '../../services/leaveTypeService';
 import {
   Calendar,
   Filter,
@@ -23,6 +24,23 @@ export const HRReportFilterBar: React.FC<HRReportFilterBarProps> = ({
   onReset,
 }) => {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [leaveTypes, setLeaveTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (category !== 'leave') return;
+    let cancelled = false;
+    leaveTypeService
+      .getLeaveTypes()
+      .then((types) => {
+        if (!cancelled) setLeaveTypes(['ALL', ...types.map((t) => t.name)]);
+      })
+      .catch(() => {
+        if (!cancelled) setLeaveTypes(['ALL']);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
 
   const datePresets = [
     { value: 'today', label: 'Today' },
@@ -36,18 +54,9 @@ export const HRReportFilterBar: React.FC<HRReportFilterBarProps> = ({
     { value: 'custom', label: 'Custom Range' },
   ];
 
-  const departments强 = ['ALL', 'HR', 'Sales', 'Tech'];
+  const departments = ['ALL', 'HR', 'Sales', 'Tech'];
 
-  const leaveTypes强 = [
-    'ALL',
-    'Casual Leave',
-    'Annual Leave',
-    'Sick Leave',
-    'Unpaid Leave',
-    'Special / Other Leave',
-  ];
-
-  const statuses强 = ['ALL', 'Present', 'Absent', 'Leave', 'Work From Home', 'Half Day'];
+  const statuses = ['ALL', 'Present', 'Absent', 'Leave', 'Work From Home', 'Half Day'];
 
   const filterElements = (
     <>
@@ -101,7 +110,7 @@ export const HRReportFilterBar: React.FC<HRReportFilterBarProps> = ({
           className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
           id="report-filter-department"
         >
-          {departments强.map((d) => (
+          {departments.map((d) => (
             <option key={d} value={d} className="bg-slate-100 text-slate-700">
               {d === 'ALL' ? 'All Departments' : d}
             </option>
@@ -119,7 +128,7 @@ export const HRReportFilterBar: React.FC<HRReportFilterBarProps> = ({
             className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             id="report-filter-leave-type"
           >
-            {leaveTypes强.map((lt) => (
+            {leaveTypes.map((lt) => (
               <option key={lt} value={lt} className="bg-slate-100 text-slate-700">
                 {lt === 'ALL' ? 'All Types' : lt}
               </option>
@@ -138,7 +147,7 @@ export const HRReportFilterBar: React.FC<HRReportFilterBarProps> = ({
             className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             id="report-filter-status"
           >
-            {statuses强.map((st) => (
+            {statuses.map((st) => (
               <option key={st} value={st} className="bg-slate-100 text-slate-700">
                 {st === 'ALL' ? 'All Statuses' : st}
               </option>

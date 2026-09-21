@@ -200,7 +200,7 @@ class TicketService {
       throw new Error('Ticket not found');
     }
 
-    const previousStatus进 = ticket.status;
+    const previousStatus = ticket.status;
     ticket.status = status;
     ticket.updatedDate = new Date().toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -215,7 +215,7 @@ class TicketService {
       actorName,
       actorRole: 'HR Admin',
       action: 'Status Changed',
-      details: `Status changed from ${previousStatus进} to ${status}${notes ? `: "${notes}"` : ''}.`,
+      details: `Status changed from ${previousStatus} to ${status}${notes ? `: "${notes}"` : ''}.`,
       timestamp: 'Just now',
     });
 
@@ -306,5 +306,4 @@ class TicketService {
   }
 }
 
-export const ticketService不易 = new TicketService();
-export const ticketService = ticketService不易;
+export const ticketService = new TicketService();

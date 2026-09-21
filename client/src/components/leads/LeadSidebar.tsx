@@ -22,6 +22,7 @@ interface LeadSidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   pendingCount?: number;
+  openTicketsCount?: number;
 }
 
 export const LeadSidebar: React.FC<LeadSidebarProps> = ({
@@ -33,26 +34,36 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   pendingCount = 0,
+  openTicketsCount = 0,
 }) => {
   const isSales = department === 'Sales';
+  const isHrDept = department === 'HR';
+
+  const hrNavItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
+    { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
+    { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
+  ];
 
   const salesNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
-    { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets' },
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
   ];
 
   const techNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
-    { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets' },
+    { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
   ];
 
-  const navItems = isSales ? salesNavItems : techNavItems;
+  const navItems = isSales ? salesNavItems : isHrDept ? hrNavItems : techNavItems;
 
   const handleItemClick = (route: string) => {
     onNavigate(route);
@@ -66,7 +77,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
     return currentRoute.startsWith(route);
   };
 
-  const portalLabel = isSales ? 'Sales Lead Portal' : 'Tech Lead Portal';
+  const portalLabel = isSales ? 'Sales Lead Portal' : isHrDept ? 'HR Lead Portal' : 'Tech Lead Portal';
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-white/75 backdrop-blur-xl border-r border-slate-200/70 text-slate-600 select-none">
@@ -77,7 +88,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
           </div>
         ) : (
           <div className="w-full flex items-center justify-center cursor-pointer" onClick={() => handleItemClick('/lead/dashboard')} title="Alfa Digi ERP">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-500/30">A</div>
+            <img src="/alfa-logo.png" alt="Alfa Digi" className="w-12 h-12 object-contain" draggable={false} />
           </div>
         )}
 

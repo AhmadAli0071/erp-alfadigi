@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import {
   Users,
   UserCheck,
@@ -15,6 +16,7 @@ import {
   Pencil,
   UserCog,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
@@ -114,6 +116,9 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
     fetchEmployees(true);
   }, [fetchEmployees]);
 
+  // Live refresh: SSE notification ya window focus par directory refetch (silent)
+  useRealtimeRefresh(() => fetchEmployees(false));
+
   const handleDeactivate = async (emp: Employee) => {
     if (!window.confirm(`Deactivate ${emp.name} (${emp.empId})? They will lose access to the portal.`)) return;
     setActionBusyId(emp.id);
@@ -143,6 +148,25 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
         return;
       }
       showToast(`${emp.name} re-activated.`);
+      await fetchEmployees(false);
+    } catch {
+      showToast('Unable to connect to server.');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleDeletePermanent = async (emp: Employee) => {
+    if (!window.confirm(`PERMANENTLY DELETE ${emp.name} (${emp.empId})?\n\nThis removes their login account, employee record, attendance, leaves and tickets from the database. This cannot be undone.`)) return;
+    setActionBusyId(emp.id);
+    try {
+      const res = await fetch(`${API_BASE}/employees/${emp.id}/permanent`, { method: 'DELETE', headers: getHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Unable to delete employee.');
+        return;
+      }
+      showToast(`${emp.name} permanently deleted from the database.`);
       await fetchEmployees(false);
     } catch {
       showToast('Unable to connect to server.');
@@ -521,6 +545,15 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePermanent(emp)}
+                            disabled={actionBusyId === emp.id}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-40"
+                            title="Delete permanently from database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                           {emp.status === 'Inactive' ? (
                             <button
                               type="button"
@@ -648,6 +681,15 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                       Deactivate
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePermanent(emp)}
+                    disabled={actionBusyId === emp.id}
+                    className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                    title="Delete permanently from database"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             ))}

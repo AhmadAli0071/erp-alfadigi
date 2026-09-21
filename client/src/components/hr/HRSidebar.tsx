@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Clock,
+  Timer,
   CalendarDays,
   Ticket,
   BarChart3,
@@ -53,6 +54,12 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       label: 'Attendance',
       icon: <Clock className="w-4 h-4 shrink-0" />,
       route: '/hr/attendance',
+    },
+    {
+      id: 'my-attendance',
+      label: 'My Attendance',
+      icon: <Timer className="w-4 h-4 shrink-0" />,
+      route: '/hr/my-attendance',
     },
     {
       id: 'leaves',

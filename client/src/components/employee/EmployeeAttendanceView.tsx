@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import {
   Clock,
@@ -14,6 +15,8 @@ import { StatusBadge } from '../hr/StatusBadge';
 interface EmployeeAttendanceViewProps {
   user: User;
   onNavigate: (route: string) => void;
+  /** Route for the back arrow — HR reuses this view with its own dashboard. */
+  backRoute?: string;
 }
 
 interface AttendanceRecord {
@@ -46,6 +49,7 @@ const formatMinutes = (mins: number): string => {
 export const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({
   user,
   onNavigate,
+  backRoute = '/employee/dashboard',
 }) => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +77,9 @@ export const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({
     fetchHistory();
   }, [fetchHistory]);
 
+  // Live refresh: SSE notification ya window focus par history refetch
+  useRealtimeRefresh(fetchHistory);
+
   const summary = {
     total: records.length,
     present: records.filter((r) => r.status === 'Present').length,
@@ -90,7 +97,7 @@ export const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => onNavigate('/employee/dashboard')}
+            onClick={() => onNavigate(backRoute)}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />

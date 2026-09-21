@@ -8,6 +8,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
+  Utensils,
+  Moon,
+  Toilet,
+  Lock,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ClockButtonsCardProps {
@@ -17,6 +22,14 @@ interface ClockButtonsCardProps {
 }
 
 type ClockState = 'not_clocked_in' | 'working' | 'on_break' | 'clocked_out';
+type BreakTypeKey = 'LUNCH' | 'NAMAZ' | 'WASHROOM';
+type BudgetKey = 'lunch' | 'namaz' | 'washroom';
+
+interface TypeBudgets {
+  lunch: number;
+  namaz: number;
+  washroom: number;
+}
 
 interface TodayAttendance {
   clockIn: string | null;
@@ -24,11 +37,26 @@ interface TodayAttendance {
   clockOut: string | null;
   breakMinutes: number;
   breakStartedAt: string | null;
+  breakType: BreakTypeKey | null;
+  breakMinutesByType: TypeBudgets;
   workingMinutes: number;
   status: string;
 }
 
 const API_BASE = '/api';
+
+const BREAK_TYPE_CONFIG: {
+  key: BreakTypeKey;
+  budgetKey: BudgetKey;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  row: string;
+  chip: string;
+}[] = [
+  { key: 'LUNCH', budgetKey: 'lunch', label: 'Lunch', icon: Utensils, row: 'hover:bg-orange-50/80', chip: 'bg-orange-100 text-orange-700' },
+  { key: 'NAMAZ', budgetKey: 'namaz', label: 'Namaz', icon: Moon, row: 'hover:bg-emerald-50/80', chip: 'bg-emerald-100 text-emerald-700' },
+  { key: 'WASHROOM', budgetKey: 'washroom', label: 'Washroom', icon: Toilet, row: 'hover:bg-sky-50/80', chip: 'bg-sky-100 text-sky-700' },
+];
 
 const getHeaders = (): Record<string, string> => {
   try {
@@ -52,6 +80,12 @@ const formatSeconds = (totalSecs: number): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+const formatMMSS = (totalSecs: number): string => {
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   user,
   title = "Today's Shift",
@@ -62,6 +96,10 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const [clockOutTime, setClockOutTime] = useState<string | null>(null);
   const [workingMinutes, setWorkingMinutes] = useState(0);
   const [breakMinutes, setBreakMinutes] = useState(0);
+  const [breakMinutesByType, setBreakMinutesByType] = useState<TypeBudgets>({ lunch: 0, namaz: 0, washroom: 0 });
+  const [budgets, setBudgets] = useState<TypeBudgets>({ lunch: 60, namaz: 10, washroom: 10 });
+  const [activeBreakType, setActiveBreakType] = useState<BreakTypeKey | null>(null);
+  const [showBreakMenu, setShowBreakMenu] = useState(false);
   const [clockInAt, setClockInAt] = useState<Date | null>(null);
   const [breakStartedAt, setBreakStartedAt] = useState<Date | null>(null);
   const [nowTick, setNowTick] = useState<number>(Date.now());
@@ -81,12 +119,15 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       const res = await fetch(`${API_BASE}/attendance/today/${user.email}`, { headers: getHeaders() });
       if (!res.ok) return;
       const data = await res.json();
+      if (data.breakBudgets) setBudgets(data.breakBudgets);
       if (data.attendance) {
         const att: TodayAttendance = data.attendance;
         if (att.clockIn) {
           setClockInTime(att.clockIn);
           if (att.clockInAt) setClockInAt(new Date(att.clockInAt));
         }
+        setBreakMinutesByType(att.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 });
+        setActiveBreakType(att.breakType || null);
         if (att.clockOut) {
           setClockState('clocked_out');
           setClockOutTime(att.clockOut);
@@ -126,7 +167,10 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       setClockInTime(data.attendance.clockIn);
       setClockInAt(new Date());
       setBreakMinutes(0);
+      setBreakMinutesByType({ lunch: 0, namaz: 0, washroom: 0 });
       setBreakStartedAt(null);
+      setActiveBreakType(null);
+      setShowBreakMenu(false);
       setNowTick(Date.now());
     } catch {
       setError('Unable to connect to server.');
@@ -135,12 +179,37 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     }
   };
 
-  const handleBreakToggle = async () => {
-    const ending = clockState === 'on_break';
-    setIsLoading('break');
+  const handleBreakStart = async (type: BreakTypeKey) => {
+    setIsLoading(`break-${type}`);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/attendance/break-${ending ? 'end' : 'start'}`, {
+      const res = await fetch(`${API_BASE}/attendance/break-start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ employeeEmail: user.email, breakType: type }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Break action failed.');
+        return;
+      }
+      setShowBreakMenu(false);
+      setActiveBreakType(type);
+      setBreakStartedAt(new Date());
+      setClockState('on_break');
+      setNowTick(Date.now());
+    } catch {
+      setError('Unable to connect to server.');
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleBreakEnd = async () => {
+    setIsLoading('break-end');
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/attendance/break-end`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
         body: JSON.stringify({ employeeEmail: user.email }),
@@ -150,18 +219,26 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
         setError(data.error || 'Break action failed.');
         return;
       }
-      if (ending) {
-        setBreakMinutes(data.breakMinutes || breakMinutes);
-        setBreakStartedAt(null);
-        setClockState('working');
-      } else {
-        setBreakStartedAt(new Date());
-        setClockState('on_break');
+      setBreakMinutes(data.breakMinutes || breakMinutes);
+      if (data.breakMinutesByType) setBreakMinutesByType(data.breakMinutesByType);
+      if (data.overLimit) {
+        setError('Break went over the daily limit — extra minutes were deducted from working hours.');
       }
+      setBreakStartedAt(null);
+      setActiveBreakType(null);
+      setClockState('working');
     } catch {
       setError('Unable to connect to server.');
     } finally {
       setIsLoading(null);
+    }
+  };
+
+  const handleBreakButtonClick = async () => {
+    if (clockState === 'on_break') {
+      await handleBreakEnd();
+    } else if (clockState === 'working') {
+      setShowBreakMenu((v) => !v);
     }
   };
 
@@ -184,6 +261,8 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       setWorkingMinutes(data.attendance.workingMinutes);
       setBreakMinutes(data.attendance.breakMinutes ?? breakMinutes);
       setBreakStartedAt(null);
+      setActiveBreakType(null);
+      setShowBreakMenu(false);
       setClockInAt(null);
     } catch {
       setError('Unable to connect to server.');
@@ -202,6 +281,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     disabled?: boolean;
     active?: boolean;
     loading?: boolean;
+    danger?: boolean;
   }
 
   const variantConfig = {
@@ -250,6 +330,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     disabled = false,
     active = false,
     loading = false,
+    danger = false,
   }) => {
     const cfg = variantConfig[variant];
     return (
@@ -258,15 +339,15 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           {/* Lightning pulse rings — only when active */}
           {active && !disabled && (
             <>
-              <span className={`absolute inset-0 rounded-full ${cfg.ping} animate-ping`} />
-              <span className={`absolute -inset-1.5 rounded-full ${cfg.ping} opacity-60 animate-pulse`} />
+              <span className={`absolute inset-0 rounded-full ${danger ? 'bg-rose-400/25' : cfg.ping} animate-ping`} />
+              <span className={`absolute -inset-1.5 rounded-full ${danger ? 'bg-rose-400/25 opacity-60' : `${cfg.ping} opacity-60`} animate-pulse`} />
             </>
           )}
 
           {/* Outer decorative dashed ring */}
           <div
             className={`absolute -inset-2 rounded-full border-2 border-dashed transition-all duration-500 ${
-              active && !disabled ? `${cfg.border} animate-[spin_12s_linear_infinite]` : 'border-slate-200/70'
+              active && !disabled ? `${danger ? 'border-rose-200' : cfg.border} animate-[spin_12s_linear_infinite]` : 'border-slate-200/70'
             }`}
           />
 
@@ -274,10 +355,10 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
             onClick={onClick}
             disabled={disabled || loading}
             className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-full z-[1]
-              bg-gradient-to-br ${cfg.grad}
-              ring-4 ${active && !disabled ? cfg.ring : 'ring-transparent'}
+              bg-gradient-to-br ${danger ? 'from-rose-400 via-rose-500 to-red-600' : cfg.grad}
+              ring-4 ${active && !disabled ? (danger ? 'ring-rose-400/60' : cfg.ring) : 'ring-transparent'}
               border-4 border-white/70
-              ${active && !disabled ? `${cfg.glow} scale-100` : 'shadow-lg'}
+              ${active && !disabled ? `${danger ? 'shadow-[0_0_35px_-5px_rgba(244,63,94,0.55)]' : cfg.glow} scale-100` : 'shadow-lg'}
               flex items-center justify-center
               transition-all duration-300 ease-out
               ${!disabled && !loading ? 'hover:scale-110 hover:brightness-110 cursor-pointer active:scale-95' : ''}
@@ -300,7 +381,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           </button>
         </div>
         <div className="text-center">
-          <div className={`text-xs font-extrabold tracking-wide ${disabled ? 'text-slate-400' : cfg.label}`}>{label}</div>
+          <div className={`text-xs font-extrabold tracking-wide ${disabled ? 'text-slate-400' : danger ? 'text-rose-700' : cfg.label}`}>{label}</div>
           {sublabel && <div className="text-[10px] font-semibold text-slate-400 mt-0.5">{sublabel}</div>}
         </div>
       </div>
@@ -322,40 +403,71 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       ? Math.max(0, Math.floor((nowTick - breakStartedAt.getTime()) / 1000))
       : null;
 
+  /* ---------- Active break budget progress ---------- */
+  const activeBreakCfg = activeBreakType ? BREAK_TYPE_CONFIG.find((t) => t.key === activeBreakType) : null;
+  const activeBreakRemainingAtStart = activeBreakType
+    ? Math.max(0, budgets[activeBreakCfg!.budgetKey] - (breakMinutesByType[activeBreakCfg!.budgetKey] || 0)) * 60
+    : 0;
+  const breakOverLimit = liveBreakSeconds !== null && liveBreakSeconds > activeBreakRemainingAtStart;
+  const breakProgress =
+    liveBreakSeconds !== null && activeBreakRemainingAtStart > 0
+      ? Math.min(1, liveBreakSeconds / activeBreakRemainingAtStart)
+      : liveBreakSeconds !== null
+      ? 1
+      : 0;
+
+  /* ---------- Per-type remaining budget ---------- */
+  const remainingFor = (k: BudgetKey): number => Math.max(0, budgets[k] - (breakMinutesByType[k] || 0));
+  const usedFor = (k: BudgetKey): number => breakMinutesByType[k] || 0;
+
   const summaryCards = [
     {
       label: 'Clock In',
       value: clockInTime || '—',
       icon: <Play className="w-4 h-4 text-emerald-600" />,
       color: 'bg-emerald-50 border-emerald-200',
+      sub: null as string | null,
     },
     {
       label: 'Clock Out',
       value: clockOutTime || '—',
       icon: <Square className="w-4 h-4 text-rose-600" />,
       color: 'bg-rose-50 border-rose-200',
+      sub: null as string | null,
     },
     {
       label: 'Working Hours',
       value: liveElapsed !== null ? formatSeconds(liveElapsed) : formatMinutes(workingMinutes),
       icon: <Timer className={`w-4 h-4 text-indigo-600 ${liveElapsed !== null ? 'animate-pulse' : ''}`} />,
       color: 'bg-indigo-50 border-indigo-200',
+      sub: null as string | null,
     },
     {
       label: 'Break',
       value: formatMinutes(breakMinutes),
       icon: <Coffee className="w-4 h-4 text-amber-600" />,
       color: 'bg-amber-50 border-amber-200',
+      sub:
+        breakMinutes > 0
+          ? [
+              usedFor('lunch') > 0 ? `L ${formatMinutes(usedFor('lunch'))}` : null,
+              usedFor('namaz') > 0 ? `N ${formatMinutes(usedFor('namaz'))}` : null,
+              usedFor('washroom') > 0 ? `W ${formatMinutes(usedFor('washroom'))}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : null,
     },
   ];
 
+  const activeBreakLabel = activeBreakCfg ? activeBreakCfg.label : 'Break';
   const statusText =
     clockState === 'not_clocked_in'
       ? "You haven't clocked in yet — start your shift!"
       : clockState === 'working'
       ? `Working since ${clockInTime}`
       : clockState === 'on_break'
-      ? `On break — enjoying coffee?`
+      ? `On ${activeBreakLabel} break — relaxing?`
       : `Shift completed — ${formatMinutes(workingMinutes)} worked`;
 
   return (
@@ -395,17 +507,18 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
               label={clockState === 'on_break' ? 'RESUME' : 'BREAK'}
               sublabel={
                 clockState === 'on_break'
-                  ? 'End break'
+                  ? `End ${activeBreakLabel.toLowerCase()} break`
                   : breakMinutes > 0
                   ? `${formatMinutes(breakMinutes)} taken`
                   : 'Take a pause'
               }
               icon={<Coffee className="w-9 h-9 drop-shadow" />}
               variant="amber"
-              onClick={handleBreakToggle}
+              onClick={handleBreakButtonClick}
               disabled={clockState === 'not_clocked_in' || clockState === 'clocked_out'}
-              active={clockState === 'working' || clockState === 'on_break'}
-              loading={isLoading === 'break'}
+              active={clockState === 'working' || clockState === 'on_break' || showBreakMenu}
+              loading={isLoading === 'break-end' || BREAK_TYPE_CONFIG.some((t) => isLoading === `break-${t.key}`)}
+              danger={clockState === 'on_break' && breakOverLimit}
             />
 
             <RoundActionButton
@@ -419,6 +532,59 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
               loading={isLoading === 'out'}
             />
           </div>
+
+          {/* Break Type Menu — pick which break to start */}
+          {showBreakMenu && clockState === 'working' && (
+            <div className="mt-5 mx-auto max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Choose Break Type</span>
+                <span className="text-[10px] font-semibold text-slate-400">Daily budgets</span>
+              </div>
+              <div className="p-2 space-y-1.5">
+                {BREAK_TYPE_CONFIG.map((t) => {
+                  const used = usedFor(t.budgetKey);
+                  const remaining = remainingFor(t.budgetKey);
+                  const budget = budgets[t.budgetKey];
+                  const exhausted = used >= budget;
+                  const blocked = exhausted && t.key !== 'LUNCH';
+                  const Icon = t.icon;
+                  const loadingThis = isLoading === `break-${t.key}`;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      disabled={blocked || loadingThis}
+                      onClick={() => handleBreakStart(t.key)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all
+                        ${blocked ? 'border-slate-100 bg-slate-50/60 opacity-55 cursor-not-allowed' : `border-slate-200/70 bg-white cursor-pointer ${t.row}`}
+                        ${loadingThis ? 'animate-pulse' : ''}`}
+                    >
+                      <span className={`p-2 rounded-lg ${t.chip}`}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="flex-1 text-left">
+                        <span className="block text-xs font-bold text-slate-800">{t.label} Break</span>
+                        <span className="block text-[10px] font-semibold text-slate-400">
+                          {blocked
+                            ? 'Daily budget used up'
+                            : exhausted
+                            ? 'Budget done — extra will cut from working hours'
+                            : `${remaining}m left of ${budget}m`}
+                        </span>
+                      </span>
+                      {blocked ? (
+                        <Lock className="w-3.5 h-3.5 text-slate-300" />
+                      ) : (
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${exhausted ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+                          {exhausted ? 'EXTRA' : `${remaining}m`}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Live Timer */}
           {liveElapsed !== null && (
@@ -438,15 +604,59 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                 ) : (
                   <>
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${breakOverLimit ? 'bg-rose-400' : 'bg-amber-400'} opacity-75`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${breakOverLimit ? 'bg-rose-500' : 'bg-amber-500'}`} />
                     </span>
-                    <span className="text-amber-600">
-                      On Break — {formatSeconds(liveBreakSeconds || 0)}
+                    <span className={breakOverLimit ? 'text-rose-600' : 'text-amber-600'}>
+                      On Break ({activeBreakLabel}) — {formatSeconds(liveBreakSeconds || 0)}
+                      {breakOverLimit
+                        ? ' · Over limit!'
+                        : activeBreakRemainingAtStart > 0
+                        ? ` · ${formatMMSS(Math.max(0, activeBreakRemainingAtStart - (liveBreakSeconds || 0)))} left`
+                        : ''}
                     </span>
                   </>
                 )}
               </div>
+
+              {/* Break budget progress bar */}
+              {clockState === 'on_break' && activeBreakCfg && (
+                <div className="w-full max-w-xs space-y-1">
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${breakOverLimit ? 'bg-gradient-to-r from-rose-400 to-red-500' : 'bg-gradient-to-r from-amber-400 to-orange-500'}`}
+                      style={{ width: `${Math.round(breakProgress * 100)}%` }}
+                    />
+                  </div>
+                  {breakOverLimit && (
+                    <p className="text-center text-[10px] font-bold text-rose-600">
+                      Over daily budget — extra minutes deducted from working hours
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Budget chips summary (while working) */}
+          {clockState === 'working' && !showBreakMenu && (
+            <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
+              {BREAK_TYPE_CONFIG.map((t) => {
+                const remaining = remainingFor(t.budgetKey);
+                const exhausted = remaining <= 0;
+                const Icon = t.icon;
+                return (
+                  <span
+                    key={t.key}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      exhausted ? 'bg-slate-50 border-slate-200 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <Icon className={`w-3 h-3 ${exhausted ? 'text-slate-300' : 'text-slate-500'}`} />
+                    {t.label} {exhausted ? 'used' : `${remaining}m`}
+                  </span>
+                );
+              })}
             </div>
           )}
 
@@ -456,6 +666,19 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span className="text-xs font-bold text-emerald-700">Shift completed for today — Great work!</span>
               </div>
+            </div>
+          )}
+
+          {/* Collapse hint for the menu */}
+          {showBreakMenu && clockState === 'working' && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowBreakMenu(false)}
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <ChevronUp className="w-3 h-3" /> Hide break options
+              </button>
             </div>
           )}
         </div>
@@ -473,6 +696,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
               </div>
               <div className="text-lg font-extrabold text-slate-900 tracking-tight">{card.value}</div>
               <div className="text-[11px] font-semibold text-slate-500 mt-1">{card.label}</div>
+              {card.sub && <div className="text-[10px] font-bold text-slate-400 mt-0.5">{card.sub}</div>}
             </div>
           ))}
         </div>

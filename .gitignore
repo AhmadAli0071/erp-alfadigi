@@ -8,3 +8,4 @@ server/node_modules/
 server/dist/
 server/.env
 server/server.log
+server/server.err.log

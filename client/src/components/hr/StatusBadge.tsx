@@ -134,9 +134,10 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           dot: 'bg-teal-500',
         };
       case 'Closed':
+      case 'Cancelled':
         return {
-          bg: 'bg-slate-200/50 text-slate-500 border-slate-200',
-          icon: <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />,
+          bg: 'bg-slate-200/50 text-slate-500 border border-slate-200',
+          icon: <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />,
           dot: 'bg-slate-400',
         };
       default:

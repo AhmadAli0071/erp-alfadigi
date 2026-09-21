@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import {
   Ticket,
@@ -25,7 +26,7 @@ interface EmployeeTicketsViewProps {
 
 const TICKET_TYPES = ['General HR', 'Attendance Correction', 'Leave Inquiry', 'Payroll & Salary', 'Hardware / IT', 'Workplace / Facility', 'Policy & Grievance', 'Other'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
-const STATUS_OPTIONS = ['ALL', 'Open', 'In Progress', 'Pending', 'Resolved', 'Closed'];
+const STATUS_OPTIONS = ['ALL', 'Open', 'In Progress', 'Pending', 'Resolved', 'Cancelled', 'Closed'];
 
 interface TicketMessage {
   id: string;
@@ -83,6 +84,36 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleWithdraw = async (ticketId: string) => {
+    if (!window.confirm('Withdraw this ticket? This cannot be undone.')) return;
+    setActionInProgress(ticketId);
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/withdraw`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast('Ticket withdrawn.', 'success');
+        fetchTickets();
+      } else {
+        showToast(data.error || 'Could not withdraw the ticket.', 'error');
+      }
+    } catch {
+      showToast('Could not withdraw the ticket. Please try again.', 'error');
+    } finally {
+      setActionInProgress(null);
+    }
+  };
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +133,9 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  // Live refresh: SSE notification ya window focus par tickets refetch
+  useRealtimeRefresh(fetchTickets);
 
   const filteredTickets = tickets
     .filter((t) => selectedStatus === 'ALL' || t.status === selectedStatus)
@@ -175,6 +209,24 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+
+      {/* Toast feedback */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/90 backdrop-blur-xl border text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp ${
+            toast.type === 'success' ? 'border-emerald-200' : 'border-rose-200'
+          }`}
+          id="employee-ticket-toast"
+        >
+          <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-rose-50 border-rose-200 text-rose-600'}`}>
+            {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          </div>
+          <div>
+            <div className="font-bold text-slate-900">{toast.type === 'success' ? 'Ticket Withdrawn' : 'Notice'}</div>
+            <div className="text-slate-600 font-medium">{toast.text}</div>
+          </div>
+        </div>
+      )}
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -290,6 +342,7 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
                   <th className="px-5 py-3.5">Priority</th>
                   <th className="px-5 py-3.5">Status</th>
                   <th className="px-5 py-3.5 text-right pr-5">Created</th>
+                  <th className="px-5 py-3.5 text-right pr-5">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/70">
@@ -308,10 +361,25 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <StatusBadge status={ticket.status as 'Open' | 'In Progress' | 'Pending' | 'Resolved' | 'Closed'} size="xs" />
+                      <StatusBadge status={ticket.status} size="xs" />
                     </td>
                     <td className="px-5 py-3.5 text-xs text-slate-500 text-right pr-5">
                       {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="px-5 py-3.5 text-right pr-5">
+                      {(ticket.status === 'Open' || ticket.status === 'Pending') && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWithdraw(ticket.id);
+                          }}
+                          disabled={actionInProgress === ticket.id}
+                          className="px-3 py-1.5 rounded-lg bg-slate-100/80 hover:bg-rose-50 hover:text-rose-600 border border-slate-200/70 text-[10px] font-bold text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          {actionInProgress === ticket.id ? '…' : 'Withdraw'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -455,12 +523,27 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 mb-4">
-              <StatusBadge status={showDetailModal.status as 'Open' | 'In Progress' | 'Pending' | 'Resolved' | 'Closed'} size="xs" />
+              <StatusBadge status={showDetailModal.status} size="xs" />
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${PRIORITY_COLORS[showDetailModal.priority] || 'bg-slate-100 text-slate-600'}`}>
                 {showDetailModal.priority}
               </span>
               <span className="text-[10px] text-slate-500 ml-auto">{showDetailModal.ticketType}</span>
             </div>
+
+            {(showDetailModal.status === 'Open' || showDetailModal.status === 'Pending') && (
+              <button
+                type="button"
+                onClick={() => {
+                  const id = showDetailModal.id;
+                  setShowDetailModal(null);
+                  handleWithdraw(id);
+                }}
+                disabled={actionInProgress === showDetailModal.id}
+                className="w-full mb-4 px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-rose-50 hover:text-rose-600 border border-slate-200/70 text-[11px] font-bold text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+              >
+                Withdraw this ticket
+              </button>
+            )}
 
             {showDetailModal.description && (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 mb-4">
@@ -491,7 +574,12 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
               )}
             </div>
 
-            {/* Add Message */}
+            {/* Add Message — read-only once ticket reaches a final status */}
+            {['Closed', 'Rejected', 'Cancelled'].includes(showDetailModal.status) ? (
+              <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
+                This ticket is {showDetailModal.status} — replies are disabled.
+              </p>
+            ) : (
             <div className="pt-3 border-t border-slate-200/70">
               <div className="flex items-center gap-2">
                 <input
@@ -511,6 +599,7 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
                 </button>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}

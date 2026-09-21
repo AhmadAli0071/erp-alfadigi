@@ -28,7 +28,9 @@ export const HRCurrentlyOnLeaveCard: React.FC<HRCurrentlyOnLeaveCardProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 Currently On Leave
               </h3>
-              <span className="text-[11px] text-slate-500">Active today (31 Aug)</span>
+              <span className="text-[11px] text-slate-500">
+                Active today ({new Date().getDate()} {new Date().toLocaleString('en-US', { month: 'short' })})
+              </span>
             </div>
           </div>
 

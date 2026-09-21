@@ -75,6 +75,8 @@ export interface IAuthService {
   login(credentials: LoginCredentials): Promise<AuthResponse>;
   logout(): Promise<void>;
   getCurrentUser(): User | null;
+  /** Re-validates the stored session against the server. Returns null (and clears storage) if the account was deleted/deactivated. */
+  verifySession(): Promise<User | null>;
   requestPasswordReset(email: string): Promise<ResetPasswordResponse>;
   getDemoAccounts(): DemoUserAccount[];
   createUserAccount(input: CreateUserAccountInput): Promise<CreateUserAccountResult>;
@@ -209,6 +211,35 @@ class AuthService implements IAuthService {
     } catch {
       // ignore
     }
+    return null;
+  }
+
+  /**
+   * Re-validates the stored session against the server on every app load.
+   * If the account was deleted or deactivated (HR removed the user), the
+   * session is cleared and null is returned — forcing a fresh login.
+   */
+  public async verifySession(): Promise<User | null> {
+    const stored = this.getCurrentUser();
+    if (!stored) return null;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
+      if (res.ok) {
+        const fresh = await res.json();
+        const merged = { ...stored, ...fresh } as User;
+        this.currentUser = merged;
+        try {
+          const target = localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage;
+          target.setItem(SESSION_KEY, JSON.stringify(merged));
+        } catch { /* ignore */ }
+        return merged;
+      }
+    } catch {
+      // Network/server unreachable — keep the stored session instead of locking the user out
+      return stored;
+    }
+    // 401/403 — token invalid or user deleted/deactivated
+    await this.logout();
     return null;
   }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { StatusBadge } from '../hr/StatusBadge';
 import {
   Ticket,
@@ -53,7 +54,9 @@ const getHeaders = (): Record<string, string> => {
   }
 };
 
-const STATUS_OPTIONS = ['ALL', 'Resolved', 'HR In Process', 'Closed', 'Rejected'];
+const STATUS_OPTIONS = ['ALL', 'Open', 'In Progress', 'Pending', 'Resolved', 'HR In Process', 'Closed', 'Rejected', 'Cancelled'];
+const ACTIVE_STATUSES = ['Open', 'In Progress', 'Pending'];
+const NEXT_STATUS_OPTIONS = ['Open', 'In Progress', 'Pending', 'Resolved'];
 
 const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-slate-100 text-slate-600',
@@ -72,6 +75,8 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [detailModal, setDetailModal] = useState<TicketRecord | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [rowStatuses, setRowStatuses] = useState<Record<string, string>>({});
+  const [modalStatus, setModalStatus] = useState('');
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
@@ -92,6 +97,9 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
     fetchTickets();
   }, [fetchTickets]);
 
+  // Live refresh: SSE notification ya window focus par tickets refetch
+  useRealtimeRefresh(fetchTickets);
+
   const filteredTickets = tickets.filter((t) =>
     !searchQuery ||
     t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,10 +108,25 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
   );
 
   const summary = {
+    active: tickets.filter((t) => ACTIVE_STATUSES.includes(t.status)).length,
     awaiting: tickets.filter((t) => t.status === 'Resolved').length,
     inProcess: tickets.filter((t) => t.status === 'HR In Process').length,
     closed: tickets.filter((t) => t.status === 'Closed').length,
     rejected: tickets.filter((t) => t.status === 'Rejected').length,
+  };
+
+  const performStatusUpdate = async (ticketId: string, status: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setDetailModal(null);
+        fetchTickets();
+      }
+    } catch { /* ignore */ }
   };
 
   const performAction = async (ticketId: string, action: 'hr-approve' | 'hr-reject' | 'hr-inprocess') => {
@@ -128,7 +151,8 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const me = meRes.ok ? await meRes.json() : null;
-      const senderEmail = me?.user?.email;
+      // /api/auth/me returns a flat object ({ email, ... }); fall back for safety
+      const senderEmail = me?.email || me?.user?.email;
       if (!senderEmail) return;
 
       const res = await fetch(`${API_BASE}/tickets/${detailModal.id}/message`, {
@@ -167,7 +191,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
               <Ticket className="w-6 h-6 text-indigo-600" />
               Ticket Management
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Lead-resolved tickets — final HR decision</p>
+            <p className="text-xs text-slate-500 font-medium">All support tickets — act on active, final decision on resolved</p>
           </div>
         </div>
         <button
@@ -180,12 +204,13 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
+          { label: 'Open / Active', value: summary.active, icon: <AlertCircle className="w-4 h-4 text-indigo-600" />, bg: 'bg-indigo-500/[0.04] border-indigo-200' },
           { label: 'Awaiting HR', value: summary.awaiting, icon: <Clock className="w-4 h-4 text-amber-600" />, bg: 'bg-amber-500/[0.04] border-amber-200' },
           { label: 'HR In Process', value: summary.inProcess, icon: <Loader2 className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-500/[0.04] border-blue-200' },
           { label: 'Closed (Approved)', value: summary.closed, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-500/[0.04] border-emerald-200' },
-          { label: 'Rejected', value: summary.rejected, icon: <XCircle className="w-4 h-4 text-rose-600" />, bg: 'bg-rose-500/[0.04] border-rose-200' },
+          { label: 'Rejected', value: summary.rejected, icon: <XCircle className="w-4 h-4 text-slate-500" />, bg: 'bg-slate-500/[0.04] border-slate-200' },
         ].map((card, idx) => (
           <div key={idx} className={`p-4 rounded-xl border ${card.bg} flex items-center justify-between`}>
             <div className="flex items-center gap-2.5">
@@ -265,7 +290,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
                 {filteredTickets.map((ticket) => (
                   <tr
                     key={ticket.id}
-                    onClick={() => setDetailModal(ticket)}
+                    onClick={() => { setDetailModal(ticket); setModalStatus(ticket.status); }}
                     className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                   >
                     <td className="px-5 py-3.5 text-xs font-bold text-indigo-600">{ticket.ticketCode}</td>
@@ -280,7 +305,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <StatusBadge status={ticket.status as 'Resolved' | 'HR In Process' | 'Closed' | 'Rejected'} size="xs" />
+                      <StatusBadge status={ticket.status as 'Open' | 'In Progress' | 'Pending' | 'Resolved' | 'HR In Process' | 'Closed' | 'Rejected' | 'Cancelled'} size="xs" />
                     </td>
                     <td className="px-5 py-3.5 text-right pr-5" onClick={(e) => e.stopPropagation()}>
                       {ticket.status === 'Resolved' || ticket.status === 'HR In Process' ? (
@@ -305,8 +330,27 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
                             Reject
                           </button>
                         </div>
+                      ) : ACTIVE_STATUSES.includes(ticket.status) ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <select
+                            value={rowStatuses[ticket.id] ?? ticket.status}
+                            onChange={(e) => setRowStatuses((prev) => ({ ...prev, [ticket.id]: e.target.value }))}
+                            className="px-1.5 py-1 rounded-lg bg-slate-50 border border-slate-200/70 text-[10px] font-semibold text-slate-700 cursor-pointer"
+                          >
+                            {NEXT_STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => performStatusUpdate(ticket.id, rowStatuses[ticket.id] || ticket.status)}
+                            disabled={(rowStatuses[ticket.id] || ticket.status) === ticket.status}
+                            className="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                          >
+                            Update
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-medium">Decided</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{ticket.status === 'Cancelled' ? 'Withdrawn' : 'Decided'}</span>
                       )}
                     </td>
                   </tr>
@@ -338,7 +382,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 mb-3">
-              <StatusBadge status={detailModal.status as 'Resolved' | 'HR In Process' | 'Closed' | 'Rejected'} size="xs" />
+              <StatusBadge status={detailModal.status as 'Open' | 'In Progress' | 'Pending' | 'Resolved' | 'HR In Process' | 'Closed' | 'Rejected' | 'Cancelled'} size="xs" />
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${PRIORITY_COLORS[detailModal.priority] || 'bg-slate-100 text-slate-600'}`}>
                 {detailModal.priority}
               </span>
@@ -374,9 +418,29 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
                   Approve & Close
                 </button>
               </div>
+            ) : ACTIVE_STATUSES.includes(detailModal.status) ? (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[10px] font-bold text-slate-600 shrink-0">Update Status:</span>
+                <select
+                  value={modalStatus}
+                  onChange={(e) => setModalStatus(e.target.value)}
+                  className="flex-1 px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] font-semibold text-slate-700 cursor-pointer"
+                >
+                  {NEXT_STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => performStatusUpdate(detailModal.id, modalStatus)}
+                  disabled={modalStatus === detailModal.status}
+                  className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  Update
+                </button>
+              </div>
             ) : (
               <div className="flex justify-end mb-3">
-                <span className="text-[10px] text-slate-400 font-medium">Final decision made</span>
+                <span className="text-[10px] text-slate-400 font-medium">{detailModal.status === 'Cancelled' ? 'This ticket was withdrawn.' : 'Final decision made'}</span>
               </div>
             )}
 
@@ -403,7 +467,12 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
               )}
             </div>
 
-            {/* Add Message */}
+            {/* Add Message — read-only once ticket reaches a final status */}
+            {['Closed', 'Rejected', 'Cancelled'].includes(detailModal.status) ? (
+              <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
+                This ticket is {detailModal.status} — replies are disabled.
+              </p>
+            ) : (
             <div className="pt-3 border-t border-slate-200/70">
               <div className="flex items-center gap-2">
                 <input
@@ -423,6 +492,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
                 </button>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}

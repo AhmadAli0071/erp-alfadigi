@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
 import {
   ArrowLeft,
@@ -88,6 +89,9 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Live refresh: SSE notification ya window focus par profile refetch
+  useRealtimeRefresh(fetchProfile);
 
   const handleCopy = (value: string, idx: number) => {
     navigator.clipboard.writeText(value);

@@ -24,6 +24,8 @@ export const MOCK_DASHBOARD_KPIS: HRDashboardKPIs = {
   lateOrShortHoursToday: 0,
   halfDayToday: 0,
   workFromHomeToday: 0,
+  avgWorkingHoursToday: '00:00',
+  shortHoursTotalToday: '00:00',
   pendingRequestsCount: 0,
   openTicketsCount: 0,
   pendingTicketsCount: 0,

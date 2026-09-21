@@ -4,12 +4,16 @@ import { FormInput } from '../common/FormInput';
 import { Checkbox } from '../common/Checkbox';
 import { BrandLogo } from '../common/BrandLogo';
 import { authService, DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../services/authService';
+import { notificationService } from '../../services/notificationService';
 import { DemoUserAccount, User } from '../../types/auth';
 
 interface LoginFormProps {
   onLoginSuccess: (user: User) => void;
   onOpenForgotPassword: (initialEmail: string) => void;
 }
+
+/** Demo quick-fill toolbar toggle — OFF for production deployment. */
+const SHOW_DEMO_ACCOUNTS = false;
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onLoginSuccess,
@@ -101,6 +105,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       });
 
       if (response.success && response.user) {
+        // Ask for Chrome notification permission right after login (click gesture is still valid)
+        if (notificationService.getBrowserPermission() === 'default') {
+          void notificationService.requestDesktopPermission();
+        }
         onLoginSuccess(response.user);
       } else {
         setAuthError(response.error || 'Invalid email or password. Please try again.');
@@ -130,7 +138,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     >
       {/* Mobile-Only Header Brand Logo */}
       <div className="lg:hidden flex items-center justify-center mb-8">
-        <BrandLogo size="md" showTagline />
+        <BrandLogo size="md" />
       </div>
 
       {/* Main Login Card / Section */}
@@ -259,7 +267,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           </div>
         </form>
 
-        {/* Enterprise Demo Account Quick-Fill Toolbar */}
+        {/* Enterprise Demo Account Quick-Fill Toolbar — hidden in production (set true to re-enable) */}
+        {SHOW_DEMO_ACCOUNTS && (
         <div className="mt-8 pt-6 border-t border-slate-200/70" id="demo-accounts-picker">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -303,6 +312,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             ))}
           </div>
         </div>
+        )}
       </div>
 
       {/* Compliance / Security Footnote */}

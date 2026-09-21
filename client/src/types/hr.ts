@@ -17,7 +17,7 @@ export type RequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Closed';
 
 export type LeaveTypeCategory = 'Casual Leave' | 'Annual Leave' | 'Sick Leave' | 'Unpaid Leave';
 
-export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type { TicketPriority } from './ticket';
 
 export type DepartmentName = 'HR' | 'Sales' | 'Tech';
 
@@ -63,6 +63,7 @@ export interface AttendanceRecord {
   clockOutTime: string; // e.g. "03:05 AM"
   clockOutDate: string; // e.g. "01 Sep"
   breakDuration: string; // e.g. "01:00"
+  breakMinutesByType?: { lunch: number; namaz: number; washroom: number };
   workingHours: string; // e.g. "08:10"
   extraHours: string; // e.g. "00:10"
   shortHours: string; // e.g. "00:00"
@@ -176,6 +177,8 @@ export interface HRDashboardKPIs {
   lateOrShortHoursToday: number;
   halfDayToday: number;
   workFromHomeToday: number;
+  avgWorkingHoursToday: string;
+  shortHoursTotalToday: string;
   pendingRequestsCount: number;
   openTicketsCount: number;
   pendingTicketsCount: number;

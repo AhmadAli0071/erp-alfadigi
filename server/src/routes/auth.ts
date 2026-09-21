@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { User } from '../models/User.js';
 import { Employee } from '../models/Employee.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -24,16 +25,41 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const accountStatusSchema = z.object({ isActive: z.boolean() });
+const accountRoleSchema = z.object({
+  role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'EMPLOYEE']),
+});
+const accountPasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+/** HR_ADMIN cannot manage SUPER_ADMIN accounts; SUPER_ADMIN can manage everyone. */
+const canManageAccount = (actorRole: string, targetRole: string): boolean =>
+  actorRole === 'SUPER_ADMIN' ? true : targetRole !== 'SUPER_ADMIN';
+
 // POST /api/auth/register — HR creates a new user account
-router.post('/register', async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const parsed = registerSchema.safeParse(req.body);
+router.post(
+  '/register',
+  authenticate,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {
+        res.status(403).json({ error: 'Insufficient permissions.' });
+        return;
+      }
+
+      const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
 
     const { name, email, password, role, department, jobTitle, reportedTo } = parsed.data;
+
+    if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ error: 'Only a Super Admin can create Super Admin accounts.' });
+      return;
+    }
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
@@ -53,22 +79,32 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
       createdBy: req.user?.name || 'System',
     });
 
-    // Also create Employee record so user appears in employee directory
-    const empCount = await Employee.countDocuments();
-    const empId = `EMP-${String(empCount + 1).padStart(3, '0')}`;
+    console.warn(`[audit] Account created: ${email} (${role}) by ${req.user?.email} (${req.user?.role}) from IP ${req.ip}`);
 
-    await Employee.create({
-      userId: user._id,
-      empId,
-      name,
-      email: email.toLowerCase(),
-      department: department || 'Sales',
-      jobTitle,
-      phone: '',
-      joinedDate: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      reportedTo: reportedTo || undefined,
-    });
+    // Also create Employee record so user appears in employee directory
+    let employeeCreated = false;
+    for (let attempt = 0; attempt < 5 && !employeeCreated; attempt++) {
+      const empCount = await Employee.countDocuments();
+      const empId = `EMP-${String(empCount + 1 + attempt).padStart(3, '0')}`;
+      try {
+        await Employee.create({
+          userId: user._id,
+          empId,
+          name,
+          email: email.toLowerCase(),
+          department: department || 'Sales',
+          jobTitle,
+          phone: '',
+          joinedDate: new Date().toISOString().split('T')[0],
+          status: 'Active',
+          reportedTo: reportedTo || undefined,
+        });
+        employeeCreated = true;
+      } catch (err) {
+        const dupCode = (err as { code?: number })?.code;
+        if (dupCode !== 11000 || attempt === 4) throw err;
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -76,7 +112,6 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
         id: user._id.toString(),
         name: user.name,
         email: user.email,
-        password,
         role: user.role,
         department: user.department,
         jobTitle: user.jobTitle,
@@ -89,8 +124,8 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
   }
 });
 
-// POST /api/auth/login
-router.post('/login', async (req, res: Response): Promise<void> => {
+// POST /api/auth/login — max 10 attempts per IP per 15 minutes
+router.post('/login', rateLimit(10, 15 * 60 * 1000), async (req, res: Response): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -113,7 +148,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
     }
 
     const token = jwt.sign({ userId: user._id.toString() }, config.jwtSecret, {
-      expiresIn: '7d',
+      expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'],
     });
 
     res.json({
@@ -174,6 +209,103 @@ router.get('/accounts', authenticate, async (req: AuthRequest, res: Response): P
       createdAt: u.createdAt.toISOString(),
     })),
   });
+});
+
+// PUT /api/auth/accounts/:id/status — activate/deactivate an account
+router.put('/accounts/:id/status', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+    const parsed = accountStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const target = await User.findById(req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+    if (!canManageAccount(req.user.role, target.role)) {
+      res.status(403).json({ error: 'Only a Super Admin can modify Super Admin accounts.' });
+      return;
+    }
+    if (!parsed.data.isActive && target._id.toString() === req.user._id.toString()) {
+      res.status(400).json({ error: 'You cannot deactivate your own account.' });
+      return;
+    }
+    target.isActive = parsed.data.isActive;
+    await target.save();
+    console.warn(`[audit] Account ${target.isActive ? 'ACTIVATED' : 'DEACTIVATED'}: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}`);
+    res.json({ success: true, account: { id: target._id.toString(), isActive: target.isActive } });
+  } catch (err) {
+    console.error('Account status error:', err);
+    res.status(500).json({ error: 'Unable to update account status.' });
+  }
+});
+
+// PUT /api/auth/accounts/:id/role — change an account's role (Super Admin only)
+router.put('/accounts/:id/role', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ error: 'Only a Super Admin can change account roles.' });
+      return;
+    }
+    const parsed = accountRoleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const target = await User.findById(req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+    if (target._id.toString() === req.user._id.toString()) {
+      res.status(400).json({ error: 'You cannot change your own role.' });
+      return;
+    }
+    target.role = parsed.data.role;
+    await target.save();
+    console.warn(`[audit] Role changed to ${target.role}: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}`);
+    res.json({ success: true, account: { id: target._id.toString(), role: target.role } });
+  } catch (err) {
+    console.error('Account role error:', err);
+    res.status(500).json({ error: 'Unable to change account role.' });
+  }
+});
+
+// PUT /api/auth/accounts/:id/password — reset an account's password
+router.put('/accounts/:id/password', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {
+      res.status(403).json({ error: 'Insufficient permissions.' });
+      return;
+    }
+    const parsed = accountPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const target = await User.findById(req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+    if (!canManageAccount(req.user.role, target.role)) {
+      res.status(403).json({ error: 'Only a Super Admin can reset Super Admin passwords.' });
+      return;
+    }
+    target.password = await bcrypt.hash(parsed.data.password, 12);
+    await target.save();
+    console.warn(`[audit] Password RESET: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}`);
+    res.json({ success: true, message: 'Password reset successfully.' });
+  } catch (err) {
+    console.error('Account password reset error:', err);
+    res.status(500).json({ error: 'Unable to reset password.' });
+  }
 });
 
 export default router;
