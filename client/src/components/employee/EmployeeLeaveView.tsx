@@ -31,7 +31,7 @@ const approvalStage = (status: string): { label: string; cls: string } => {
       return { label: 'Awaiting Lead', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'Approved':
     case 'In Process':
-      return { label: 'Lead OK — Awaiting HR', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+      return { label: 'Lead OK, Awaiting HR', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
     case 'Final Approved':
       return { label: 'HR Final Approved', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     case 'Rejected':
@@ -39,7 +39,7 @@ const approvalStage = (status: string): { label: string; cls: string } => {
     case 'Cancelled':
       return { label: 'Withdrawn', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
     default:
-      return { label: '—', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
+      return { label: '-', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
   }
 };
 

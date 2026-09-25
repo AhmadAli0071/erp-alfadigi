@@ -155,7 +155,7 @@ export const HRLeaveFilterBar: React.FC<HRLeaveFilterBarProps> = ({
             <option value="ALL">All Employees</option>
             {employees.map((emp) => (
               <option key={emp.id} value={emp.id}>
-                {emp.name} ({emp.empId} — {emp.department})
+                {emp.name} ({emp.empId}, {emp.department})
               </option>
             ))}
           </select>

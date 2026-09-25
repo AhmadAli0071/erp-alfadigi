@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Employee, DepartmentName } from '../../types/hr';
+import { authService } from '../../services/authService';
 
 interface HREmployeeEditModalProps {
   employee: Employee;
@@ -34,11 +35,14 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
   onClose,
   onUpdated,
 }) => {
+  // Salary is visible/editable by Super Admin only - HR never sees salaries
+  const isSuperAdminActor = authService.getCurrentUser()?.role === 'SUPER_ADMIN';
   const [tab, setTab] = useState<'details' | 'password'>('details');
   const [name, setName] = useState(employee.name);
   const [email, setEmail] = useState(employee.email);
   const [department, setDepartment] = useState(employee.department);
   const [jobTitle, setJobTitle] = useState(employee.jobTitle);
+  const [salary, setSalary] = useState(employee.salary ? String(employee.salary) : '');
   const [phone, setPhone] = useState(employee.phone || '');
   const [status, setStatus] = useState(employee.status);
   const [reportedTo, setReportedTo] = useState(employee.reportedTo?.id || '');
@@ -86,20 +90,54 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
     setIsSubmitting(true);
     try {
       const token = getToken();
+      const newSalary = salary.trim() ? Number(salary) : null;
+      const salaryChanged =
+        !isSuperAdminActor &&
+        newSalary !== null &&
+        newSalary !== (employee.salary || 0);
+
       const res = await fetch(`/api/employees/${employee.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ name, email, department, jobTitle, phone, status, reportedTo: reportedTo || null }),
+        body: JSON.stringify({
+          name,
+          email,
+          department,
+          jobTitle,
+          ...(isSuperAdminActor ? { salary: salary.trim() ? Number(salary) : undefined } : {}),
+          phone,
+          status,
+          reportedTo: reportedTo || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         setErrorMessage(data.error || 'Unable to update employee.');
         return;
       }
-      setSuccessMessage('Employee updated successfully.');
+
+      // HR cannot change salary directly - request goes to Super Admin for approval
+      if (salaryChanged) {
+        const reqRes = await fetch('/api/salary-requests', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ employeeId: employee.id, newSalary }),
+        });
+        const reqData = await reqRes.json();
+        if (!reqRes.ok || !reqData.success) {
+          setErrorMessage(reqData.error || 'Details saved, but salary request failed.');
+          return;
+        }
+        setSuccessMessage('Employee updated. Salary change request sent to Super Admin. It will apply after approval.');
+      } else {
+        setSuccessMessage('Employee updated successfully.');
+      }
       onUpdated();
     } catch {
       setErrorMessage('Unable to connect to server.');
@@ -179,7 +217,7 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">Edit Employee</h3>
-              <p className="text-[11px] text-slate-500">{employee.name} — {employee.empId}</p>
+              <p className="text-[11px] text-slate-500">{employee.name}, {employee.empId}</p>
             </div>
           </div>
           <button
@@ -286,15 +324,41 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone</label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+92 300 1234567"
-                  className={inputClasses}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+92 300 1234567"
+                    className={inputClasses}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Current Salary (PKR)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                      Rs
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={salary}
+                      onChange={(e) => setSalary(e.target.value)}
+                      placeholder="e.g. 85000"
+                      className={`${inputClasses} pl-10`}
+                    />
+                  </div>
+                  {!isSuperAdminActor && (
+                    <p className="text-[10px] text-amber-600 mt-1 font-medium">
+                      Salary changes require Super Admin approval
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -307,10 +371,10 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
                     onChange={(e) => setReportedTo(e.target.value)}
                     className={`${inputClasses} appearance-none cursor-pointer pr-8`}
                   >
-                    <option value="">— No lead assigned —</option>
+                    <option value="">- No lead assigned -</option>
                     {leads.map((lead) => (
                       <option key={lead.id} value={lead.id}>
-                        {lead.name} — {lead.jobTitle} ({lead.department})
+                        {lead.name}, {lead.jobTitle} ({lead.department})
                       </option>
                     ))}
                   </select>

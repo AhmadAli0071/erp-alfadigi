@@ -12,7 +12,7 @@ interface LoginFormProps {
   onOpenForgotPassword: (initialEmail: string) => void;
 }
 
-/** Demo quick-fill toolbar toggle — OFF for production deployment. */
+/** Demo quick-fill toolbar toggle - OFF for production deployment. */
 const SHOW_DEMO_ACCOUNTS = false;
 
 export const LoginForm: React.FC<LoginFormProps> = ({
@@ -267,7 +267,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           </div>
         </form>
 
-        {/* Enterprise Demo Account Quick-Fill Toolbar — hidden in production (set true to re-enable) */}
+        {/* Enterprise Demo Account Quick-Fill Toolbar - hidden in production (set true to re-enable) */}
         {SHOW_DEMO_ACCOUNTS && (
         <div className="mt-8 pt-6 border-t border-slate-200/70" id="demo-accounts-picker">
           <div className="flex items-center justify-between mb-3">

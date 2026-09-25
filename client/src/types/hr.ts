@@ -30,6 +30,7 @@ export interface Employee {
   jobTitle: string;
   avatar?: string;
   phone?: string;
+  salary?: number;
   joinedDate: string;
   status: 'Active' | 'On Leave' | 'Inactive';
   reportedTo?: {
@@ -48,6 +49,8 @@ export interface AttendanceTimelineEvent {
   label: string;
   notes?: string;
 }
+
+export type ReviewStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface AttendanceRecord {
   id: string;
@@ -72,6 +75,14 @@ export interface AttendanceRecord {
   remarks?: string;
   isOvernight: boolean;
   timeline?: AttendanceTimelineEvent[];
+  correctionStatus?: ReviewStatus;
+  correctionReason?: string;
+  correctionNote?: string;
+  otStatus?: ReviewStatus;
+  otReason?: string;
+  otNote?: string;
+  otApprovedMinutes?: number;
+  extraMinutes?: number;
 }
 
 export interface EmployeeAttendanceSummary {

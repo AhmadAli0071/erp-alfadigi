@@ -22,7 +22,7 @@ export interface LeaveApprovalStep {
   role: 'Employee' | 'Department Lead' | 'HR Admin' | 'Final Approval';
   actorName: string;
   action: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PENDING' | 'SKIPPED';
-  timestamp?: string; // e.g. "01 Sep 2026 — 09:20 PM"
+  timestamp?: string; // e.g. "01 Sep 2026 - 09:20 PM"
   statusLabel: 'Completed' | 'Pending' | 'Rejected' | 'Waiting';
   notes?: string;
 }

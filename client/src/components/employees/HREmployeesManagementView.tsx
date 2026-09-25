@@ -22,6 +22,7 @@ import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
 import { HRCreateUserModal } from '../hr/HRCreateUserModal';
 import { HREmployeeEditModal } from '../hr/HREmployeeEditModal';
+import { authService } from '../../services/authService';
 
 const API_BASE = '/api';
 
@@ -35,7 +36,7 @@ const getHeaders = (): Record<string, string> => {
 };
 
 const formatJoinedDate = (val: string): string => {
-  if (!val) return '—';
+  if (!val) return '-';
   const m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return val;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -75,11 +76,13 @@ const getAvatarTint = (id: string): string => {
   return avatarTints[hash];
 };
 
-const formatValue = (val: number) => (val > 0 ? val : '—');
+const formatValue = (val: number) => (val > 0 ? val : '-');
 
 export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps> = ({
   onNavigateToDashboard,
 }) => {
+  // Salary column: visible to HR + Super Admin (server hides HR's own salary from them)
+  const canSeeSalary = ['HR_ADMIN', 'SUPER_ADMIN'].includes(authService.getCurrentUser()?.role || '');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -475,6 +478,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     <th className="py-3 px-3">Reports To</th>
                     <th className="py-3 px-3">Email</th>
                     <th className="py-3 px-3">Joined</th>
+                    {canSeeSalary && <th className="py-3 px-3">Salary</th>}
                     <th className="py-3 px-3 text-right pr-4">Status</th>
                   </tr>
                 </thead>
@@ -523,7 +527,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-400">-</span>
                         )}
                       </td>
                       <td className="py-3.5 px-3">
@@ -534,6 +538,13 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                       <td className="py-3.5 px-3">
                         <span className="text-xs text-slate-500 whitespace-nowrap">{formatJoinedDate(emp.joinedDate)}</span>
                       </td>
+                      {canSeeSalary && (
+                        <td className="py-3.5 px-3">
+                          <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+                            {emp.salary && emp.salary > 0 ? `Rs ${emp.salary.toLocaleString('en-US')}` : '-'}
+                          </span>
+                        </td>
+                      )}
                       <td className="py-3.5 px-3 text-right pr-4">
                         <div className="flex items-center justify-end gap-2">
                           <StatusBadge status={emp.status} size="xs" />
@@ -635,6 +646,14 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     <div className="text-slate-400 text-[10px] mb-0.5">Joined</div>
                     <div className="font-semibold text-slate-700">{emp.joinedDate}</div>
                   </div>
+                  {canSeeSalary && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
+                      <div className="text-slate-400 text-[10px] mb-0.5">Salary</div>
+                      <div className="font-semibold text-slate-700">
+                        {emp.salary && emp.salary > 0 ? `Rs ${emp.salary.toLocaleString('en-US')}` : '-'}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5">

@@ -222,7 +222,7 @@ export const LeaveSettingsPanel: React.FC<LeaveSettingsPanelProps> = ({
         <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200 text-xs text-indigo-600 flex items-start gap-2.5">
           <BookOpen className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            These leave types are shared company-wide — employees can only request active types.
+            These leave types are shared company-wide. Employees can only request active types.
             To add, rename, or deactivate types, use <strong>Leave Management → Leave Types</strong>.
           </p>
         </div>

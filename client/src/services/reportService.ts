@@ -101,7 +101,7 @@ class ReportService {
       )
       .join('');
     const headerBlock = `<div style="font-family:Arial,sans-serif;margin-bottom:12px;">
-      <h1 style="font-size:18px;margin:0;color:#1e293b;">Alfa Digi ERP — ${this.escapeHtml(title)} Report</h1>
+      <h1 style="font-size:18px;margin:0;color:#1e293b;">Alfa Digi ERP ${this.escapeHtml(title)} Report</h1>
       <p style="font-size:11px;color:#64748b;margin:4px 0 0;">Generated on ${new Date().toLocaleString()} · ${rows.length} rows</p>
     </div>`;
     const table = `<table style="border-collapse:collapse;font-family:Arial,sans-serif;"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;

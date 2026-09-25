@@ -254,19 +254,19 @@ export const HRAttendanceTable: React.FC<HRAttendanceTableProps> = ({
 
                   {/* Clock In */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                    {record.clockInTime !== '—' ? (
+                    {record.clockInTime !== '-' ? (
                       <div>
                         <span className="text-slate-700">{record.clockInTime}</span>
                         <span className="text-[9px] text-slate-400 ml-1">({record.clockInDate})</span>
                       </div>
                     ) : (
-                      <span className="text-slate-700">—</span>
+                      <span className="text-slate-700">-</span>
                     )}
                   </td>
 
                   {/* Clock Out (with overnight date marker) */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                    {record.clockOutTime !== '—' ? (
+                    {record.clockOutTime !== '-' ? (
                       <div>
                         <span className="text-slate-700">{record.clockOutTime}</span>
                         <span className="text-[9px] font-semibold text-indigo-600 ml-1">
@@ -274,7 +274,7 @@ export const HRAttendanceTable: React.FC<HRAttendanceTableProps> = ({
                         </span>
                       </div>
                     ) : (
-                      <span className="text-slate-700">—</span>
+                      <span className="text-slate-700">-</span>
                     )}
                   </td>
 

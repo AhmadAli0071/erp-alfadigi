@@ -189,10 +189,10 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
       if (!res.ok) {
         setBreakMsg({ ok: false, text: data.error || 'Break action failed.' });
       } else if (action === 'start') {
-        setBreakMsg({ ok: true, text: `${rec.employeeName} ka ${MEMBER_BREAK_TYPES.find((t) => t.key === type)?.label} break start ho gaya.` });
+        setBreakMsg({ ok: true, text: `${rec.employeeName}'s ${MEMBER_BREAK_TYPES.find((t) => t.key === type)?.label} break started.` });
         setBreakMenuFor(null);
       } else {
-        setBreakMsg({ ok: true, text: `${rec.employeeName} ka break end ho gaya (${data.lastBreakMinutes} min).` });
+        setBreakMsg({ ok: true, text: `${rec.employeeName}'s break ended (${data.lastBreakMinutes} min).` });
       }
       await fetchTeamAttendance();
     } catch {
@@ -225,7 +225,7 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
   const isLiveDay = rangeDays === 'day' && selectedDate === utcToday();
 
   const renderMemberBreakControl = (rec: TeamAttendanceRecord): React.ReactNode => {
-    if (!isLiveDay || !rec.employeeEmail) return <span className="text-xs text-slate-300">—</span>;
+    if (!isLiveDay || !rec.employeeEmail) return <span className="text-xs text-slate-300">-</span>;
 
     const busy = breakBusyFor === rec.employeeId;
 
@@ -268,7 +268,7 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
           {menuOpen && (
             <div className="w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-1.5 space-y-1">
               <div className="px-1.5 pb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                Start break — {rec.employeeName.split(' ')[0]}
+                Start break: {rec.employeeName.split(' ')[0]}
               </div>
               {MEMBER_BREAK_TYPES.map((t) => {
                 const remaining = memberRemaining(rec, t.budgetKey);
@@ -486,8 +486,8 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">{rec.clockIn || '—'}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">{rec.clockOut || '—'}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">{rec.clockIn || '-'}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">{rec.clockOut || '-'}</td>
                     <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{formatMinutes(rec.workingMinutes)}</td>
                     {isLiveDay && (
                       <td className="px-5 py-3.5">
@@ -514,7 +514,7 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
                   <div className="text-[10px] text-slate-500">Clock In</div>
-                  <div className="text-xs font-bold text-slate-700">{rec.clockIn || '—'}</div>
+                  <div className="text-xs font-bold text-slate-700">{rec.clockIn || '-'}</div>
                 </div>
                 <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
                   <div className="text-[10px] text-slate-500">Working</div>

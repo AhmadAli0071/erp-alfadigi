@@ -191,7 +191,7 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
               <Ticket className="w-6 h-6 text-indigo-600" />
               Ticket Management
             </h1>
-            <p className="text-xs text-slate-500 font-medium">All support tickets — act on active, final decision on resolved</p>
+            <p className="text-xs text-slate-500 font-medium">All support tickets, act on active, final decision on resolved</p>
           </div>
         </div>
         <button
@@ -467,10 +467,10 @@ export const HRTicketManagementView: React.FC<HRTicketManagementViewProps> = ({
               )}
             </div>
 
-            {/* Add Message — read-only once ticket reaches a final status */}
+            {/* Add Message - read-only once ticket reaches a final status */}
             {['Closed', 'Rejected', 'Cancelled'].includes(detailModal.status) ? (
               <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
-                This ticket is {detailModal.status} — replies are disabled.
+                This ticket is {detailModal.status}. Replies are disabled.
               </p>
             ) : (
             <div className="pt-3 border-t border-slate-200/70">

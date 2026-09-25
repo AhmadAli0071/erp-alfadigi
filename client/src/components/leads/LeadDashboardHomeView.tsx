@@ -301,10 +301,10 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
         </div>
       </div>
 
-      {/* My Attendance — Clock In/Out (lead is an employee too) */}
+      {/* My Attendance - Clock In/Out (lead is an employee too) */}
       <ClockButtonsCard user={user} title="My Shift Today" />
 
-      {/* KPI Cards — REAL */}
+      {/* KPI Cards - REAL */}
       <section aria-label="Team KPI Metrics">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {kpis.map((card, idx) => (
@@ -327,7 +327,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
                 </span>
               </div>
               <div className="my-1">
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{card.value}</div>
+                <div className="font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight">{card.value}</div>
               </div>
               <div className="mt-1 pt-1 border-t border-slate-200/70">
                 <h3 className="text-xs font-bold text-slate-700 truncate">{card.title}</h3>
@@ -338,7 +338,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
         </div>
       </section>
 
-      {/* Requires Your Attention — REAL counts */}
+      {/* Requires Your Attention - REAL counts */}
       <section aria-label="Requires Your Attention" className="space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
           <div className="flex items-center gap-2.5">
@@ -413,7 +413,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
         </div>
       </section>
 
-      {/* Team Attendance Today — REAL */}
+      {/* Team Attendance Today - REAL */}
       <section aria-label="Team Attendance">
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between pb-4 border-b border-slate-200/70">
@@ -458,12 +458,12 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
                         </div>
                       </td>
                       <td className="py-3 pr-4"><Chip status={row.status} /></td>
-                      <td className="py-3 pr-4 text-xs font-mono text-slate-600">{row.clockIn || '—'}</td>
+                      <td className="py-3 pr-4 text-xs font-mono text-slate-600">{row.clockIn || '-'}</td>
                       <td className="py-3 pr-4 text-xs font-mono font-bold text-slate-700">
-                        {row.clockOut ? formatMinutes(row.workingMinutes) : row.clockIn ? 'Live' : '—'}
+                        {row.clockOut ? formatMinutes(row.workingMinutes) : row.clockIn ? 'Live' : '-'}
                       </td>
                       <td className="py-3 text-xs font-mono text-slate-500">
-                        {row.breakMinutes > 0 ? formatMinutes(row.breakMinutes) : '—'}
+                        {row.breakMinutes > 0 ? formatMinutes(row.breakMinutes) : '-'}
                       </td>
                     </tr>
                   ))}
@@ -604,7 +604,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
         </div>
       </div>
 
-      {/* Quick Actions — REAL routes only */}
+      {/* Quick Actions - REAL routes only */}
       <section aria-label="Quick Actions">
         <div className="flex items-center gap-2 mb-2.5">
           <Zap className="w-3.5 h-3.5 text-indigo-600" />

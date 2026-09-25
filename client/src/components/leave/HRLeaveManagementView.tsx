@@ -145,7 +145,7 @@ export const HRLeaveManagementView: React.FC<HRLeaveManagementViewProps> = ({
               <CalendarDays className="w-6 h-6 text-indigo-600" />
               Leave Management
             </h1>
-            <p className="text-xs text-slate-500 font-medium">All leave requests — direct reports & lead-approved</p>
+            <p className="text-xs text-slate-500 font-medium">All leave requests, direct reports & lead-approved</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export const HRLeaveManagementView: React.FC<HRLeaveManagementViewProps> = ({
       {/* Leave Types Management Modal */}
       <HRLeaveTypesModal isOpen={showTypesModal} onClose={() => setShowTypesModal(false)} />
 
-      {/* Detail Modal — portal se render hota hai taake page transform/scroll isay kabhi clip na kare */}
+      {/* Detail Modal - rendered via portal so page transform/scroll never clips it */}
       {detailModal && createPortal(
         <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={() => setDetailModal(null)} />
@@ -373,7 +373,7 @@ export const HRLeaveManagementView: React.FC<HRLeaveManagementViewProps> = ({
                 <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                    <span className="text-[11px] font-bold text-amber-800">Direct request — no lead in reporting chain</span>
+                    <span className="text-[11px] font-bold text-amber-800">Direct request, no lead in reporting chain</span>
                   </div>
                   <p className="text-[11px] text-amber-700 mt-1">This employee reports directly to HR. You are the first approver.</p>
                 </div>

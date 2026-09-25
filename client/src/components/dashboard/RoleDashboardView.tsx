@@ -276,7 +276,7 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({
 
       {/* Footer */}
       <footer className="bg-white/70 backdrop-blur-xl border-t border-slate-200/70 py-4 px-6 text-center text-xs text-slate-400">
-        &copy; {new Date().getFullYear()} Alfa Digi Corp. Alfa Digi ERP — Smart Workforce &amp; Business Management.
+        &copy; {new Date().getFullYear()} Alfa Digi Corp. Alfa Digi ERP. Smart Workforce &amp; Business Management.
       </footer>
     </div>
   );

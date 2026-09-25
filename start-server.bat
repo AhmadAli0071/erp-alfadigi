@@ -16,7 +16,7 @@ if %errorlevel%==0 (
     echo [OK] MongoDB already running
 ) else (
     echo [..] Starting MongoDB...
-    start "MongoDB" /min "C:\mongodb\mongodb-win32-x86_64-windows-8.0.4\bin\mongod.exe" --dbpath C:\data\db
+    start "MongoDB" /min "C:\mongodb\bin\mongod.exe" --dbpath C:\data\db
     timeout /t 6 /nobreak >nul
 )
 

@@ -131,7 +131,7 @@ export const LeadTeamView: React.FC<LeadTeamViewProps> = ({
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            Team members reporting to you — attendance, status, and details.
+            Team members reporting to you: attendance, status, and details.
           </p>
         </div>
         <button

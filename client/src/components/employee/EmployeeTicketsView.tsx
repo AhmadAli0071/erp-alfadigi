@@ -574,10 +574,10 @@ export const EmployeeTicketsView: React.FC<EmployeeTicketsViewProps> = ({
               )}
             </div>
 
-            {/* Add Message — read-only once ticket reaches a final status */}
+            {/* Add Message - read-only once ticket reaches a final status */}
             {['Closed', 'Rejected', 'Cancelled'].includes(showDetailModal.status) ? (
               <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
-                This ticket is {showDetailModal.status} — replies are disabled.
+                This ticket is {showDetailModal.status}. Replies are disabled.
               </p>
             ) : (
             <div className="pt-3 border-t border-slate-200/70">

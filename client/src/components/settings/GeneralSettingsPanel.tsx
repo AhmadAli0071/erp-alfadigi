@@ -65,11 +65,11 @@ export const GeneralSettingsPanel: React.FC<GeneralSettingsPanelProps> = ({
             className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
             id="general-timezone"
           >
-            <option value="Asia/Karachi (UTC+05:00)">Asia/Karachi (UTC+05:00 - PKT)</option>
-            <option value="Asia/Dubai (UTC+04:00)">Asia/Dubai (UTC+04:00 - GST)</option>
-            <option value="Asia/Riyadh (UTC+03:00)">Asia/Riyadh (UTC+03:00 - AST)</option>
-            <option value="Europe/London (UTC+00:00)">Europe/London (UTC+00:00 - GMT)</option>
-            <option value="America/New_York (UTC-05:00)">America/New_York (UTC-05:00 - EST)</option>
+            <option value="Asia/Karachi (UTC+05:00)">Asia/Karachi (UTC+05:00 PKT)</option>
+            <option value="Asia/Dubai (UTC+04:00)">Asia/Dubai (UTC+04:00 GST)</option>
+            <option value="Asia/Riyadh (UTC+03:00)">Asia/Riyadh (UTC+03:00 AST)</option>
+            <option value="Europe/London (UTC+00:00)">Europe/London (UTC+00:00 GMT)</option>
+            <option value="America/New_York (UTC-05:00)">America/New_York (UTC-05:00 EST)</option>
           </select>
           <p className="text-[11px] text-slate-400">Reference timezone for biometric time clocks and daily cutoffs.</p>
         </div>

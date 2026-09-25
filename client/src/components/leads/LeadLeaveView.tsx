@@ -588,7 +588,7 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                         <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.leaveType}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-600">{leave.startDate} → {leave.endDate}</td>
                         <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.totalDays}</td>
-                        <td className="px-5 py-3.5 text-xs text-slate-500 max-w-[220px] truncate">{leave.reason || '—'}</td>
+                        <td className="px-5 py-3.5 text-xs text-slate-500 max-w-[220px] truncate">{leave.reason || '-'}</td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${myStatusChip(leave.status)}`}>
                             {leave.status}
@@ -604,7 +604,7 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                               {actionInProgress === leave.id ? '…' : 'Withdraw'}
                             </button>
                           ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">—</span>
+                            <span className="text-[10px] text-slate-400 font-medium">-</span>
                           )}
                         </td>
                       </tr>

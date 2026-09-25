@@ -54,30 +54,30 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
 
   switch (preset) {
     case 'today':
-      return { start: today, end: today, label: `Today — ${dateLabel(today)}` };
+      return { start: today, end: today, label: `Today, ${dateLabel(today)}` };
     case 'yesterday': {
       const y = addDays(today, -1);
-      return { start: y, end: y, label: `Yesterday — ${dateLabel(y)}` };
+      return { start: y, end: y, label: `Yesterday, ${dateLabel(y)}` };
     }
     case 'this_week': {
       const monOffset = dow === 0 ? -6 : 1 - dow;
       const start = addDays(today, monOffset);
-      return { start, end: today, label: `This Week — ${dateShort(start)} to ${dateShort(today)}` };
+      return { start, end: today, label: `This Week, ${dateShort(start)} to ${dateShort(today)}` };
     }
     case 'last_week': {
       const monOffset = dow === 0 ? -6 : 1 - dow;
       const thisMon = addDays(today, monOffset);
       const start = addDays(thisMon, -7);
       const end = addDays(start, 6);
-      return { start, end, label: `Last Week — ${dateShort(start)} to ${dateShort(end)}` };
+      return { start, end, label: `Last Week, ${dateShort(start)} to ${dateShort(end)}` };
     }
     case 'last_7_days': {
       const start = addDays(today, -6);
-      return { start, end: today, label: `Last 7 Days — ${dateShort(start)} to ${dateShort(today)}` };
+      return { start, end: today, label: `Last 7 Days, ${dateShort(start)} to ${dateShort(today)}` };
     }
     case 'this_month': {
       const start = `${ty}-${String(tm).padStart(2, '0')}-01`;
-      return { start, end: today, label: `This Month — ${MONTHS[tm - 1]} ${ty}` };
+      return { start, end: today, label: `This Month, ${MONTHS[tm - 1]} ${ty}` };
     }
     case 'last_month': {
       const d = new Date(Date.UTC(ty, tm - 2, 1));
@@ -85,11 +85,11 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
       const [ly, lm] = start.split('-').map(Number);
       const lastDay = new Date(Date.UTC(ly, lm, 0)).getUTCDate();
       const end = `${ly}-${String(lm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      return { start, end, label: `Last Month — ${MONTHS[lm - 1]} ${ly}` };
+      return { start, end, label: `Last Month, ${MONTHS[lm - 1]} ${ly}` };
     }
     case 'this_year': {
       const start = `${ty}-01-01`;
-      return { start, end: today, label: `This Year — ${ty}` };
+      return { start, end: today, label: `This Year, ${ty}` };
     }
     case 'custom': {
       const s = startDate || today;
@@ -97,7 +97,7 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
       return { start: s <= e ? s : e, end: s <= e ? e : s, label: `${dateShort(s)} to ${dateShort(e)}` };
     }
     default:
-      return { start: today, end: today, label: `Today — ${dateLabel(today)}` };
+      return { start: today, end: today, label: `Today, ${dateLabel(today)}` };
   }
 };
 
@@ -146,12 +146,12 @@ const buildAttendanceRows = async (
         employeeName: e.name,
         employeeCode: e.empId,
         department: e.department,
-        clockIn: r.clockIn || '—',
-        clockOut: r.clockOut || '—',
+        clockIn: r.clockIn || '-',
+        clockOut: r.clockOut || '-',
         breakDuration: r.breakMinutes ? hoursLabel(r.breakMinutes) : '0h',
-        workingHours: working > 0 ? hoursLabel(working) : '—',
-        shortHours: short > 0 ? hoursLabel(short) : '—',
-        extraHours: extra > 0 ? hoursLabel(extra) : '—',
+        workingHours: working > 0 ? hoursLabel(working) : '-',
+        shortHours: short > 0 ? hoursLabel(short) : '-',
+        extraHours: extra > 0 ? hoursLabel(extra) : '-',
         status: r.status,
       };
     })
@@ -224,11 +224,11 @@ const buildOvertimeRows = async (
         department: e.department,
         date: r.date,
         shift: '6:00 PM – 3:00 AM',
-        extraBeforeShift: '—',
+        extraBeforeShift: '-',
         extraAfterShift: hoursLabel(extra),
         totalExtraHours: hoursLabel(extra),
         verificationStatus: 'Pending HR Verification',
-        hrApproval: '—',
+        hrApproval: '-',
         attendanceStatus: r.status,
       };
     })
@@ -250,7 +250,7 @@ const buildEmployeeRows = async (department: string, status: string, search: str
       employeeCode: e.empId,
       department: e.department,
       designation: e.jobTitle,
-      joiningDate: e.joinedDate || '—',
+      joiningDate: e.joinedDate || '-',
       status: e.isActive ? e.status : 'Inactive',
     }))
     .filter((r) => matchesDept(r.department, department))
@@ -329,7 +329,7 @@ const buildActivityRows = async (start: string, end: string, department: string,
       actorRole: 'Employee',
       action: `Leave ${l.status}`,
       target: `${l.leaveType} (${l.startDate} → ${l.endDate})`,
-      details: l.reason || '—',
+      details: l.reason || '-',
     });
   }
   for (const t of tickets) {
@@ -339,8 +339,8 @@ const buildActivityRows = async (start: string, end: string, department: string,
       actor: empNameById.get(String(t.employeeId)) || 'Unknown',
       actorRole: 'Employee',
       action: `Ticket ${t.status}`,
-      target: `${t.ticketCode} — ${t.subject}`,
-      details: t.description || '—',
+      target: `${t.ticketCode}: ${t.subject}`,
+      details: t.description || '-',
     });
   }
 
@@ -367,7 +367,7 @@ const buildActivityRows = async (start: string, end: string, department: string,
 /* ROUTE                                                               */
 /* ------------------------------------------------------------------ */
 
-// GET /api/reports — HR-only report engine across all categories
+// GET /api/reports - HR-only report engine across all categories
 router.get('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const q = req.query;

@@ -7,6 +7,8 @@ import {
   CalendarDays,
   Ticket,
   Briefcase,
+  BadgeDollarSign,
+  Wallet,
   ChevronLeft,
   ChevronRight,
   X,
@@ -41,6 +43,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const hrNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
@@ -49,6 +52,8 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const salesNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
+    { id: 'sales', label: 'Sales', icon: <BadgeDollarSign className="w-4 h-4 shrink-0" />, route: '/lead/sales' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
@@ -57,6 +62,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const techNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },

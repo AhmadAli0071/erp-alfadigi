@@ -186,9 +186,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate, 
             <div className="flex items-start gap-2 px-4 py-2.5 bg-rose-50/80 border-b border-slate-200/70">
               <BellRing className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-bold text-rose-700">Notifications blocked hain</p>
+                <p className="text-[11px] font-bold text-rose-700">Notifications are blocked</p>
                 <p className="text-[10px] text-rose-600 leading-snug mt-0.5">
-                  Address bar ke left 🔒/ⓘ icon pe click karein → Site settings → Notifications → "Allow" karein, phir page refresh karein.
+                  Click the 🔒/ⓘ icon at the left of the address bar → Site settings → Notifications → "Allow", then refresh the page.
                 </p>
               </div>
             </div>
@@ -200,7 +200,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onNavigate, 
             >
               <BellRing className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               <span className="text-[11px] font-semibold text-indigo-700">
-                Enable desktop notifications — click karein, Chrome "Allow" poochega
+                Enable desktop notifications. Click here, Chrome will ask for "Allow"
               </span>
             </button>
           )}

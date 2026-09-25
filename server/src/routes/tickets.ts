@@ -38,7 +38,7 @@ const generateTicketCode = async (): Promise<string> => {
   return `TKT-${String(maxNum + 1).padStart(4, '0')}`;
 };
 
-// POST /api/tickets — create ticket
+// POST /api/tickets - create ticket
 router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = createTicketSchema.safeParse(req.body);
@@ -112,7 +112,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
   }
 });
 
-// GET /api/tickets/team/:leadEmail — get team tickets for lead
+// GET /api/tickets/team/:leadEmail - get team tickets for lead
 router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadEmail);
@@ -169,7 +169,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-// GET /api/tickets/my/:email — employee's own tickets
+// GET /api/tickets/my/:email - employee's own tickets
 router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const targetEmail = String(req.params.email).toLowerCase();
@@ -212,7 +212,7 @@ router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): 
   }
 });
 
-// GET /api/tickets/hr — HR sees only lead-resolved tickets (default: awaiting HR decision)
+// GET /api/tickets/hr - HR sees only lead-resolved tickets (default: awaiting HR decision)
 router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const status = String(req.query.status || 'ALL');
@@ -250,7 +250,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
   }
 });
 
-// GET /api/tickets/hr-count — tickets awaiting HR action count for badge
+// GET /api/tickets/hr-count - tickets awaiting HR action count for badge
 router.get('/hr-count', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const count = await Ticket.countDocuments({ status: { $nin: ['Closed', 'Rejected', 'Cancelled'] } });
@@ -260,8 +260,8 @@ router.get('/hr-count', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), as
   }
 });
 
-// PUT /api/tickets/:id/hr-inprocess — HR marks ticket as In Process
-// PUT /api/tickets/:id/withdraw — employee withdraws their own untouched ticket
+// PUT /api/tickets/:id/hr-inprocess - HR marks ticket as In Process
+// PUT /api/tickets/:id/withdraw - employee withdraws their own untouched ticket
 router.put('/:id/withdraw', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const ticket = await Ticket.findById(req.params.id);
@@ -357,7 +357,7 @@ router.put('/:id/hr-inprocess', authenticate, requireRole('HR_ADMIN', 'SUPER_ADM
   }
 });
 
-// PUT /api/tickets/:id/hr-approve — HR final approval (Close)
+// PUT /api/tickets/:id/hr-approve - HR final approval (Close)
 router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const ticket = await Ticket.findById(req.params.id);
@@ -405,7 +405,7 @@ router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN
   }
 });
 
-// PUT /api/tickets/:id/hr-reject — HR final rejection
+// PUT /api/tickets/:id/hr-reject - HR final rejection
 router.put('/:id/hr-reject', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const ticket = await Ticket.findById(req.params.id);
@@ -453,7 +453,7 @@ router.put('/:id/hr-reject', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'
   }
 });
 
-// PUT /api/tickets/:id/status — update ticket status (lead-level: cannot Close/Reject — that's HR's final decision)
+// PUT /api/tickets/:id/status - update ticket status (lead-level: cannot Close/Reject - that's HR's final decision)
 router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = updateStatusSchema.safeParse(req.body);
@@ -503,7 +503,7 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
         'In Progress': 'is now In Progress',
         'Pending': 'is Pending',
         'Open': 'was reopened',
-        'Resolved': 'was Resolved by your lead — sent to HR for final decision',
+        'Resolved': 'was Resolved by your lead, sent to HR for final decision',
       };
       await createNotification({
         userEmail: owner.email,
@@ -531,7 +531,7 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// POST /api/tickets/:id/message — add message to ticket
+// POST /api/tickets/:id/message - add message to ticket
 router.post('/:id/message', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = addMessageSchema.safeParse(req.body);
@@ -540,7 +540,7 @@ router.post('/:id/message', authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
-    // Sender identity always comes from the JWT — client-supplied senderEmail is ignored
+    // Sender identity always comes from the JWT - client-supplied senderEmail is ignored
     const employee = await Employee.findOne({ email: req.user!.email.toLowerCase(), isActive: true });
     if (!employee) {
       res.status(404).json({ error: 'Employee not found.' });
@@ -554,11 +554,11 @@ router.post('/:id/message', authenticate, async (req: AuthRequest, res: Response
     }
 
     if (['Closed', 'Rejected', 'Cancelled'].includes(ticket.status)) {
-      console.log(`[tickets] Message blocked on ${ticket.ticketCode} — status ${ticket.status}`);
+      console.log(`[tickets] Message blocked on ${ticket.ticketCode} - status ${ticket.status}`);
       res.status(400).json({
         error: ticket.status === 'Cancelled'
           ? 'This ticket was withdrawn and is now read-only.'
-          : `This ticket is ${ticket.status} — no further messages can be sent.`,
+          : `This ticket is ${ticket.status}. No further messages can be sent.`,
       });
       return;
     }
@@ -597,7 +597,7 @@ router.post('/:id/message', authenticate, async (req: AuthRequest, res: Response
         relatedId: String(ticket._id),
       });
     } else if (owner) {
-      // Owner replied — notify HR admins so the conversation stays live for them
+      // Owner replied - notify HR admins so the conversation stays live for them
       await notifyHrAdmins({
         title: `New Reply on ${ticket.ticketCode}`,
         message: `${employee.name} replied to ticket "${ticket.subject}".`,

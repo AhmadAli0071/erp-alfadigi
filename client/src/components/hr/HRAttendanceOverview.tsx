@@ -63,7 +63,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
             {/* Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
               <span className="text-2xl font-black text-slate-900 tracking-tight">
-                {hasData ? totalEmployees : '—'}
+                {hasData ? totalEmployees : '-'}
               </span>
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                 Employees
@@ -79,7 +79,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-600">Present</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">
-                {hasData ? presentCount : '—'}
+                {hasData ? presentCount : '-'}
               </span>
             </div>
 
@@ -89,7 +89,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-600">Absent</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">
-                {hasData ? absentCount : '—'}
+                {hasData ? absentCount : '-'}
               </span>
             </div>
 
@@ -99,7 +99,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-600">Leave</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">
-                {hasData ? leaveCount : '—'}
+                {hasData ? leaveCount : '-'}
               </span>
             </div>
 
@@ -109,7 +109,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-600">WFH</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">
-                {hasData ? wfhCount : '—'}
+                {hasData ? wfhCount : '-'}
               </span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-700">Present</span>
               </div>
               <span className="text-sm font-bold text-emerald-600 font-mono">
-                {hasData ? presentCount : '—'}
+                {hasData ? presentCount : '-'}
               </span>
             </div>
 
@@ -150,7 +150,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-700">Absent</span>
               </div>
               <span className="text-sm font-bold text-rose-600 font-mono">
-                {hasData ? absentCount : '—'}
+                {hasData ? absentCount : '-'}
               </span>
             </div>
 
@@ -160,7 +160,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-700">On Leave</span>
               </div>
               <span className="text-sm font-bold text-blue-600 font-mono">
-                {hasData ? leaveCount : '—'}
+                {hasData ? leaveCount : '-'}
               </span>
             </div>
 
@@ -170,7 +170,7 @@ export const HRAttendanceOverview: React.FC<HRAttendanceOverviewProps> = ({
                 <span className="text-xs font-medium text-slate-700">WFH</span>
               </div>
               <span className="text-sm font-bold text-sky-600 font-mono">
-                {hasData ? wfhCount : '—'}
+                {hasData ? wfhCount : '-'}
               </span>
             </div>
           </div>

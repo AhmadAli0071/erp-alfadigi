@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Attendance, BreakType } from '../models/Attendance.js';
 import { Employee } from '../models/Employee.js';
@@ -65,6 +66,50 @@ const BREAK_LABELS: Record<BreakType, string> = {
   WASHROOM: 'Washroom',
 };
 
+const STANDARD_SHIFT_MINUTES = 540; // 6 PM – 3 AM = 9 hours (matches HR view extra-hours math)
+
+const ATTENDANCE_STATUSES = [
+  'Present',
+  'Absent',
+  'Late',
+  'Half Day',
+  'Leave',
+  'Work From Home',
+  'On Duty',
+  'Pending OT',
+  'Short Hours',
+] as const;
+
+/**
+ * Normalizes a clock time coming from HR edit forms. Accepts "HH:MM" (24h)
+ * or "hh:mm AM/PM" and returns the canonical "hh:mm AM/PM" display format
+ * used across the app. Returns null for invalid input.
+ */
+const normalizeClockInput = (raw: string): string | null => {
+  const s = raw.trim().toUpperCase();
+  let m = /^(\d{1,2}):(\d{2})\s?(AM|PM)$/.exec(s);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h < 1 || h > 12 || min > 59) return null;
+    const ap = m[3];
+    if (ap === 'PM' && h !== 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ap}`;
+  }
+  m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) {
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h > 23 || min > 59) return null;
+    const ap = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ap}`;
+  }
+  return null;
+};
+
 /** Daily break budgets (minutes) from SystemSettings with safe fallbacks. */
 const getBreakBudgets = async (): Promise<{ lunch: number; namaz: number; washroom: number }> => {
   try {
@@ -106,7 +151,7 @@ const teamAttendanceSchema = z.object({
   date: z.string().optional(),
 });
 
-/** Identity always comes from the JWT — the client-supplied email is ignored. */
+/** Identity always comes from the JWT - the client-supplied email is ignored. */
 const selfEmail = (req: AuthRequest): string => req.user!.email.toLowerCase();
 
 // POST /api/attendance/clock-in
@@ -261,7 +306,7 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// POST /api/attendance/break-start — start a typed break (LUNCH / NAMAZ / WASHROOM)
+// POST /api/attendance/break-start - start a typed break (LUNCH / NAMAZ / WASHROOM)
 router.post('/break-start', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = breakStartSchema.safeParse(req.body);
@@ -305,7 +350,7 @@ router.post('/break-start', authenticate, async (req: AuthRequest, res: Response
     }
 
     // NAMAZ / WASHROOM: block when the daily budget is fully used.
-    // LUNCH: always allowed — extra minutes are deducted from working hours.
+    // LUNCH: always allowed - extra minutes are deducted from working hours.
     if (breakType !== 'LUNCH') {
       const budgets = await getBreakBudgets();
       const used = attendance.breakMinutesByType?.[typeKey(breakType)] || 0;
@@ -350,7 +395,7 @@ router.post('/break-start', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// POST /api/attendance/break-end — end the active break and accumulate minutes per type
+// POST /api/attendance/break-end - end the active break and accumulate minutes per type
 router.post('/break-end', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = breakEndSchema.safeParse(req.body);
@@ -429,7 +474,7 @@ router.post('/break-end', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// GET /api/attendance/today/:email — get today's attendance for an employee
+// GET /api/attendance/today/:email - get today's attendance for an employee
 router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const targetEmail = String(req.params.email).toLowerCase();
@@ -469,7 +514,7 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// GET /api/attendance/team/:leadEmail — get team attendance for a date
+// GET /api/attendance/team/:leadEmail - get team attendance for a date
 router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadEmail);
@@ -512,7 +557,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
           return {
             employeeId: String(r.employeeId._id || r.employeeId),
             employeeName: emp?.name || info?.name || 'Unknown',
-            employeeCode: emp?.empId || info?.empId || '—',
+            employeeCode: emp?.empId || info?.empId || '-',
             employeeEmail: emp?.email || info?.email || '',
             department: emp?.department || info?.department || '',
             jobTitle: emp?.jobTitle || info?.jobTitle || '',
@@ -566,7 +611,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-// GET /api/attendance/history/:email — get attendance history for an employee
+// GET /api/attendance/history/:email - get attendance history for an employee
 router.get('/history/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const targetEmail = String(req.params.email).toLowerCase();
@@ -599,6 +644,13 @@ router.get('/history/:email', authenticate, async (req: AuthRequest, res: Respon
         breakMinutes: r.breakMinutes,
         workingMinutes: r.workingMinutes,
         status: r.status,
+        correctionStatus: r.correctionStatus || 'NONE',
+        correctionReason: r.correctionReason || '',
+        correctionNote: r.correctionNote || '',
+        otStatus: r.otStatus || 'NONE',
+        otReason: r.otReason || '',
+        otNote: r.otNote || '',
+        otApprovedMinutes: r.otApprovedMinutes || 0,
       })),
     });
   } catch (err) {
@@ -608,11 +660,126 @@ router.get('/history/:email', authenticate, async (req: AuthRequest, res: Respon
 });
 
 /* ------------------------------------------------------------------ */
+/* CORRECTION & OVERTIME REQUESTS (employee/lead initiated)            */
+/* ------------------------------------------------------------------ */
+
+const reviewRequestSchema = z.object({
+  reason: z.string().trim().min(5, 'Reason must be at least 5 characters.').max(300),
+});
+
+/** Loads the attendance record + owning employee, enforcing self/lead/HR access. */
+const loadAttendanceForReviewAction = async (req: AuthRequest, id: string) => {
+  if (!mongoose.isValidObjectId(id)) return { error: 'not_found' as const };
+  const attendance = await Attendance.findById(id);
+  if (!attendance) return { error: 'not_found' as const };
+  const employee = await Employee.findById(attendance.employeeId);
+  if (!employee) return { error: 'not_found' as const };
+  const isSelf = employee.email.toLowerCase() === selfEmail(req);
+  if (!isSelf && !isHr(req) && !(await canAccessEmployee(req, employee.email))) {
+    return { error: 'forbidden' as const };
+  }
+  return { attendance, employee };
+};
+
+// POST /api/attendance/:id/correction-request - employee asks HR to fix this day's record
+router.post('/:id/correction-request', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = reviewRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const loaded = await loadAttendanceForReviewAction(req, String(req.params.id));
+    if (loaded.error === 'not_found') {
+      res.status(404).json({ error: 'Attendance record not found.' });
+      return;
+    }
+    if (loaded.error === 'forbidden') {
+      res.status(403).json({ error: 'You can only request corrections for your own attendance.' });
+      return;
+    }
+
+    const { attendance, employee } = loaded;
+    if (attendance.correctionStatus === 'PENDING') {
+      res.status(409).json({ error: 'A correction request is already pending for this day.' });
+      return;
+    }
+
+    attendance.correctionStatus = 'PENDING';
+    attendance.correctionReason = parsed.data.reason;
+    attendance.correctionNote = '';
+    await attendance.save();
+
+    await notifyAttendanceEvent(
+      employee,
+      'Attendance Correction Request',
+      `${employee.name} requested a correction for ${attendance.date}: "${parsed.data.reason}"`,
+      String(attendance._id),
+    );
+
+    res.json({ success: true, correctionStatus: attendance.correctionStatus });
+  } catch (err) {
+    console.error('Correction request error:', err);
+    res.status(500).json({ error: 'Unable to submit correction request.' });
+  }
+});
+
+// POST /api/attendance/:id/ot-request - employee asks HR to approve extra hours for this day
+router.post('/:id/ot-request', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = reviewRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const loaded = await loadAttendanceForReviewAction(req, String(req.params.id));
+    if (loaded.error === 'not_found') {
+      res.status(404).json({ error: 'Attendance record not found.' });
+      return;
+    }
+    if (loaded.error === 'forbidden') {
+      res.status(403).json({ error: 'You can only request overtime approval for your own attendance.' });
+      return;
+    }
+
+    const { attendance, employee } = loaded;
+    if (!attendance.clockIn) {
+      res.status(400).json({ error: 'Overtime cannot be requested for a day without a clock-in.' });
+      return;
+    }
+    if (attendance.otStatus === 'PENDING') {
+      res.status(409).json({ error: 'An overtime request is already pending for this day.' });
+      return;
+    }
+
+    attendance.otStatus = 'PENDING';
+    attendance.otReason = parsed.data.reason;
+    attendance.otNote = '';
+    attendance.status = 'Pending OT';
+    await attendance.save();
+
+    const extraMinutes = Math.max(0, (attendance.workingMinutes || 0) - STANDARD_SHIFT_MINUTES);
+    await notifyAttendanceEvent(
+      employee,
+      'Overtime Approval Request',
+      `${employee.name} requested OT approval for ${attendance.date} (${Math.floor(extraMinutes / 60)}h ${extraMinutes % 60}m extra): "${parsed.data.reason}"`,
+      String(attendance._id),
+    );
+
+    res.json({ success: true, otStatus: attendance.otStatus, status: attendance.status });
+  } catch (err) {
+    console.error('OT request error:', err);
+    res.status(500).json({ error: 'Unable to submit overtime request.' });
+  }
+});
+
+/* ------------------------------------------------------------------ */
 /* HR ATTENDANCE MANAGEMENT                                            */
 /* ------------------------------------------------------------------ */
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const STANDARD_SHIFT_MINUTES = 540; // 6 PM – 3 AM = 9 hours
 
 const toISODate = (d: Date): string => {
   const yr = d.getUTCFullYear();
@@ -662,31 +829,31 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
 
   switch (preset) {
     case 'today':
-      return { start: today, end: today, label: `Today — ${dateLabel(today)}` };
+      return { start: today, end: today, label: `Today, ${dateLabel(today)}` };
     case 'yesterday': {
       const y = addDays(today, -1);
-      return { start: y, end: y, label: `Yesterday — ${dateLabel(y)}` };
+      return { start: y, end: y, label: `Yesterday, ${dateLabel(y)}` };
     }
     case 'this_week': {
       const monOffset = dow === 0 ? -6 : 1 - dow;
       const start = addDays(today, monOffset);
       const end = addDays(start, 6);
-      return { start, end, label: `This Week — ${dateShort(start)} to ${dateShort(end)}` };
+      return { start, end, label: `This Week, ${dateShort(start)} to ${dateShort(end)}` };
     }
     case 'last_week': {
       const monOffset = dow === 0 ? -6 : 1 - dow;
       const thisMon = addDays(today, monOffset);
       const start = addDays(thisMon, -7);
       const end = addDays(start, 6);
-      return { start, end, label: `Last Week — ${dateShort(start)} to ${dateShort(end)}` };
+      return { start, end, label: `Last Week, ${dateShort(start)} to ${dateShort(end)}` };
     }
     case 'last_7_days': {
       const start = addDays(today, -6);
-      return { start, end: today, label: `Last 7 Days — ${dateShort(start)} to ${dateShort(today)}` };
+      return { start, end: today, label: `Last 7 Days, ${dateShort(start)} to ${dateShort(today)}` };
     }
     case 'this_month': {
       const start = `${ty}-${String(tm).padStart(2, '0')}-01`;
-      return { start, end: today, label: `This Month — ${MONTHS[tm - 1]} ${ty}` };
+      return { start, end: today, label: `This Month, ${MONTHS[tm - 1]} ${ty}` };
     }
     case 'last_month': {
       const d = new Date(Date.UTC(ty, tm - 2, 1));
@@ -694,7 +861,7 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
       const [ly, lm] = start.split('-').map(Number);
       const lastDay = new Date(Date.UTC(ly, lm, 0)).getUTCDate();
       const end = `${ly}-${String(lm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      return { start, end, label: `Last Month — ${MONTHS[lm - 1]} ${ly}` };
+      return { start, end, label: `Last Month, ${MONTHS[lm - 1]} ${ly}` };
     }
     case 'custom': {
       const s = startDate || today;
@@ -702,13 +869,13 @@ const resolvePresetRange = (preset: string, startDate?: string, endDate?: string
       return { start: s, end: e, label: `${dateShort(s)} to ${dateShort(e)}` };
     }
     default:
-      return { start: today, end: today, label: `Today — ${dateLabel(today)}` };
+      return { start: today, end: today, label: `Today, ${dateLabel(today)}` };
   }
 };
 
 const PRESENT_STATUSES = ['Present', 'Late', 'Short Hours', 'On Duty', 'Pending OT'];
 
-// GET /api/attendance/hr — HR attendance management with filters, pagination & summaries (HR only)
+// GET /api/attendance/hr - HR attendance management with filters, pagination & summaries (HR only)
 router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const q = req.query;
@@ -759,7 +926,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
       const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string; jobTitle: string } | null;
       const empDoc = empMap.get(String(r.employeeId._id || r.employeeId));
       const name = emp?.name || empDoc?.name || 'Unknown';
-      const code = emp?.empId || empDoc?.empId || '—';
+      const code = emp?.empId || empDoc?.empId || '-';
       const dept = (emp?.department || empDoc?.department || 'HR') as 'HR' | 'Sales' | 'Tech';
 
       const inMin = r.clockIn ? parseClockToMinutes(r.clockIn) : null;
@@ -781,13 +948,13 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         if (byType && byType.lunch > 0) parts.push(`Lunch ${minutesToHM(byType.lunch)}`);
         if (byType && byType.namaz > 0) parts.push(`Namaz ${minutesToHM(byType.namaz)}`);
         if (byType && byType.washroom > 0) parts.push(`Washroom ${minutesToHM(byType.washroom)}`);
-        timeline.push({ id: 'tl_break', time: '—', date: dateShort(r.date), type: 'PAUSE', label: 'Break Taken', notes: parts.length ? parts.join(' · ') : `Total break duration: ${minutesToHM(r.breakMinutes)}` });
+        timeline.push({ id: 'tl_break', time: '-', date: dateShort(r.date), type: 'PAUSE', label: 'Break Taken', notes: parts.length ? parts.join(' · ') : `Total break duration: ${minutesToHM(r.breakMinutes)}` });
       }
       if (r.clockOut) {
-        timeline.push({ id: 'tl_out', time: r.clockOut, date: dateShort(isOvernight ? addDays(r.date, 1) : r.date), type: 'CLOCK_OUT', label: 'Shift Punch Out', notes: isOvernight ? 'Overnight shift — punched out after midnight' : 'Clocked out via dashboard' });
+        timeline.push({ id: 'tl_out', time: r.clockOut, date: dateShort(isOvernight ? addDays(r.date, 1) : r.date), type: 'CLOCK_OUT', label: 'Shift Punch Out', notes: isOvernight ? 'Overnight shift - punched out after midnight' : 'Clocked out via dashboard' });
       }
       if (timeline.length === 0) {
-        timeline.push({ id: 'tl_flag', time: '—', date: dateShort(r.date), type: 'SYSTEM_FLAG', label: `Status: ${r.status}`, notes: r.notes || `Recorded as ${r.status}` });
+        timeline.push({ id: 'tl_flag', time: '-', date: dateShort(r.date), type: 'SYSTEM_FLAG', label: `Status: ${r.status}`, notes: r.notes || `Recorded as ${r.status}` });
       }
 
       return {
@@ -798,9 +965,9 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         designation: empDoc?.jobTitle || '',
         department: dept,
         attendanceDate: dateLabel(r.date),
-        clockInTime: r.clockIn || '—',
+        clockInTime: r.clockIn || '-',
         clockInDate: dateShort(r.date),
-        clockOutTime: r.clockOut || '—',
+        clockOutTime: r.clockOut || '-',
         clockOutDate: dateShort(isOvernight ? addDays(r.date, 1) : r.date),
         breakDuration: minutesToHM(r.breakMinutes || 0),
         breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
@@ -810,6 +977,14 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         status: r.status,
         notes: r.notes || '',
         isOvernight,
+        correctionStatus: r.correctionStatus || 'NONE',
+        correctionReason: r.correctionReason || '',
+        correctionNote: r.correctionNote || '',
+        otStatus: r.otStatus || 'NONE',
+        otReason: r.otReason || '',
+        otNote: r.otNote || '',
+        otApprovedMinutes: r.otApprovedMinutes || 0,
+        extraMinutes: extra,
         timeline,
       };
     });
@@ -899,8 +1074,299 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
   }
 });
 
-// POST /api/attendance/run-absent-scan — manual auto-absent scan (HR only)
-// Body (optional): { date: "YYYY-MM-DD" } — defaults to last completed shift
+/* ------------------------------------------------------------------ */
+/* HR REVIEW - STATUS EDITOR, CORRECTIONS & OVERTIME DECISIONS         */
+/* ------------------------------------------------------------------ */
+
+const hrUpdateSchema = z.object({
+  status: z.enum(ATTENDANCE_STATUSES).optional(),
+  notes: z.string().max(500).optional(),
+  clockIn: z.string().max(12).nullable().optional(),
+  clockOut: z.string().max(12).nullable().optional(),
+});
+
+const reviewDecisionSchema = z.object({
+  action: z.enum(['APPROVED', 'REJECTED']),
+  note: z.string().max(500).optional(),
+});
+
+// GET /api/attendance/hr/pending-review - pending correction/OT queues (HR only)
+router.get('/hr/pending-review', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [pendingCorrections, pendingOT] = await Promise.all([
+      Attendance.find({ correctionStatus: 'PENDING' })
+        .sort({ updatedAt: -1 })
+        .populate('employeeId', 'name empId email department'),
+      Attendance.find({ otStatus: 'PENDING' })
+        .sort({ updatedAt: -1 })
+        .populate('employeeId', 'name empId email department'),
+    ]);
+
+    const mapItem = (r: typeof pendingCorrections[number]) => {
+      const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string } | null;
+      const working = r.workingMinutes || 0;
+      return {
+        id: String(r._id),
+        employeeId: String(r.employeeId._id || r.employeeId),
+        employeeName: emp?.name || 'Unknown',
+        employeeCode: emp?.empId || '-',
+        department: (emp?.department || 'HR') as 'HR' | 'Sales' | 'Tech',
+        date: r.date,
+        dateLabel: dateLabel(r.date),
+        clockIn: r.clockIn || null,
+        clockOut: r.clockOut || null,
+        workingMinutes: working,
+        extraMinutes: Math.max(0, working - STANDARD_SHIFT_MINUTES),
+        status: r.status,
+        reason: r.correctionReason || r.otReason || '',
+        submittedAt: r.updatedAt,
+      };
+    };
+
+    res.json({
+      corrections: {
+        count: pendingCorrections.length,
+        items: pendingCorrections.map(mapItem),
+      },
+      overtime: {
+        count: pendingOT.length,
+        totalMinutes: pendingOT.reduce((a, r) => a + Math.max(0, (r.workingMinutes || 0) - STANDARD_SHIFT_MINUTES), 0),
+        employees: new Set(pendingOT.map((r) => String(r.employeeId._id || r.employeeId))).size,
+        items: pendingOT.map(mapItem),
+      },
+    });
+  } catch (err) {
+    console.error('Pending review error:', err);
+    res.status(500).json({ error: 'Unable to load pending reviews.' });
+  }
+});
+
+// PUT /api/attendance/hr/:id - HR manual edit: status (WFH / On Duty / Pending OT / ...), times, notes
+router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = hrUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { status, notes, clockIn, clockOut } = parsed.data;
+    if (!status && notes === undefined && clockIn === undefined && clockOut === undefined) {
+      res.status(400).json({ error: 'Nothing to update.' });
+      return;
+    }
+
+    const attendance = await Attendance.findById(String(req.params.id));
+    if (!attendance) {
+      res.status(404).json({ error: 'Attendance record not found.' });
+      return;
+    }
+
+    let timesChanged = false;
+    if (clockIn !== undefined) {
+      if (clockIn === null) {
+        attendance.clockIn = undefined;
+        attendance.clockInAt = null;
+      } else {
+        const normalized = normalizeClockInput(clockIn);
+        if (!normalized) {
+          res.status(400).json({ error: 'Invalid clock-in time. Use HH:MM (24h) or hh:mm AM/PM.' });
+          return;
+        }
+        attendance.clockIn = normalized;
+        if (!attendance.clockInAt) attendance.clockInAt = new Date();
+      }
+      timesChanged = true;
+    }
+    if (clockOut !== undefined) {
+      if (clockOut === null) {
+        attendance.clockOut = undefined;
+        attendance.clockOutAt = null;
+      } else {
+        const normalized = normalizeClockInput(clockOut);
+        if (!normalized) {
+          res.status(400).json({ error: 'Invalid clock-out time. Use HH:MM (24h) or hh:mm AM/PM.' });
+          return;
+        }
+        attendance.clockOut = normalized;
+        if (!attendance.clockOutAt) attendance.clockOutAt = new Date();
+      }
+      timesChanged = true;
+    }
+
+    if (timesChanged) {
+      if (attendance.clockIn && attendance.clockOut) {
+        const inMin = parseClockToMinutes(attendance.clockIn);
+        const outMin = parseClockToMinutes(attendance.clockOut);
+        let working = outMin - inMin;
+        if (working < 0) working += 24 * 60; // overnight shift
+        working -= attendance.breakMinutes || 0;
+        attendance.workingMinutes = Math.max(0, working);
+      } else if (!attendance.clockIn) {
+        attendance.workingMinutes = 0;
+      }
+    }
+
+    if (notes !== undefined) attendance.notes = notes;
+
+    if (status) {
+      attendance.status = status;
+      attendance.isAutoMarked = false;
+    } else if (timesChanged && attendance.clockIn && attendance.clockOut) {
+      // Status not explicitly chosen - recompute from edited hours (settings-driven thresholds)
+      const cfg = await getAttendanceConfig();
+      if (attendance.workingMinutes >= cfg.requiredWorkingHours * 60) attendance.status = 'Present';
+      else if (attendance.workingMinutes >= cfg.requiredWorkingHours * 30) attendance.status = 'Half Day';
+      else attendance.status = 'Short Hours';
+    }
+
+    // Editing the record resolves any pending correction request
+    let resolvedCorrection = false;
+    if (attendance.correctionStatus === 'PENDING') {
+      attendance.correctionStatus = 'APPROVED';
+      attendance.correctionNote = `Resolved via HR edit by ${req.user!.name}.`;
+      resolvedCorrection = true;
+    }
+
+    await attendance.save();
+
+    const employee = await Employee.findById(attendance.employeeId).select('name email');
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: 'Attendance Updated by HR',
+        message: `Your attendance for ${attendance.date} was updated by ${req.user!.name}. Status: ${attendance.status}.${attendance.notes ? ` Note: ${attendance.notes}` : ''}`,
+        type: 'attendance',
+        relatedId: String(attendance._id),
+      });
+    }
+
+    res.json({
+      success: true,
+      resolvedCorrection,
+      attendance: {
+        id: attendance._id,
+        date: attendance.date,
+        clockIn: attendance.clockIn || null,
+        clockOut: attendance.clockOut || null,
+        workingMinutes: attendance.workingMinutes,
+        status: attendance.status,
+        notes: attendance.notes || '',
+        correctionStatus: attendance.correctionStatus,
+      },
+    });
+  } catch (err) {
+    console.error('HR attendance update error:', err);
+    res.status(500).json({ error: 'Unable to update attendance record.' });
+  }
+});
+
+// PUT /api/attendance/hr/:id/correction - approve/reject a pending correction request (HR only)
+router.put('/hr/:id/correction', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = reviewDecisionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    if (parsed.data.action === 'REJECTED' && !parsed.data.note?.trim()) {
+      res.status(400).json({ error: 'A rejection reason is required.' });
+      return;
+    }
+
+    const attendance = await Attendance.findById(String(req.params.id));
+    if (!attendance) {
+      res.status(404).json({ error: 'Attendance record not found.' });
+      return;
+    }
+    if (attendance.correctionStatus !== 'PENDING') {
+      res.status(409).json({ error: 'No pending correction request for this record.' });
+      return;
+    }
+
+    attendance.correctionStatus = parsed.data.action;
+    attendance.correctionNote = parsed.data.note?.trim() || '';
+    await attendance.save();
+
+    const employee = await Employee.findById(attendance.employeeId).select('email');
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: `Correction ${parsed.data.action === 'APPROVED' ? 'Approved' : 'Rejected'}`,
+        message: `Your attendance correction for ${attendance.date} was ${parsed.data.action.toLowerCase()} by ${req.user!.name}.${attendance.correctionNote ? ` Note: ${attendance.correctionNote}` : ''}`,
+        type: 'attendance',
+        relatedId: String(attendance._id),
+      });
+    }
+
+    res.json({ success: true, correctionStatus: attendance.correctionStatus, correctionNote: attendance.correctionNote });
+  } catch (err) {
+    console.error('Correction decision error:', err);
+    res.status(500).json({ error: 'Unable to process correction request.' });
+  }
+});
+
+// PUT /api/attendance/hr/:id/ot - approve/reject a pending overtime request (HR only)
+router.put('/hr/:id/ot', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = reviewDecisionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    if (parsed.data.action === 'REJECTED' && !parsed.data.note?.trim()) {
+      res.status(400).json({ error: 'A rejection reason is required.' });
+      return;
+    }
+
+    const attendance = await Attendance.findById(String(req.params.id));
+    if (!attendance) {
+      res.status(404).json({ error: 'Attendance record not found.' });
+      return;
+    }
+    if (attendance.otStatus !== 'PENDING') {
+      res.status(409).json({ error: 'No pending overtime request for this record.' });
+      return;
+    }
+
+    const extraMinutes = Math.max(0, (attendance.workingMinutes || 0) - STANDARD_SHIFT_MINUTES);
+    attendance.otStatus = parsed.data.action;
+    attendance.otNote = parsed.data.note?.trim() || '';
+    if (parsed.data.action === 'APPROVED') {
+      attendance.otApprovedMinutes = extraMinutes;
+    }
+    // 'Pending OT' is a request flag - restore a real attendance status on decision
+    if (attendance.status === 'Pending OT') {
+      attendance.status = attendance.clockIn ? 'Present' : 'Absent';
+    }
+    await attendance.save();
+
+    const employee = await Employee.findById(attendance.employeeId).select('email');
+    if (employee) {
+      await createNotification({
+        userEmail: employee.email,
+        title: `Overtime ${parsed.data.action === 'APPROVED' ? 'Approved' : 'Rejected'}`,
+        message: parsed.data.action === 'APPROVED'
+          ? `Your overtime for ${attendance.date} (${Math.floor(extraMinutes / 60)}h ${extraMinutes % 60}m) was approved by ${req.user!.name}.${attendance.otNote ? ` Note: ${attendance.otNote}` : ''}`
+          : `Your overtime request for ${attendance.date} was rejected by ${req.user!.name}.${attendance.otNote ? ` Reason: ${attendance.otNote}` : ''}`,
+        type: 'attendance',
+        relatedId: String(attendance._id),
+      });
+    }
+
+    res.json({
+      success: true,
+      otStatus: attendance.otStatus,
+      otApprovedMinutes: attendance.otApprovedMinutes,
+      status: attendance.status,
+    });
+  } catch (err) {
+    console.error('OT decision error:', err);
+    res.status(500).json({ error: 'Unable to process overtime request.' });
+  }
+});
+
+// POST /api/attendance/run-absent-scan - manual auto-absent scan (HR only)
+// Body (optional): { date: "YYYY-MM-DD" } - defaults to last completed shift
 router.post('/run-absent-scan', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const explicitDate = req.body?.date ? String(req.body.date) : undefined;

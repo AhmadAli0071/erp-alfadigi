@@ -245,7 +245,7 @@ export const HRLeaveRequestDetailDrawer: React.FC<HRLeaveRequestDetailDrawerProp
               <div className="col-span-2 sm:col-span-3">
                 <span className="text-[11px] text-slate-500 block">Date Range</span>
                 <span className="font-semibold text-slate-900 mt-0.5 block">
-                  {request.startDateDisplay} — {request.endDateDisplay}
+                  {request.startDateDisplay} to {request.endDateDisplay}
                 </span>
               </div>
             </div>

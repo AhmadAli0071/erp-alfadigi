@@ -15,7 +15,7 @@ const saveSettingsSchema = z.object({
   ),
 });
 
-// GET /api/settings — full system settings (HR only)
+// GET /api/settings - full system settings (HR only)
 router.get('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const value = await ensureSettings();
@@ -26,7 +26,7 @@ router.get('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (_re
   }
 });
 
-// PUT /api/settings — save settings (HR only, deep-merged per section)
+// PUT /api/settings - save settings (HR only, deep-merged per section)
 router.put('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = saveSettingsSchema.safeParse(req.body);
@@ -51,7 +51,7 @@ router.put('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req
   }
 });
 
-// PUT /api/settings/reset — restore factory defaults (HR only)
+// PUT /api/settings/reset - restore factory defaults (HR only)
 router.put('/reset', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await SystemSetting.updateOne(

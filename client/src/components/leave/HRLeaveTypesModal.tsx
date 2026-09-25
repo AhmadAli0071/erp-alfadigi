@@ -180,7 +180,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
           : 'bg-slate-100/70 text-slate-500 border-slate-200/80'
       }`}
     >
-      {value ? 'Yes' : 'No'} — {label}
+      {value ? 'Yes' : 'No'}, {label}
     </button>
   );
 
@@ -203,7 +203,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
             <div>
               <h2 className="text-base font-bold text-slate-900">Company Leave Types & Policies</h2>
               <p className="text-xs text-slate-500">
-                Managed company-wide — employees can only request these types
+                Managed company-wide. Employees can only request these types
               </p>
             </div>
           </div>
@@ -406,7 +406,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-500 leading-relaxed">{type.description || '—'}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{type.description || '-'}</p>
 
                       {/* Quota Metrics */}
                       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/70 text-xs">
@@ -472,7 +472,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
               <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200 text-xs text-indigo-600 flex items-start gap-2.5">
                 <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  <strong>Enterprise Leave Rule:</strong> Deactivating a type never affects existing leave records — employees
+                  <strong>Enterprise Leave Rule:</strong> Deactivating a type never affects existing leave records. Employees
                   simply can't request it anymore. Quotas define yearly allocation per employee.
                 </p>
               </div>

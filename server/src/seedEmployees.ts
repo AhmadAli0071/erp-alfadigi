@@ -60,12 +60,12 @@ const seedEmployees = async () => {
     for (const emp of SEED_EMPLOYEES) {
       const existing = await Employee.findOne({ email: emp.email });
       if (existing) {
-        console.log(`⏭  Skipped (exists): ${emp.empId} — ${emp.name}`);
+        console.log(`⏭  Skipped (exists): ${emp.empId} - ${emp.name}`);
         continue;
       }
 
       await Employee.create(emp);
-      console.log(`✅ Created: ${emp.empId} — ${emp.name} (${emp.department})`);
+      console.log(`✅ Created: ${emp.empId} - ${emp.name} (${emp.department})`);
     }
 
     // Wire the reporting hierarchy so the lead approval flow works out of the box

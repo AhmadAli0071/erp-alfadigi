@@ -292,3 +292,166 @@ body {
     pointer-events: none;
   }
 }
+
+/* ==================================================================
+   Super Admin — Luxury Dark scope
+   .sa-dark ke andar light utility classes dark-luxury me map hote hain.
+   HR / Employee portals is se untouched rehte hain (light theme).
+================================================================== */
+
+.sa-dark {
+  color-scheme: dark;
+}
+
+/* ---------- Surfaces ---------- */
+.sa-dark .bg-white,
+.sa-dark .bg-white\/70,
+.sa-dark .bg-white\/80,
+.sa-dark .bg-white\/90,
+.sa-dark .bg-white\/95 { background-color: rgba(255, 255, 255, 0.035); }
+
+.sa-dark .bg-slate-50,
+.sa-dark .bg-slate-50\/50,
+.sa-dark .bg-slate-50\/80 { background-color: rgba(255, 255, 255, 0.045); }
+
+.sa-dark .bg-slate-100,
+.sa-dark .bg-slate-100\/50,
+.sa-dark .bg-slate-100\/60,
+.sa-dark .bg-slate-100\/70,
+.sa-dark .bg-slate-100\/80 { background-color: rgba(255, 255, 255, 0.07); }
+
+.sa-dark .bg-slate-200\/60 { background-color: rgba(255, 255, 255, 0.1); }
+
+.sa-dark .hover\:bg-white:hover { background-color: rgba(255, 255, 255, 0.06); }
+.sa-dark .hover\:bg-slate-50:hover,
+.sa-dark .hover\:bg-slate-50\/80:hover { background-color: rgba(255, 255, 255, 0.055); }
+.sa-dark .hover\:bg-slate-100:hover,
+.sa-dark .hover\:bg-slate-100\/60:hover,
+.sa-dark .hover\:bg-slate-100\/70:hover { background-color: rgba(255, 255, 255, 0.08); }
+
+/* ---------- Soft colored tints ---------- */
+.sa-dark .bg-indigo-50 { background-color: rgba(243, 114, 33, 0.1); }
+.sa-dark .bg-indigo-100,
+.sa-dark .bg-indigo-100\/70 { background-color: rgba(243, 114, 33, 0.14); }
+.sa-dark .bg-rose-50 { background-color: rgba(251, 113, 133, 0.1); }
+.sa-dark .bg-rose-100 { background-color: rgba(251, 113, 133, 0.14); }
+.sa-dark .bg-amber-50 { background-color: rgba(251, 191, 36, 0.1); }
+.sa-dark .bg-emerald-50 { background-color: rgba(52, 211, 153, 0.1); }
+.sa-dark .bg-sky-50 { background-color: rgba(56, 189, 248, 0.1); }
+.sa-dark .bg-purple-50 { background-color: rgba(192, 132, 252, 0.1); }
+.sa-dark .bg-orange-100 { background-color: rgba(251, 146, 60, 0.12); }
+
+/* ---------- Text ladder ---------- */
+.sa-dark .text-slate-900 { color: #f8fafc; }
+.sa-dark .text-slate-800 { color: #e2e8f0; }
+.sa-dark .text-slate-700 { color: #cbd5e1; }
+.sa-dark .text-slate-600 { color: #94a3b8; }
+.sa-dark .text-slate-500 { color: #7c8aa0; }
+.sa-dark .text-slate-400 { color: #64748b; }
+
+.sa-dark .text-indigo-500,
+.sa-dark .text-indigo-600 { color: #fb9a5b; }
+.sa-dark .text-indigo-700 { color: #f9b890; }
+.sa-dark .text-rose-500 { color: #fb7185; }
+.sa-dark .text-rose-600,
+.sa-dark .text-rose-700 { color: #fda4af; }
+.sa-dark .text-amber-600,
+.sa-dark .text-amber-700,
+.sa-dark .text-amber-800 { color: #fcd34d; }
+.sa-dark .text-emerald-600,
+.sa-dark .text-emerald-700,
+.sa-dark .text-emerald-800 { color: #6ee7b7; }
+.sa-dark .text-sky-600 { color: #7dd3fc; }
+.sa-dark .text-orange-600,
+.sa-dark .text-orange-700 { color: #fdba74; }
+.sa-dark .text-purple-600 { color: #d8b4fe; }
+
+/* ---------- Borders & dividers ---------- */
+.sa-dark .border { border-color: rgba(255, 255, 255, 0.1); }
+
+.sa-dark .border-slate-200,
+.sa-dark .border-slate-200\/60,
+.sa-dark .border-slate-200\/70,
+.sa-dark .border-slate-200\/80,
+.sa-dark .border-slate-300\/80 { border-color: rgba(255, 255, 255, 0.09); }
+
+.sa-dark .hover\:border-slate-200:hover,
+.sa-dark .hover\:border-slate-300:hover { border-color: rgba(255, 255, 255, 0.16); }
+
+.sa-dark .border-indigo-100,
+.sa-dark .border-indigo-200,
+.sa-dark .border-indigo-300 { border-color: rgba(243, 114, 33, 0.3); }
+.sa-dark .border-rose-200 { border-color: rgba(251, 113, 133, 0.3); }
+.sa-dark .border-amber-200 { border-color: rgba(251, 191, 36, 0.3); }
+.sa-dark .border-emerald-200 { border-color: rgba(52, 211, 153, 0.3); }
+.sa-dark .border-sky-200 { border-color: rgba(56, 189, 248, 0.3); }
+.sa-dark .border-purple-200 { border-color: rgba(192, 132, 252, 0.3); }
+.sa-dark .border-orange-200 { border-color: rgba(251, 146, 60, 0.3); }
+
+.sa-dark .divide-slate-200\/60 > :not([hidden]) ~ :not([hidden]),
+.sa-dark .divide-slate-200\/70 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255, 255, 255, 0.07); }
+
+/* ---------- Glass components (dark variants) ---------- */
+.sa-dark .glass-surface {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sa-dark .glass-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.sa-dark .glass-card:hover {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.sa-dark .glass-pop {
+  background: rgba(12, 12, 19, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.sa-dark .glass-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sa-dark .glass-input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.sa-dark .glass-input:focus {
+  border-color: #f5843d;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- Misc ---------- */
+.sa-dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+}
+
+.sa-dark .bg-slate-900\/25 { background-color: rgba(0, 0, 0, 0.6); }
+
+.sa-dark ::selection {
+  background: rgba(243, 114, 33, 0.35);
+  color: #fff;
+}
+
+.sa-dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  background-clip: padding-box;
+}
+
+.sa-dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: padding-box;
+}

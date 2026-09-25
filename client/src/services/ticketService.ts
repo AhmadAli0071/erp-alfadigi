@@ -98,16 +98,16 @@ class TicketService {
 
   /**
    * Retrieves summary KPI card figures.
-   * Strictly returns '—' when no tickets exist in repository.
+   * Strictly returns '-' when no tickets exist in repository.
    */
   public async getKPIs(): Promise<TicketSummaryKPIs> {
     if (this.tickets.length === 0) {
       return {
-        openCount: '—',
-        pendingCount: '—',
-        inProgressCount: '—',
-        resolvedCount: '—',
-        closedCount: '—',
+        openCount: '-',
+        pendingCount: '-',
+        inProgressCount: '-',
+        resolvedCount: '-',
+        closedCount: '-',
       };
     }
 

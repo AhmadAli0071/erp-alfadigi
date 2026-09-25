@@ -76,12 +76,12 @@ export const HRDepartmentOverview: React.FC<HRDepartmentOverviewProps> = ({
                     {d.name}
                   </span>
                   <span className="text-xs font-bold text-slate-500">
-                    {hasData ? `${Math.round((deptData.present / deptData.totalEmployees) * 100)}%` : '—'}
+                    {hasData ? `${Math.round((deptData.present / deptData.totalEmployees) * 100)}%` : '-'}
                   </span>
                 </div>
 
                 <div className="text-lg font-extrabold text-slate-900 mb-1">
-                  {hasData ? deptData.totalEmployees : '—'}{' '}
+                  {hasData ? deptData.totalEmployees : '-'}{' '}
                   <span className="text-xs font-normal text-slate-500">Employees</span>
                 </div>
 
@@ -99,10 +99,10 @@ export const HRDepartmentOverview: React.FC<HRDepartmentOverviewProps> = ({
               {/* Attendance breakdown */}
               <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/70 text-slate-500">
                 <span className="text-slate-600 font-semibold">
-                  Present: {hasData ? deptData.present : '—'}
+                  Present: {hasData ? deptData.present : '-'}
                 </span>
                 <span className="text-slate-500">
-                  On Leave: {hasData ? deptData.onLeave : '—'}
+                  On Leave: {hasData ? deptData.onLeave : '-'}
                 </span>
               </div>
             </div>

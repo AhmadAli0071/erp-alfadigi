@@ -10,7 +10,7 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Restore session on initial load — but ALWAYS re-validate with the server,
+    // Restore session on initial load - but ALWAYS re-validate with the server,
     // so a deleted/deactivated account lands back on the login page.
     const restore = async () => {
       const storedUser = authService.getCurrentUser();

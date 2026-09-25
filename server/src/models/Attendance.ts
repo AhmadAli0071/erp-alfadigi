@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export type BreakType = 'LUNCH' | 'NAMAZ' | 'WASHROOM';
+export type ReviewStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface IAttendance extends Document {
   employeeId: mongoose.Types.ObjectId;
@@ -17,6 +18,15 @@ export interface IAttendance extends Document {
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
   isAutoMarked?: boolean;
+  /** Employee-requested attendance correction (wrong punch / missing punch etc.) */
+  correctionStatus: ReviewStatus;
+  correctionReason: string;
+  correctionNote: string;
+  /** Employee-requested overtime approval for extra hours worked */
+  otStatus: ReviewStatus;
+  otReason: string;
+  otNote: string;
+  otApprovedMinutes: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +55,21 @@ const AttendanceSchema = new Schema<IAttendance>(
     },
     notes: { type: String, default: '' },
     isAutoMarked: { type: Boolean, default: false },
+    correctionStatus: {
+      type: String,
+      enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'],
+      default: 'NONE',
+    },
+    correctionReason: { type: String, default: '' },
+    correctionNote: { type: String, default: '' },
+    otStatus: {
+      type: String,
+      enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'],
+      default: 'NONE',
+    },
+    otReason: { type: String, default: '' },
+    otNote: { type: String, default: '' },
+    otApprovedMinutes: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

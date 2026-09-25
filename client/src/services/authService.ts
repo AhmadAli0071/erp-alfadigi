@@ -91,6 +91,7 @@ export interface CreateUserAccountInput {
   department?: string;
   jobTitle: string;
   reportedTo?: string;
+  salary?: number;
 }
 
 export interface StoredUserAccount extends User {
@@ -217,7 +218,7 @@ class AuthService implements IAuthService {
   /**
    * Re-validates the stored session against the server on every app load.
    * If the account was deleted or deactivated (HR removed the user), the
-   * session is cleared and null is returned — forcing a fresh login.
+   * session is cleared and null is returned - forcing a fresh login.
    */
   public async verifySession(): Promise<User | null> {
     const stored = this.getCurrentUser();
@@ -235,10 +236,10 @@ class AuthService implements IAuthService {
         return merged;
       }
     } catch {
-      // Network/server unreachable — keep the stored session instead of locking the user out
+      // Network/server unreachable - keep the stored session instead of locking the user out
       return stored;
     }
-    // 401/403 — token invalid or user deleted/deactivated
+    // 401/403 - token invalid or user deleted/deactivated
     await this.logout();
     return null;
   }
@@ -281,6 +282,7 @@ class AuthService implements IAuthService {
           department: input.department,
           jobTitle: input.jobTitle.trim(),
           reportedTo: input.reportedTo || undefined,
+          salary: input.salary,
         }),
       });
 

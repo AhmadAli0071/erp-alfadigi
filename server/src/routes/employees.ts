@@ -7,6 +7,7 @@ import { Attendance } from '../models/Attendance.js';
 import { Leave } from '../models/Leave.js';
 import { Ticket } from '../models/Ticket.js';
 import { Notification } from '../models/Notification.js';
+import { SalaryChangeRequest } from '../models/SalaryChangeRequest.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { canAccessEmployee, isHr } from '../utils/access.js';
 
@@ -18,6 +19,7 @@ const createEmployeeSchema = z.object({
   email: z.string().email('Invalid email'),
   department: z.enum(['HR', 'Sales', 'Tech']),
   jobTitle: z.string().min(1, 'Job title is required'),
+  salary: z.coerce.number().min(0, 'Salary cannot be negative').optional(),
   phone: z.string().optional(),
   joinedDate: z.string().min(1, 'Join date is required'),
 });
@@ -27,6 +29,7 @@ const updateEmployeeSchema = z.object({
   email: z.string().email().optional(),
   department: z.enum(['HR', 'Sales', 'Tech']).optional(),
   jobTitle: z.string().min(1).optional(),
+  salary: z.coerce.number().min(0, 'Salary cannot be negative').optional(),
   phone: z.string().optional(),
   status: z.enum(['Active', 'On Leave', 'Inactive']).optional(),
   reportedTo: z.string().nullable().optional(),
@@ -36,7 +39,21 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-// GET /api/employees — list all employees
+// Salary visibility: Super Admin sees all; HR sees everyone's EXCEPT their own
+// (HR's own salary is Super Admin's business); everyone else sees only their own.
+const canViewSalary = (req: AuthRequest, employeeEmail: string): boolean => {
+  if (!req.user) return false;
+  const requesterEmail = req.user.email.toLowerCase();
+  if (req.user.role === 'SUPER_ADMIN') return true;
+  if (req.user.role === 'HR_ADMIN') return requesterEmail !== employeeEmail.toLowerCase();
+  return requesterEmail === employeeEmail.toLowerCase();
+};
+
+// Only the Super Admin may set or change salaries
+const canEditSalary = (req: AuthRequest): boolean =>
+  !!req.user && req.user.role === 'SUPER_ADMIN';
+
+// GET /api/employees - list all employees
 router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // Only HR may include deactivated employees
@@ -56,6 +73,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
         avatar: e.avatar,
         phone: e.phone,
         joinedDate: e.joinedDate,
+        salary: canViewSalary(req, e.email) ? e.salary : undefined,
         status: e.status,
         reportedTo: e.reportedTo
           ? {
@@ -73,7 +91,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   }
 });
 
-// GET /api/employees/team/:leadId — get team members for a lead (by employee ID or email)
+// GET /api/employees/team/:leadId - get team members for a lead (by employee ID or email)
 router.get('/team/:leadId', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadId);
@@ -129,10 +147,10 @@ router.get('/team/:leadId', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// GET /api/employees/leads — get all department leads (for dropdown)
+// GET /api/employees/leads - get all department leads (for dropdown)
 router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Leads are defined by USER ROLE (DEPARTMENT_LEAD) — not by job title keywords
+    // Leads are defined by USER ROLE (DEPARTMENT_LEAD) - not by job title keywords
     const leadUsers = await User.find({ role: 'DEPARTMENT_LEAD', isActive: true }).select('email');
     const leadEmails = leadUsers.map((u) => u.email?.toLowerCase()).filter(Boolean);
     const leads = await Employee.find({ email: { $in: leadEmails }, status: 'Active', isActive: true }).sort({ name: 1 });
@@ -151,7 +169,7 @@ router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Pro
   }
 });
 
-// GET /api/employees/me/:email — my own profile (with lead info + quick stats)
+// GET /api/employees/me/:email - my own profile (with lead info + quick stats)
 router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const targetEmail = String(req.params.email).toLowerCase();
@@ -196,6 +214,7 @@ router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): 
         jobTitle: employee.jobTitle,
         joinedDate: employee.joinedDate,
         status: employee.status,
+        salary: canViewSalary(req, employee.email) ? employee.salary : undefined,
         reportedTo: lead
           ? { id: lead._id.toString(), name: lead.name, empId: lead.empId, jobTitle: lead.jobTitle, department: lead.department, email: lead.email }
           : null,
@@ -213,7 +232,7 @@ router.get('/me/:email', authenticate, async (req: AuthRequest, res: Response): 
   }
 });
 
-// GET /api/employees/:id — get single employee
+// GET /api/employees/:id - get single employee
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const employee = await Employee.findById(req.params.id);
@@ -237,6 +256,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promis
       avatar: employee.avatar,
       phone: employee.phone,
       joinedDate: employee.joinedDate,
+      salary: canViewSalary(req, employee.email) ? employee.salary : undefined,
       status: employee.status,
     });
   } catch (err) {
@@ -245,7 +265,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promis
   }
 });
 
-// POST /api/employees — create employee (HR only)
+// POST /api/employees - create employee (HR only)
 router.post(
   '/',
   authenticate,
@@ -258,7 +278,7 @@ router.post(
         return;
       }
 
-      const { userId, name, email, department, jobTitle, phone, joinedDate } = parsed.data;
+      const { userId, name, email, department, jobTitle, salary, phone, joinedDate } = parsed.data;
 
       const existing = await Employee.findOne({ email: email.toLowerCase() });
       if (existing) {
@@ -278,6 +298,7 @@ router.post(
             email: email.toLowerCase(),
             department,
             jobTitle,
+            salary: salary || 0,
             phone: phone || '',
             joinedDate,
             status: 'Active',
@@ -302,6 +323,7 @@ router.post(
           department: employee.department,
           jobTitle: employee.jobTitle,
           phone: employee.phone,
+          salary: employee.salary,
           joinedDate: employee.joinedDate,
           status: employee.status,
         },
@@ -313,7 +335,7 @@ router.post(
   }
 );
 
-// PUT /api/employees/:id — update employee (HR only)
+// PUT /api/employees/:id - update employee (HR only)
 router.put(
   '/:id',
   authenticate,
@@ -329,6 +351,10 @@ router.put(
       const updateData = { ...parsed.data };
       if ('reportedTo' in updateData) {
         updateData.reportedTo = updateData.reportedTo || null;
+      }
+      // Salary changes are Super Admin only - ignore the field for anyone else
+      if (!canEditSalary(req)) {
+        delete (updateData as Record<string, unknown>).salary;
       }
 
       const existingEmployee = await Employee.findById(req.params.id);
@@ -350,7 +376,7 @@ router.put(
         return;
       }
 
-      // Sync email/name changes to the User login — look up by the ORIGINAL email,
+      // Sync email/name changes to the User login - look up by the ORIGINAL email,
       // since the User record still holds the old value when the email changed
       if (updateData.email || updateData.name) {
         const emailChanged = !!updateData.email && updateData.email.toLowerCase() !== previousEmail;
@@ -373,6 +399,7 @@ router.put(
           department: employee.department,
           jobTitle: employee.jobTitle,
           phone: employee.phone,
+          salary: employee.salary,
           joinedDate: employee.joinedDate,
           status: employee.status,
         },
@@ -384,7 +411,7 @@ router.put(
   }
 );
 
-// DELETE /api/employees/:id — soft delete (HR only)
+// DELETE /api/employees/:id - soft delete (HR only)
 router.delete(
   '/:id',
   authenticate,
@@ -413,7 +440,7 @@ router.delete(
   }
 );
 
-// DELETE /api/employees/:id/permanent — permanently remove employee + all linked data (HR only)
+// DELETE /api/employees/:id/permanent - permanently remove employee + all linked data (HR only)
 router.delete(
   '/:id/permanent',
   authenticate,
@@ -443,6 +470,9 @@ router.delete(
       const leaves = await Leave.deleteMany({ employeeId: employee._id });
       const tickets = await Ticket.deleteMany({ employeeId: employee._id });
       const notifications = await Notification.deleteMany({ userEmail: employee.email.toLowerCase() });
+      const salaryRequests = await SalaryChangeRequest.deleteMany({
+        $or: [{ employeeId: employee._id }, { requestedByEmail: employee.email.toLowerCase() }],
+      });
       await Employee.updateMany({ reportedTo: employee._id }, { $set: { reportedTo: null } });
 
       console.warn(`[audit] Employee permanently deleted: ${employee.email} (${employee.empId}) by ${req.user?.email} from IP ${req.ip}`);
@@ -457,6 +487,7 @@ router.delete(
           leaves: leaves.deletedCount,
           tickets: tickets.deletedCount,
           notifications: notifications.deletedCount,
+          salaryRequests: salaryRequests.deletedCount,
         },
       });
     } catch (err) {
@@ -466,7 +497,7 @@ router.delete(
   }
 );
 
-// PUT /api/employees/:id/reactivate — re-activate a deactivated employee (HR only)
+// PUT /api/employees/:id/reactivate - re-activate a deactivated employee (HR only)
 router.put(
   '/:id/reactivate',
   authenticate,
@@ -495,7 +526,7 @@ router.put(
   }
 );
 
-// PUT /api/employees/:id/reset-password — HR resets employee password
+// PUT /api/employees/:id/reset-password - HR resets employee password
 router.put(
   '/:id/reset-password',
   authenticate,

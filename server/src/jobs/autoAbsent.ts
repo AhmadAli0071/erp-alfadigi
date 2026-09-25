@@ -6,11 +6,11 @@ import { notifyEmails } from '../services/notificationService.js';
 import { ensureSettings } from '../utils/defaults.js';
 
 /**
- * SHIFT: 6 PM – 3 AM (PKT, overnight) by default — configurable via
+ * SHIFT: 6 PM – 3 AM (PKT, overnight) by default - configurable via
  * SystemSettings → attendance (shiftStart, shiftEnd, requiredWorkingHours,
  * gracePeriodMinutes). All job timing is derived from those settings.
  *
- * The auto-absent job runs daily at 22:05 UTC (3:05 AM PKT) — right after the
+ * The auto-absent job runs daily at 22:05 UTC (3:05 AM PKT) - right after the
  * shift for the current UTC date has ended. Every active employee without an
  * attendance record for that date is marked Absent (or Leave if they had an
  * approved leave covering that date).
@@ -146,7 +146,10 @@ export const runAttendanceSweep = async (): Promise<SweepResult> => {
     rec.clockOut = formatShiftTime(cfg.end.h, cfg.end.m);
     rec.clockOutAt = shiftEnd;
     rec.workingMinutes = working;
-    rec.status = statusForWorkingMinutes(working, cfg.requiredWorkingHours);
+    // Respect explicit HR designations - WFH / On Duty are not recomputed by minutes
+    if (rec.status !== 'Work From Home' && rec.status !== 'On Duty') {
+      rec.status = statusForWorkingMinutes(working, cfg.requiredWorkingHours);
+    }
     rec.notes = `${rec.notes ? `${rec.notes} | ` : ''}Auto clock-out at shift end (${formatShiftTime(endUtc.h, endUtc.m)} UTC scheduled)`;
     await rec.save();
     autoClockedOut++;
@@ -155,7 +158,7 @@ export const runAttendanceSweep = async (): Promise<SweepResult> => {
     if (emp) {
       await notifyEmails([emp.email], {
         title: 'Auto Clock-Out',
-        message: `You missed clock-out on ${rec.date} — system auto clocked you out at ${rec.clockOut} (PKT). Working hours: ${Math.floor(working / 60)}h ${working % 60}m.`,
+        message: `You missed clock-out on ${rec.date}, system auto clocked you out at ${rec.clockOut} (PKT). Working hours: ${Math.floor(working / 60)}h ${working % 60}m.`,
         type: 'attendance',
       });
     }
@@ -218,7 +221,7 @@ export const runAbsentScan = async (explicitDate?: string): Promise<AbsentScanRe
       markedAbsent++;
       await notifyEmails([emp.email], {
         title: 'Marked Absent',
-        message: `You were marked Absent for ${date} — no clock-in was recorded. Contact HR if this is incorrect.`,
+        message: `You were marked Absent for ${date}. No clock-in was recorded. Contact HR if this is incorrect.`,
         type: 'attendance',
       });
     }
@@ -228,7 +231,7 @@ export const runAbsentScan = async (explicitDate?: string): Promise<AbsentScanRe
 };
 
 export const startAutoAbsentJob = (): void => {
-  // 22:05 UTC = 3:05 AM PKT — daily, right after the 6 PM – 3 AM shift ends.
+  // 22:05 UTC = 3:05 AM PKT - daily, right after the 6 PM – 3 AM shift ends.
   cron.schedule('5 22 * * *', async () => {
     try {
       const result = await runAbsentScan(utcDateFor(new Date()));

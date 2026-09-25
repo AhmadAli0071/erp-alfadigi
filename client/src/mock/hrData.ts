@@ -32,7 +32,7 @@ export const MOCK_DASHBOARD_KPIS: HRDashboardKPIs = {
   pendingLeavesCount: 0,
   pendingCorrectionsCount: 0,
   pendingOvertimeCount: 0,
-  pendingExtraHoursTotalTime: '—',
+  pendingExtraHoursTotalTime: '-',
   pendingExtraHoursEmployeesCount: 0,
 };
 

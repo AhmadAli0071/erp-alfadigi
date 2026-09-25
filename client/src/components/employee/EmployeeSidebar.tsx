@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Ticket,
   Bell,
+  Wallet,
   User,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +44,7 @@ export const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/employee/attendance' },
     { id: 'leaves', label: 'Leaves', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/employee/leaves' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/employee/tickets' },
+{ id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/employee/earnings' },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4 shrink-0" />, route: '/employee/notifications', badge: unreadCount },
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4 shrink-0" />, route: '/employee/profile' },
   ];

@@ -10,6 +10,7 @@ export interface IEmployee extends Document {
   email: string;
   department: DepartmentName;
   jobTitle: string;
+  salary: number;
   avatar?: string;
   phone?: string;
   joinedDate: string;
@@ -32,6 +33,7 @@ const EmployeeSchema = new Schema<IEmployee>(
       required: true,
     },
     jobTitle: { type: String, required: true, trim: true },
+    salary: { type: Number, default: 0, min: 0 },
     avatar: { type: String, default: '' },
     phone: { type: String, default: '' },
     joinedDate: { type: String, required: true },

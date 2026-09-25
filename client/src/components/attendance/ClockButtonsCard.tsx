@@ -106,7 +106,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Live ticking timer — updates every second
+  // Live ticking timer - updates every second
   useEffect(() => {
     if (clockState === 'working' || clockState === 'on_break') {
       const t = setInterval(() => setNowTick(Date.now()), 1000);
@@ -222,7 +222,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       setBreakMinutes(data.breakMinutes || breakMinutes);
       if (data.breakMinutesByType) setBreakMinutesByType(data.breakMinutesByType);
       if (data.overLimit) {
-        setError('Break went over the daily limit — extra minutes were deducted from working hours.');
+        setError('Break went over the daily limit. Extra minutes were deducted from working hours.');
       }
       setBreakStartedAt(null);
       setActiveBreakType(null);
@@ -336,7 +336,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     return (
       <div className="flex flex-col items-center gap-2.5">
         <div className="relative">
-          {/* Lightning pulse rings — only when active */}
+          {/* Lightning pulse rings - only when active */}
           {active && !disabled && (
             <>
               <span className={`absolute inset-0 rounded-full ${danger ? 'bg-rose-400/25' : cfg.ping} animate-ping`} />
@@ -423,14 +423,14 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const summaryCards = [
     {
       label: 'Clock In',
-      value: clockInTime || '—',
+      value: clockInTime || '-',
       icon: <Play className="w-4 h-4 text-emerald-600" />,
       color: 'bg-emerald-50 border-emerald-200',
       sub: null as string | null,
     },
     {
       label: 'Clock Out',
-      value: clockOutTime || '—',
+      value: clockOutTime || '-',
       icon: <Square className="w-4 h-4 text-rose-600" />,
       color: 'bg-rose-50 border-rose-200',
       sub: null as string | null,
@@ -463,12 +463,12 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const activeBreakLabel = activeBreakCfg ? activeBreakCfg.label : 'Break';
   const statusText =
     clockState === 'not_clocked_in'
-      ? "You haven't clocked in yet — start your shift!"
+      ? "You haven't clocked in yet. Start your shift!"
       : clockState === 'working'
       ? `Working since ${clockInTime}`
       : clockState === 'on_break'
-      ? `On ${activeBreakLabel} break — relaxing?`
-      : `Shift completed — ${formatMinutes(workingMinutes)} worked`;
+      ? `On ${activeBreakLabel} break, relaxing?`
+      : `Shift completed, ${formatMinutes(workingMinutes)} worked`;
 
   return (
     <div className="space-y-3.5">
@@ -533,7 +533,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
             />
           </div>
 
-          {/* Break Type Menu — pick which break to start */}
+          {/* Break Type Menu - pick which break to start */}
           {showBreakMenu && clockState === 'working' && (
             <div className="mt-5 mx-auto max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
               <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
@@ -568,7 +568,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                           {blocked
                             ? 'Daily budget used up'
                             : exhausted
-                            ? 'Budget done — extra will cut from working hours'
+                            ? 'Budget done. Extra will cut from working hours'
                             : `${remaining}m left of ${budget}m`}
                         </span>
                       </span>
@@ -599,7 +599,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                     </span>
-                    <span className="text-emerald-600">Live — Working Time</span>
+                    <span className="text-emerald-600">Live Working Time</span>
                   </>
                 ) : (
                   <>
@@ -608,9 +608,9 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                       <span className={`relative inline-flex rounded-full h-2 w-2 ${breakOverLimit ? 'bg-rose-500' : 'bg-amber-500'}`} />
                     </span>
                     <span className={breakOverLimit ? 'text-rose-600' : 'text-amber-600'}>
-                      On Break ({activeBreakLabel}) — {formatSeconds(liveBreakSeconds || 0)}
+                      On Break ({activeBreakLabel}) {formatSeconds(liveBreakSeconds || 0)}
                       {breakOverLimit
-                        ? ' · Over limit!'
+                        ? '· Over limit!'
                         : activeBreakRemainingAtStart > 0
                         ? ` · ${formatMMSS(Math.max(0, activeBreakRemainingAtStart - (liveBreakSeconds || 0)))} left`
                         : ''}
@@ -630,7 +630,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                   </div>
                   {breakOverLimit && (
                     <p className="text-center text-[10px] font-bold text-rose-600">
-                      Over daily budget — extra minutes deducted from working hours
+                      Over daily budget. Extra minutes deducted from working hours
                     </p>
                   )}
                 </div>
@@ -664,7 +664,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
             <div className="mt-6 flex items-center justify-center">
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-bold text-emerald-700">Shift completed for today — Great work!</span>
+                <span className="text-xs font-bold text-emerald-700">Shift completed for today. Great work!</span>
               </div>
             </div>
           )}

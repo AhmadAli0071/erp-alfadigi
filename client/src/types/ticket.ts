@@ -77,11 +77,11 @@ export interface TicketFilterParams {
 }
 
 export interface TicketSummaryKPIs {
-  openCount: number | '—';
-  pendingCount: number | '—';
-  inProgressCount: number | '—';
-  resolvedCount: number | '—';
-  closedCount: number | '—';
+  openCount: number | '-';
+  pendingCount: number | '-';
+  inProgressCount: number | '-';
+  resolvedCount: number | '-';
+  closedCount: number | '-';
 }
 
 export interface TicketQueryResult {

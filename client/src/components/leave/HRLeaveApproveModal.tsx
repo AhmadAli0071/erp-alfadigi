@@ -93,7 +93,7 @@ export const HRLeaveApproveModal: React.FC<HRLeaveApproveModalProps> = ({
                 Dates:
               </span>
               <span className="font-medium text-slate-700">
-                {request.startDateDisplay} — {request.endDateDisplay}
+                {request.startDateDisplay} to {request.endDateDisplay}
               </span>
             </div>
 

@@ -96,7 +96,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
   const kpiCards = [
     {
       label: 'Present (This Month)',
-      value: stats ? `${stats.presentDaysThisMonth}/${stats.attendanceDaysThisMonth}` : '—',
+      value: stats ? `${stats.presentDaysThisMonth}/${stats.attendanceDaysThisMonth}` : '-',
       sub: 'Working days attended',
       icon: <TrendingUp className="w-4 h-4" />,
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
@@ -104,7 +104,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     },
     {
       label: 'Pending Leaves',
-      value: stats ? pendingLeaves : '—',
+      value: stats ? pendingLeaves : '-',
       sub: 'Awaiting approval',
       icon: <AlertCircle className="w-4 h-4" />,
       color: 'text-amber-600 bg-amber-50 border-amber-200',
@@ -112,7 +112,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     },
     {
       label: 'Open Tickets',
-      value: stats ? openTickets : '—',
+      value: stats ? openTickets : '-',
       sub: 'In progress or unresolved',
       icon: <Ticket className="w-4 h-4" />,
       color: 'text-purple-600 bg-purple-50 border-purple-200',
@@ -120,7 +120,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ us
     },
     {
       label: 'Approved Leaves',
-      value: stats ? stats.approvedLeaves : '—',
+      value: stats ? stats.approvedLeaves : '-',
       sub: 'All time',
       icon: <CheckCircle2 className="w-4 h-4" />,
       color: 'text-indigo-600 bg-indigo-50 border-indigo-200',

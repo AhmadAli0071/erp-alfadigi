@@ -57,6 +57,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
   const [department, setDepartment] = useState('Sales');
   const [role, setRole] = useState<UserRole>('EMPLOYEE');
   const [jobTitle, setJobTitle] = useState('');
+  const [salary, setSalary] = useState('');
   const [password, setPassword] = useState(generatePassword());
   const [showPassword, setShowPassword] = useState(false);
   const [reportedTo, setReportedTo] = useState('');
@@ -107,6 +108,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
         department,
         jobTitle,
         reportedTo: reportedTo || undefined,
+        salary: salary.trim() ? Number(salary) : undefined,
       });
       if (result.success && result.account) {
         setCreatedAccount(result.account);
@@ -125,6 +127,8 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
     jobTitle.trim().length > 0 &&
+    salary.trim().length > 0 &&
+    Number(salary) > 0 &&
     password.length >= 8;
 
   const inputClasses =
@@ -220,6 +224,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
                 setFullName('');
                 setEmail('');
                 setJobTitle('');
+                setSalary('');
                 setRole('EMPLOYEE');
                 setPassword(generatePassword());
               }}
@@ -309,6 +314,29 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Current Salary (PKR) <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                Rs
+              </span>
+              <input
+                type="number"
+                min="1"
+                step="any"
+                value={salary}
+                onChange={(e) => setSalary(e.target.value)}
+                placeholder="e.g. 85000"
+                className={`${inputClasses} pl-10`}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Monthly salary, shown on the employee/lead dashboard (HR cannot see their own salary)
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Department</label>
@@ -338,7 +366,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
                   className={`${inputClasses} appearance-none cursor-pointer pr-8`}
                 >
                   {(allowSuperAdmin
-                    ? [{ value: 'SUPER_ADMIN' as UserRole, label: 'Super Admin', hint: 'Root access — full system control' }, ...ROLE_OPTIONS]
+                    ? [{ value: 'SUPER_ADMIN' as UserRole, label: 'Super Admin', hint: 'Root access, full system control' }, ...ROLE_OPTIONS]
                     : ROLE_OPTIONS
                   ).map((r) => (
                     <option key={r.value} value={r.value}>
@@ -371,10 +399,10 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
                   onChange={(e) => setReportedTo(e.target.value)}
                   className={`${inputClasses} appearance-none cursor-pointer pr-8`}
                 >
-                  <option value="">— Select a lead —</option>
+                  <option value="">- Select a lead -</option>
                   {leads.map((lead) => (
                     <option key={lead.id} value={lead.id}>
-                      {lead.name} — {lead.jobTitle} ({lead.department})
+                      {lead.name}, {lead.jobTitle} ({lead.department})
                     </option>
                   ))}
                 </select>

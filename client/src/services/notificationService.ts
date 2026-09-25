@@ -36,7 +36,7 @@ class NotificationService {
   private unreadCount = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /* ---------- Sound (Web Audio API — no external file) ---------- */
+  /* ---------- Sound (Web Audio API - no external file) ---------- */
   playChime(): void {
     try {
       const ctx = new AudioContext();
@@ -132,7 +132,7 @@ class NotificationService {
         notif.close();
       };
     } catch {
-      // notification API failure — ignore
+      // notification API failure - ignore
     }
   }
 
@@ -147,7 +147,7 @@ class NotificationService {
     });
   }
 
-  /** Demo desktop notification — used right after permission is granted. */
+  /** Demo desktop notification - used right after permission is granted. */
   showTestNotification(): void {
     this.showDesktopNotification({
       id: `test_${Date.now()}`,

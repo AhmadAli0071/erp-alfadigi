@@ -20,7 +20,7 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ kpis, on
 
   const avgMinutes = parseHM(kpis?.avgWorkingHoursToday);
   const shortTotal = kpis?.shortHoursTotalToday || '00:00';
-  const extraTotal = kpis?.pendingExtraHoursTotalTime || '—';
+  const extraTotal = kpis?.pendingExtraHoursTotalTime || '-';
   const extraCount = kpis?.pendingExtraHoursEmployeesCount || 0;
 
   const progressPct = Math.min(100, Math.round((avgMinutes / STANDARD_SHIFT_MINUTES) * 100));
@@ -59,7 +59,7 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ kpis, on
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
           <span className="text-[11px] font-medium text-slate-500 block mb-1">Average Working Hours</span>
           <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">
-            {hasData(kpis?.avgWorkingHoursToday) ? kpis?.avgWorkingHoursToday : '—'}
+            {hasData(kpis?.avgWorkingHoursToday) ? kpis?.avgWorkingHoursToday : '-'}
           </div>
           <span className="text-[10px] text-slate-500 font-medium">
             {hasData(kpis?.avgWorkingHoursToday) ? "Today's workforce average" : 'No data'}
@@ -80,7 +80,7 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ kpis, on
             <AlertTriangle className="w-3 h-3 text-amber-600" />
           </div>
           <div className="text-xl sm:text-2xl font-extrabold text-amber-600 font-mono">
-            {hasData(shortTotal) ? shortTotal : '—'}
+            {hasData(shortTotal) ? shortTotal : '-'}
           </div>
           <span className="text-[10px] text-slate-500 font-medium">
             {hasData(shortTotal) ? 'Cumulative deficit today' : 'No shortfall'}
@@ -94,7 +94,7 @@ export const HRWorkingHoursCard: React.FC<HRWorkingHoursCardProps> = ({ kpis, on
             <Sparkles className="w-3 h-3 text-indigo-600" />
           </div>
           <div className="text-xl sm:text-2xl font-extrabold text-indigo-600 font-mono">
-            {hasData(kpis?.pendingExtraHoursTotalTime) ? extraTotal : '—'}
+            {hasData(kpis?.pendingExtraHoursTotalTime) ? extraTotal : '-'}
           </div>
           <span className="text-[10px] text-slate-500 font-medium">
             {hasData(kpis?.pendingExtraHoursTotalTime) ? `By ${extraCount} employee${extraCount === 1 ? '' : 's'}` : 'No overtime today'}

@@ -420,7 +420,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
                             {actionInProgress === ticket.id ? '…' : 'Withdraw'}
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-medium">—</span>
+                          <span className="text-[10px] text-slate-400 font-medium">-</span>
                         )}
                       </td>
                     )}
@@ -605,7 +605,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
             ) : (
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 mb-3 text-center">
                 <span className="text-[10px] font-bold text-slate-500">
-                  {showDetailModal.status === 'Cancelled' ? 'This ticket was withdrawn.' : `This ticket is ${showDetailModal.status} by HR — read only.`}
+                  {showDetailModal.status === 'Cancelled' ? 'This ticket was withdrawn.' : `This ticket is ${showDetailModal.status} by HR, read only.`}
                 </span>
               </div>
             )}
@@ -633,10 +633,10 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
               )}
             </div>
 
-            {/* Add Message — read-only once ticket reaches a final status */}
+            {/* Add Message - read-only once ticket reaches a final status */}
             {['Closed', 'Rejected', 'Cancelled'].includes(showDetailModal.status) ? (
               <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
-                This ticket is {showDetailModal.status} — replies are disabled.
+                This ticket is {showDetailModal.status}. Replies are disabled.
               </p>
             ) : (
             <div className="pt-3 border-t border-slate-200/70">

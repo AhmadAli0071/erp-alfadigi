@@ -5,7 +5,7 @@ import { addClient } from '../services/notificationService.js';
 
 const router = Router();
 
-// GET /api/notifications/stream — SSE real-time stream (token via query param)
+// GET /api/notifications/stream - SSE real-time stream (token via query param)
 router.get('/stream', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const email = req.user?.email?.toLowerCase();
   if (!email) {
@@ -28,7 +28,7 @@ router.get('/stream', authenticate, async (req: AuthRequest, res: Response): Pro
   });
 });
 
-// GET /api/notifications — my notifications (latest 50)
+// GET /api/notifications - my notifications (latest 50)
 router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const email = req.user?.email?.toLowerCase();
@@ -53,7 +53,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   }
 });
 
-// GET /api/notifications/unread-count — badge count
+// GET /api/notifications/unread-count - badge count
 router.get('/unread-count', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const email = req.user?.email?.toLowerCase();
@@ -64,7 +64,7 @@ router.get('/unread-count', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// PUT /api/notifications/:id/read — mark single as read
+// PUT /api/notifications/:id/read - mark single as read
 router.put('/:id/read', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await Notification.updateOne(
@@ -77,7 +77,7 @@ router.put('/:id/read', authenticate, async (req: AuthRequest, res: Response): P
   }
 });
 
-// PUT /api/notifications/read-all — mark all as read
+// PUT /api/notifications/read-all - mark all as read
 router.put('/read-all', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     await Notification.updateMany(

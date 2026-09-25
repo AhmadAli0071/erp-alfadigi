@@ -13,11 +13,14 @@ import notificationRoutes from './routes/notifications.js';
 import leaveTypeRoutes from './routes/leaveTypes.js';
 import settingsRoutes from './routes/settings.js';
 import reportRoutes from './routes/reports.js';
+import salaryRequestRoutes from './routes/salaryRequests.js';
+import salesRoutes from './routes/sales.js';
+import saleRequestRoutes from './routes/saleRequests.js';
 import { startAutoAbsentJob } from './jobs/autoAbsent.js';
 
 const app = express();
 
-// Serve the built React app (client/dist) when it exists — single-port deployment.
+// Serve the built React app (client/dist) when it exists - single-port deployment.
 const clientDist = path.resolve(process.cwd(), process.env.CLIENT_DIST || '../client/dist');
 const hasClientBuild = fs.existsSync(path.join(clientDist, 'index.html'));
 if (hasClientBuild) {
@@ -52,20 +55,23 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/leave-types', leaveTypeRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/salary-requests', salaryRequestRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/sale-requests', saleRequestRoutes);
 
 // 404 for unknown API routes
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found.' });
 });
 
-// SPA fallback — any non-API GET serves the React app (client-side routing)
+// SPA fallback - any non-API GET serves the React app (client-side routing)
 if (hasClientBuild) {
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
 
-// Global error handler — ensures JSON responses instead of HTML error pages
+// Global error handler - ensures JSON responses instead of HTML error pages
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (res.headersSent) return;
   console.error('Unhandled error:', err);

@@ -14,6 +14,7 @@ import {
   Building,
   RotateCcw,
   Eye,
+  Pencil,
   ChevronLeft,
   ChevronRight,
   X,
@@ -27,6 +28,8 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { HRAttendanceDetailDrawer } from './HRAttendanceDetailDrawer';
+import { HRAttendanceEditModal, HRAttendanceUpdatePayload } from './HRAttendanceEditModal';
+import type { ReviewStatus } from '../../types/hr';
 
 const API_BASE = '/api';
 
@@ -118,6 +121,9 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<AttendanceRecord | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
+  // Edit Modal State
+  const [recordForEdit, setRecordForEdit] = useState<AttendanceRecord | null>(null);
+
   // Mobile Filter Drawer State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState<boolean>(false);
 
@@ -125,7 +131,11 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   // Feedback Toast
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMsg({ text, type });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   // Fetch real employees for dropdowns
   useEffect(() => {
@@ -174,7 +184,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     setCurrentPage(1);
   };
 
-  // Fetch Attendance Records — REAL API
+  // Fetch Attendance Records - REAL API
   const fetchAttendance = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -221,6 +231,71 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
   // Live refresh: SSE notification (attendance events) ya window focus par refetch
   useRealtimeRefresh(fetchAttendance);
 
+  // HR manual edit - status (WFH / On Duty / Pending OT / ...), times, notes
+  const handleHrUpdate = async (id: string, payload: HRAttendanceUpdatePayload): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/attendance/hr/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        showToast(data?.error || 'Could not update the attendance record.', 'error');
+        return false;
+      }
+      showToast('Attendance record updated. Employee has been notified.');
+      await fetchAttendance();
+      return true;
+    } catch {
+      showToast('Network error. Could not update the record.', 'error');
+      return false;
+    }
+  };
+
+  // HR decision on a pending correction / OT request
+  const handleReviewDecision = async (
+    id: string,
+    kind: 'correction' | 'ot',
+    decision: 'APPROVED' | 'REJECTED',
+    note?: string,
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/attendance/hr/${id}/${kind}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ action: decision, note: note || '' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        showToast(data?.error || `Could not ${decision === 'APPROVED' ? 'approve' : 'reject'} this request.`, 'error');
+        return false;
+      }
+      showToast(`Request ${decision === 'APPROVED' ? 'approved' : 'rejected'} and employee notified.`);
+      await fetchAttendance();
+      return true;
+    } catch {
+      showToast('Network error. Could not process the request.', 'error');
+      return false;
+    }
+  };
+
+  /** Sync the drawer record with fresh query results after an in-drawer action. */
+  const syncRecordAfterAction = (id: string): void => {
+    setQueryResult((prev) => {
+      if (!prev) return prev;
+      const fresh = prev.records.find((r) => r.id === id);
+      if (fresh) {
+        setSelectedRecordForDetail(fresh);
+      }
+      return prev;
+    });
+  };
+
+  const resolveReviewStatus = (value: unknown): ReviewStatus => {
+    return value === 'PENDING' || value === 'APPROVED' || value === 'REJECTED' ? value : 'NONE';
+  };
+
   // Quick Preset Options
   const presets = [
     { id: 'today', label: 'Today' },
@@ -261,7 +336,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     setCurrentPage(1);
   };
 
-  // Export CSV — built from real records
+  // Export CSV - built from real records
   const handleExportCSV = () => {
     if (!queryResult || queryResult.records.length === 0) return;
     const emp = employees.find((e) => e.id === selectedEmployeeId);
@@ -274,8 +349,8 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       r.employeeName,
       r.employeeCode,
       r.department,
-      r.clockInTime !== '—' ? `${r.clockInTime} (${r.clockInDate})` : '',
-      r.clockOutTime !== '—' ? `${r.clockOutTime} (${r.clockOutDate})` : '',
+      r.clockInTime !== '-' ? `${r.clockInTime} (${r.clockInDate})` : '',
+      r.clockOutTime !== '-' ? `${r.clockOutTime} (${r.clockOutDate})` : '',
       r.breakDuration,
       r.breakMinutesByType?.lunch ?? '',
       r.breakMinutesByType?.namaz ?? '',
@@ -295,8 +370,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     a.click();
     URL.revokeObjectURL(url);
 
-    setToastMsg(`Exported ${queryResult.totalCount} attendance records to CSV.`);
-    setTimeout(() => setToastMsg(null), 4000);
+    showToast(`Exported ${queryResult.totalCount} attendance records to CSV.`);
   };
 
   // Selected Employee object if any
@@ -328,9 +402,17 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
     <div className="space-y-6 animate-fadeIn pb-12" id="hr-attendance-management-module">
       {/* Toast feedback */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-emerald-200 text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span className="font-medium text-slate-700">{toastMsg}</span>
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/80 backdrop-blur-xl border text-slate-900 text-xs shadow-2xl flex items-center gap-3 animate-scaleUp ${
+            toastMsg.type === 'success' ? 'border-emerald-200' : 'border-rose-200'
+          }`}
+        >
+          {toastMsg.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          )}
+          <span className="font-medium text-slate-700">{toastMsg.text}</span>
         </div>
       )}
 
@@ -573,6 +655,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
             <option value="Leave" className="bg-white/80 backdrop-blur-xl">Leave</option>
             <option value="Work From Home" className="bg-white/80 backdrop-blur-xl">Work From Home</option>
             <option value="On Duty" className="bg-white/80 backdrop-blur-xl">On Duty</option>
+            <option value="Pending OT" className="bg-white/80 backdrop-blur-xl">Pending OT</option>
             <option value="Holiday" className="bg-white/80 backdrop-blur-xl">Holiday</option>
             <option value="Weekend" className="bg-white/80 backdrop-blur-xl">Weekend</option>
           </select>
@@ -697,7 +780,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                  {selectedEmployeeObj.name} — Attendance Summary
+                  {selectedEmployeeObj.name}: Attendance Summary
                 </h3>
                 <p className="text-xs text-slate-500">
                   {selectedEmployeeObj.empId} • {selectedEmployeeObj.jobTitle} (
@@ -974,7 +1057,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
                       {/* Clock In */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                        {record.clockInTime !== '—' ? (
+                        {record.clockInTime !== '-' ? (
                           <div>
                             <span className="text-slate-700">{record.clockInTime}</span>
                             <span className="text-[9px] text-slate-400 ml-1">
@@ -982,13 +1065,13 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-700">—</span>
+                          <span className="text-slate-700">-</span>
                         )}
                       </td>
 
                       {/* Clock Out (with overnight date marker) */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                        {record.clockOutTime !== '—' ? (
+                        {record.clockOutTime !== '-' ? (
                           <div>
                             <span className="text-slate-700">{record.clockOutTime}</span>
                             <span className="text-[9px] font-semibold text-indigo-600 ml-1">
@@ -996,7 +1079,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-700">—</span>
+                          <span className="text-slate-700">-</span>
                         )}
                       </td>
 
@@ -1047,22 +1130,43 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
 
                       {/* Status */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
-                        <StatusBadge status={record.status} size="xs" />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={record.status} size="xs" />
+                          {resolveReviewStatus(record.correctionStatus) === 'PENDING' && (
+                            <span
+                              title={`Correction requested: ${record.correctionReason || '-'}`}
+                              className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"
+                            />
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedRecordForDetail(record);
-                            setIsDrawerOpen(true);
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100/50 hover:bg-indigo-600 hover:text-white text-slate-600 text-[11px] font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Details</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRecordForEdit(record);
+                            }}
+                            title="Edit status / times"
+                            className="px-2 py-1.5 rounded-lg bg-slate-100/50 hover:bg-indigo-600 hover:text-white text-slate-600 text-[11px] font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
+                            id={`edit-attendance-${record.id}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedRecordForDetail(record);
+                              setIsDrawerOpen(true);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100/50 hover:bg-indigo-600 hover:text-white text-slate-600 text-[11px] font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Details</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1210,6 +1314,20 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
           setIsDrawerOpen(false);
           setSelectedRecordForDetail(null);
         }}
+        onCorrectionAction={handleReviewDecision}
+        onOvertimeAction={handleReviewDecision}
+        onEdit={(rec) => {
+          setIsDrawerOpen(false);
+          setRecordForEdit(rec);
+        }}
+        onRecordSync={syncRecordAfterAction}
+      />
+
+      {/* 9b. HR Attendance Edit Modal - status/times writer */}
+      <HRAttendanceEditModal
+        record={recordForEdit}
+        onClose={() => setRecordForEdit(null)}
+        onSubmit={handleHrUpdate}
       />
 
       {/* 10. Mobile Filter Drawer / Bottom Sheet */}
@@ -1300,6 +1418,8 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
                 <option value="Half Day" className="bg-white/80 backdrop-blur-xl">Half Day</option>
                 <option value="Leave" className="bg-white/80 backdrop-blur-xl">Leave</option>
                 <option value="Work From Home" className="bg-white/80 backdrop-blur-xl">Work From Home</option>
+                <option value="On Duty" className="bg-white/80 backdrop-blur-xl">On Duty</option>
+                <option value="Pending OT" className="bg-white/80 backdrop-blur-xl">Pending OT</option>
               </select>
             </div>
 

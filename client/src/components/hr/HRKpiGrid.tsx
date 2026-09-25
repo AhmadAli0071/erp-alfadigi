@@ -17,7 +17,7 @@ interface HRKpiGridProps {
 
 export const HRKpiGrid: React.FC<HRKpiGridProps> = ({ kpis, onSelectKpiFilter }) => {
   const formatValue = (val?: number) => {
-    return val !== undefined && val !== null && val > 0 ? val : '—';
+    return val !== undefined && val !== null && val > 0 ? val : '-';
   };
 
   // Exactly 6 primary KPI cards

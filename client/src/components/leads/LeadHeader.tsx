@@ -72,7 +72,7 @@ export const LeadHeader: React.FC<LeadHeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Global search — scoped to the lead's team (members + today's attendance)
+  // Global search - scoped to the lead's team (members + today's attendance)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -126,8 +126,8 @@ export const LeadHeader: React.FC<LeadHeaderProps> = ({
             results.push({
               id: `att_${a.employeeId}`,
               category: 'Attendance',
-              title: `${a.employeeName} — Today`,
-              subtitle: `Status: ${a.status} | In: ${a.clockIn || '—'}`,
+              title: `${a.employeeName} (Today)`,
+              subtitle: `Status: ${a.status} | In: ${a.clockIn || '-'}`,
               badge: a.status,
               linkRoute: '/lead/attendance',
             });

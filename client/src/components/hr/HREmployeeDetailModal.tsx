@@ -66,7 +66,7 @@ export const HREmployeeDetailModal: React.FC<HREmployeeDetailModalProps> = ({ re
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-3.5 text-xs">
           <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
             <span className="text-slate-500">Shift Date</span>
-            <span className="font-bold text-slate-900">{record.attendanceDate} (Standard 6 PM - 3 AM)</span>
+            <span className="font-bold text-slate-900">{record.attendanceDate} (Standard 6 PM to 3 AM)</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

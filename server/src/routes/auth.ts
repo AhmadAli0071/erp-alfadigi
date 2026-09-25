@@ -18,6 +18,7 @@ const registerSchema = z.object({
   department: z.string().optional(),
   jobTitle: z.string().min(1, 'Job title is required'),
   reportedTo: z.string().optional(),
+  salary: z.coerce.number().min(0, 'Salary cannot be negative').optional(),
 });
 
 const loginSchema = z.object({
@@ -37,7 +38,7 @@ const accountPasswordSchema = z.object({
 const canManageAccount = (actorRole: string, targetRole: string): boolean =>
   actorRole === 'SUPER_ADMIN' ? true : targetRole !== 'SUPER_ADMIN';
 
-// POST /api/auth/register — HR creates a new user account
+// POST /api/auth/register - HR creates a new user account
 router.post(
   '/register',
   authenticate,
@@ -54,7 +55,7 @@ router.post(
       return;
     }
 
-    const { name, email, password, role, department, jobTitle, reportedTo } = parsed.data;
+    const { name, email, password, role, department, jobTitle, reportedTo, salary } = parsed.data;
 
     if (role === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       res.status(403).json({ error: 'Only a Super Admin can create Super Admin accounts.' });
@@ -68,6 +69,10 @@ router.post(
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+
+    // HR / Super Admin both may set the starting salary at account creation.
+    // (HR's own salary stays invisible to them - visibility rules handle that.)
+    const salaryValue = salary || 0;
 
     const user = await User.create({
       name,
@@ -94,6 +99,7 @@ router.post(
           email: email.toLowerCase(),
           department: department || 'Sales',
           jobTitle,
+          salary: salaryValue,
           phone: '',
           joinedDate: new Date().toISOString().split('T')[0],
           status: 'Active',
@@ -124,7 +130,7 @@ router.post(
   }
 });
 
-// POST /api/auth/login — max 10 attempts per IP per 15 minutes
+// POST /api/auth/login - max 10 attempts per IP per 15 minutes
 router.post('/login', rateLimit(10, 15 * 60 * 1000), async (req, res: Response): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
@@ -169,7 +175,7 @@ router.post('/login', rateLimit(10, 15 * 60 * 1000), async (req, res: Response):
   }
 });
 
-// GET /api/auth/me — get current user from token
+// GET /api/auth/me - get current user from token
 router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ error: 'Not authenticated.' });
@@ -186,7 +192,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
   });
 });
 
-// GET /api/auth/accounts — list all user accounts (HR only)
+// GET /api/auth/accounts - list all user accounts (HR only)
 router.get('/accounts', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {
     res.status(403).json({ error: 'Insufficient permissions.' });
@@ -211,7 +217,7 @@ router.get('/accounts', authenticate, async (req: AuthRequest, res: Response): P
   });
 });
 
-// PUT /api/auth/accounts/:id/status — activate/deactivate an account
+// PUT /api/auth/accounts/:id/status - activate/deactivate an account
 router.put('/accounts/:id/status', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {
@@ -246,7 +252,7 @@ router.put('/accounts/:id/status', authenticate, async (req: AuthRequest, res: R
   }
 });
 
-// PUT /api/auth/accounts/:id/role — change an account's role (Super Admin only)
+// PUT /api/auth/accounts/:id/role - change an account's role (Super Admin only)
 router.put('/accounts/:id/role', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user || req.user.role !== 'SUPER_ADMIN') {
@@ -277,7 +283,7 @@ router.put('/accounts/:id/role', authenticate, async (req: AuthRequest, res: Res
   }
 });
 
-// PUT /api/auth/accounts/:id/password — reset an account's password
+// PUT /api/auth/accounts/:id/password - reset an account's password
 router.put('/accounts/:id/password', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user || !['HR_ADMIN', 'SUPER_ADMIN'].includes(req.user.role)) {

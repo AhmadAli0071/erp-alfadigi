@@ -8,7 +8,7 @@ REM --- 1. MongoDB (agar chal nahi raha) ---
 tasklist /FI "IMAGENAME eq mongod.exe" 2>nul | find /I "mongod.exe" >nul
 if errorlevel 1 (
   echo Starting MongoDB...
-  start "" /min "C:\mongodb\mongodb-win32-x86_64-windows-8.0.4\bin\mongod.exe" --dbpath C:\data\db
+  start "" /min "C:\mongodb\bin\mongod.exe" --dbpath C:\data\db
   timeout /t 4 /nobreak >nul
 ) else (
   echo MongoDB already running.

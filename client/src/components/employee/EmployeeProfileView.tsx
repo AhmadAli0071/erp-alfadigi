@@ -15,7 +15,10 @@ import {
   Loader2,
   UserCheck,
   AlertCircle,
+  Wallet,
+  Target,
 } from 'lucide-react';
+import { CommissionSummary, fmtUSD } from '../../types/sales';
 
 interface EmployeeProfileViewProps {
   user: User;
@@ -30,6 +33,7 @@ interface MyProfile {
   phone: string;
   department: string;
   jobTitle: string;
+  salary?: number;
   joinedDate: string;
   status: string;
   reportedTo: {
@@ -66,6 +70,7 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
 }) => {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [stats, setStats] = useState<MyStats | null>(null);
+  const [myCommission, setMyCommission] = useState<CommissionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -74,11 +79,20 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/employees/me/${user.email}`, { headers: getHeaders() });
+      const [res, commissionRes] = await Promise.all([
+        fetch(`${API_BASE}/employees/me/${user.email}`, { headers: getHeaders() }),
+        fetch(`${API_BASE}/sales/commission/my`, { headers: getHeaders() }),
+      ]);
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setProfile(data.employee);
       setStats(data.stats);
+      if (commissionRes.ok) {
+        const c = await commissionRes.json();
+        setMyCommission(c.eligible ? c : null);
+      } else {
+        setMyCommission(null);
+      }
     } catch {
       setError('Unable to load your profile.');
     } finally {
@@ -132,10 +146,30 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
     { label: 'Department', value: profile.department, icon: <Building className="w-4 h-4 text-indigo-600" /> },
     { label: 'Designation', value: profile.jobTitle, icon: <Briefcase className="w-4 h-4 text-indigo-600" /> },
     {
+      label: 'Current Salary',
+      value: profile.salary && profile.salary > 0 ? `Rs ${profile.salary.toLocaleString('en-US')}` : 'Not set',
+      icon: <Wallet className="w-4 h-4 text-indigo-600" />,
+    },
+    // Commission + total earning for Sales department members
+    ...(myCommission
+      ? [
+          {
+            label: 'Commission (This Month)',
+            value: `${fmtUSD(myCommission.commission)}${myCommission.unlocked ? '' : ' (locked)'}`,
+            icon: <Target className="w-4 h-4 text-indigo-600" />,
+          },
+          {
+            label: 'Total Earning',
+            value: `${profile.salary && profile.salary > 0 ? `Rs ${profile.salary.toLocaleString('en-US')}` : 'Rs 0'} + ${fmtUSD(myCommission.commission)}`,
+            icon: <Wallet className="w-4 h-4 text-indigo-600" />,
+          },
+        ]
+      : []),
+    {
       label: 'Joined Date',
       value: profile.joinedDate
         ? new Date(profile.joinedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-        : '—',
+        : '-',
       icon: <Calendar className="w-4 h-4 text-indigo-600" />,
     },
     { label: 'Status', value: profile.status, icon: <CheckCircle2 className="w-4 h-4 text-indigo-600" /> },
@@ -235,7 +269,7 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
           </div>
         ) : (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-center">
-            <p className="text-xs text-slate-500 font-medium">No lead assigned yet — HR will assign one soon.</p>
+            <p className="text-xs text-slate-500 font-medium">No lead assigned yet. HR will assign one soon.</p>
           </div>
         )}
       </div>

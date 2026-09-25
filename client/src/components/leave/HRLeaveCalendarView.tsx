@@ -273,7 +273,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
                         className={`w-full text-left p-1 rounded-md text-[10px] font-semibold border truncate transition-colors block cursor-pointer ${getLeaveChipColor(
                           leave
                         )}`}
-                        title={`${leave.employeeName} — ${leave.leaveType} (${leave.status})`}
+                        title={`${leave.employeeName}: ${leave.leaveType} (${leave.status})`}
                       >
                         <div className="truncate flex items-center gap-1">
                           {leave.status === 'Pending' && (
@@ -416,7 +416,7 @@ export const HRLeaveCalendarView: React.FC<HRLeaveCalendarViewProps> = ({
                   <div className="text-right text-xs">
                     <div className="font-semibold text-slate-700">{req.leaveType}</div>
                     <div className="text-[11px] text-slate-500 font-mono">
-                      {req.startDateDisplay} — {req.endDateDisplay} ({req.totalDays}d)
+                      {req.startDateDisplay} to {req.endDateDisplay} ({req.totalDays}d)
                     </div>
                   </div>
                   <button

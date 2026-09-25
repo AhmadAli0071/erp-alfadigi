@@ -303,7 +303,7 @@ class LeaveService {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    }) + ' — ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
     // Update approval steps
     const updatedTimeline = req.timeline.map((step) => {
@@ -383,7 +383,7 @@ class LeaveService {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    }) + ' — ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
     // Update timeline steps
     const updatedTimeline = req.timeline.map((step) => {

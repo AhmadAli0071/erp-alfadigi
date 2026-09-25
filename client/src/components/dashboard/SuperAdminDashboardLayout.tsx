@@ -5,6 +5,7 @@ import { EmployeeAttendanceView } from '../employee/EmployeeAttendanceView';
 import { SuperAdminSidebar } from '../superadmin/SuperAdminSidebar';
 import { SuperAdminHeader } from '../superadmin/SuperAdminHeader';
 import { SuperAdminUsersView } from '../superadmin/SuperAdminUsersView';
+import { SuperAdminSalesView } from '../superadmin/SuperAdminSalesView';
 import { SuperAdminDashboardView } from './SuperAdminDashboardView';
 import { HRAttendanceManagementView } from '../hr/HRAttendanceManagementView';
 import { HRLeaveManagementView } from '../leave/HRLeaveManagementView';
@@ -50,6 +51,14 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
 
   useRealtimeRefresh(fetchCounts);
 
+  // Dark scope on body too (covers portal-rendered modals via createPortal -> body)
+  useEffect(() => {
+    document.body.classList.add('sa-dark');
+    return () => {
+      document.body.classList.remove('sa-dark');
+    };
+  }, []);
+
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
     setIsMobileMenuOpen(false);
@@ -58,6 +67,7 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
   const isMainDashboardRoute = currentRoute === '/admin/dashboard' || currentRoute === '/';
   const isUsersRoute = currentRoute.startsWith('/admin/users');
   const isEmployeesRoute = currentRoute.startsWith('/admin/employees');
+  const isSalesRoute = currentRoute.startsWith('/admin/sales');
   const isAttendanceRoute = currentRoute.startsWith('/admin/attendance');
   const isMyAttendanceRoute = currentRoute.startsWith('/admin/my-attendance');
   const isLeaveRoute = currentRoute.startsWith('/admin/leaves');
@@ -66,11 +76,12 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
   const isSettingsRoute = currentRoute.startsWith('/admin/settings');
 
   return (
-    <div className="flex h-screen w-full bg-slate-950 text-slate-200 overflow-hidden font-sans relative">
-      {/* Distinct dark + rose ambient glow (Super Admin identity) */}
+    <div className="sa-dark flex h-screen w-full bg-[#060609] text-slate-200 overflow-hidden font-sans relative">
+      {/* Luxury ambient glows */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div className="absolute -top-40 left-1/4 w-96 h-96 rounded-full bg-rose-600/10 blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-red-700/10 blur-3xl" />
+        <div className="absolute -top-40 left-1/4 w-[28rem] h-[28rem] rounded-full bg-amber-500/[0.07] blur-3xl" />
+        <div className="absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-rose-500/[0.06] blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full bg-indigo-500/[0.05] blur-3xl" />
       </div>
 
       <SuperAdminSidebar
@@ -90,6 +101,8 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
           user={user}
           onLogout={onLogout}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          currentRoute={currentRoute}
+          onNavigate={handleNavigate}
         />
 
         <main className="flex-1 overflow-y-auto custom-scrollbar" id="super-admin-content-area">
@@ -102,6 +115,10 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
           ) : isEmployeesRoute ? (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <HREmployeesManagementView onNavigateToDashboard={() => handleNavigate('/admin/dashboard')} />
+            </div>
+          ) : isSalesRoute ? (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <SuperAdminSalesView onNavigateToDashboard={() => handleNavigate('/admin/dashboard')} />
             </div>
           ) : isAttendanceRoute ? (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">

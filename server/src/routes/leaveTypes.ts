@@ -52,7 +52,7 @@ const serializeType = (t: ILeaveType) => ({
   isActive: t.isActive,
 });
 
-// GET /api/leave-types — list leave types (any authenticated user; inactive only for HR)
+// GET /api/leave-types - list leave types (any authenticated user; inactive only for HR)
 router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await ensureLeaveTypes();
@@ -66,7 +66,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   }
 });
 
-// POST /api/leave-types — create a leave type (HR only)
+// POST /api/leave-types - create a leave type (HR only)
 router.post('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = createTypeSchema.safeParse(req.body);
@@ -117,7 +117,7 @@ router.post('/', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (re
   }
 });
 
-// PUT /api/leave-types/:id — update a leave type (HR only)
+// PUT /api/leave-types/:id - update a leave type (HR only)
 router.put('/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leaveType = await LeaveType.findById(req.params.id);
@@ -168,7 +168,7 @@ router.put('/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (
   }
 });
 
-// DELETE /api/leave-types/:id — deactivate a leave type (HR only, soft delete)
+// DELETE /api/leave-types/:id - deactivate a leave type (HR only, soft delete)
 router.delete('/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leaveType = await LeaveType.findById(req.params.id);
@@ -177,7 +177,7 @@ router.delete('/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
       return;
     }
 
-    // Soft delete — existing leave records keep referencing the name
+    // Soft delete - existing leave records keep referencing the name
     leaveType.isActive = false;
     await leaveType.save();
 

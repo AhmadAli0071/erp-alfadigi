@@ -87,7 +87,7 @@ export function generateTimeline(
     return [
       {
         id: `tl_${Math.random().toString(36).substring(2, 9)}`,
-        time: '—',
+        time: '-',
         date: recordDateShort,
         type: 'SYSTEM_FLAG',
         label: `Status: ${status}`,
@@ -334,15 +334,15 @@ export function queryAttendanceRecords(params: AttendanceFilterParams): Attendan
       let totalExtraMinutes = 0;
 
       filteredRecords.forEach((r) => {
-        if (r.workingHours && r.workingHours !== '00:00' && r.workingHours !== '—') {
+        if (r.workingHours && r.workingHours !== '00:00' && r.workingHours !== '-') {
           const [h, m] = r.workingHours.split(':').map(Number);
           totalWorkMinutes += (h || 0) * 60 + (m || 0);
         }
-        if (r.shortHours && r.shortHours !== '00:00' && r.shortHours !== '—') {
+        if (r.shortHours && r.shortHours !== '00:00' && r.shortHours !== '-') {
           const [h, m] = r.shortHours.split(':').map(Number);
           totalShortMinutes += (h || 0) * 60 + (m || 0);
         }
-        if (r.extraHours && r.extraHours !== '00:00' && r.extraHours !== '—') {
+        if (r.extraHours && r.extraHours !== '00:00' && r.extraHours !== '-') {
           const [h, m] = r.extraHours.split(':').map(Number);
           totalExtraMinutes += (h || 0) * 60 + (m || 0);
         }
@@ -397,15 +397,15 @@ export function queryAttendanceRecords(params: AttendanceFilterParams): Attendan
       let totalExtraMinutes = 0;
 
       filteredRecords.forEach((r) => {
-        if (r.workingHours && r.workingHours !== '00:00' && r.workingHours !== '—') {
+        if (r.workingHours && r.workingHours !== '00:00' && r.workingHours !== '-') {
           const [h, m] = r.workingHours.split(':').map(Number);
           totalWorkMinutes += (h || 0) * 60 + (m || 0);
         }
-        if (r.shortHours && r.shortHours !== '00:00' && r.shortHours !== '—') {
+        if (r.shortHours && r.shortHours !== '00:00' && r.shortHours !== '-') {
           const [h, m] = r.shortHours.split(':').map(Number);
           totalShortMinutes += (h || 0) * 60 + (m || 0);
         }
-        if (r.extraHours && r.extraHours !== '00:00' && r.extraHours !== '—') {
+        if (r.extraHours && r.extraHours !== '00:00' && r.extraHours !== '-') {
           const [h, m] = r.extraHours.split(':').map(Number);
           totalExtraMinutes += (h || 0) * 60 + (m || 0);
         }
@@ -415,7 +415,7 @@ export function queryAttendanceRecords(params: AttendanceFilterParams): Attendan
       const avgMins = Math.round(totalWorkMinutes / activeCount);
       const avgHrs = Math.floor(avgMins / 60);
       const avgRemMins = avgMins % 60;
-      const avgStr = totalWorkMinutes > 0 ? `${avgHrs}h ${String(avgRemMins).padStart(2, '0')}m` : '—';
+      const avgStr = totalWorkMinutes > 0 ? `${avgHrs}h ${String(avgRemMins).padStart(2, '0')}m` : '-';
 
       const shortHrs = Math.floor(totalShortMinutes / 60);
       const shortRemMins = totalShortMinutes % 60;
@@ -449,9 +449,9 @@ export function queryAttendanceRecords(params: AttendanceFilterParams): Attendan
       leaveCount: 0,
       wfhCount: 0,
       halfDayCount: 0,
-      avgWorkingHours: '—',
-      totalShortHours: '—',
-      totalApprovedExtraHours: '—',
+      avgWorkingHours: '-',
+      totalShortHours: '-',
+      totalApprovedExtraHours: '-',
       attendanceRate: 0,
     };
   }

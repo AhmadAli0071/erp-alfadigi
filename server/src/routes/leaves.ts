@@ -56,7 +56,7 @@ const syncEmployeeLeaveStatus = async (employeeId: unknown, date?: string): Prom
 
 const ACTIVE_LEAVE_STATUSES = ['Pending', 'In Process', 'Approved', 'Final Approved'];
 
-// POST /api/leaves — employee submits leave request
+// POST /api/leaves - employee submits leave request
 router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = createLeaveSchema.safeParse(req.body);
@@ -92,7 +92,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
     const end = new Date(parsed.data.endDate);
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    // Overlap check — one active request per date range
+    // Overlap check - one active request per date range
     const overlapping = await Leave.findOne({
       employeeId: employee._id,
       status: { $in: ACTIVE_LEAVE_STATUSES },
@@ -167,7 +167,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
   }
 });
 
-// GET /api/leaves/team/:leadEmail — get team leave requests for lead
+// GET /api/leaves/team/:leadEmail - get team leave requests for lead
 router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadEmail);
@@ -218,7 +218,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-// GET /api/leaves/my/:email — employee's own leave history
+// GET /api/leaves/my/:email - employee's own leave history
 router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const targetEmail = String(req.params.email).toLowerCase();
@@ -255,7 +255,7 @@ router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): 
   }
 });
 
-// PUT /api/leaves/:id/approve — lead approves leave
+// PUT /api/leaves/:id/approve - lead approves leave
 router.put('/:id/approve', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = approveRejectSchema.safeParse(req.body);
@@ -270,10 +270,10 @@ router.put('/:id/approve', authenticate, async (req: AuthRequest, res: Response)
       return;
     }
 
-    // Leave types without lead approval go straight to HR — leads cannot action them
+    // Leave types without lead approval go straight to HR - leads cannot action them
     const leaveTypeDoc = await LeaveType.findOne({ name: leave.leaveType }).select('requiresLeadApproval');
     if (leaveTypeDoc && !leaveTypeDoc.requiresLeadApproval) {
-      res.status(400).json({ error: 'This leave type skips lead approval — HR decides it directly.' });
+      res.status(400).json({ error: 'This leave type skips lead approval, HR decides it directly.' });
       return;
     }
 
@@ -321,7 +321,7 @@ router.put('/:id/approve', authenticate, async (req: AuthRequest, res: Response)
   }
 });
 
-// PUT /api/leaves/:id/reject — lead rejects leave
+// PUT /api/leaves/:id/reject - lead rejects leave
 router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = approveRejectSchema.safeParse(req.body);
@@ -336,10 +336,10 @@ router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
-    // Leave types without lead approval go straight to HR — leads cannot action them
+    // Leave types without lead approval go straight to HR - leads cannot action them
     const leaveTypeDoc = await LeaveType.findOne({ name: leave.leaveType }).select('requiresLeadApproval');
     if (leaveTypeDoc && !leaveTypeDoc.requiresLeadApproval) {
-      res.status(400).json({ error: 'This leave type skips lead approval — HR decides it directly.' });
+      res.status(400).json({ error: 'This leave type skips lead approval, HR decides it directly.' });
       return;
     }
 
@@ -382,7 +382,7 @@ router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// GET /api/leaves/hr — HR sees lead-approved leaves (default: awaiting HR decision)
+// GET /api/leaves/hr - HR sees lead-approved leaves (default: awaiting HR decision)
 router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const status = String(req.query.status || 'ALL');
@@ -419,7 +419,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
   }
 });
 
-// GET /api/leaves/hr-count — pending HR review count for badge
+// GET /api/leaves/hr-count - pending HR review count for badge
 router.get('/hr-count', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const base = await Leave.countDocuments({ status: { $in: ['Approved', 'In Process'] } });
@@ -434,7 +434,7 @@ router.get('/hr-count', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), as
   }
 });
 
-// PUT /api/leaves/:id/withdraw — employee withdraws their own pending request
+// PUT /api/leaves/:id/withdraw - employee withdraws their own pending request
 router.put('/:id/withdraw', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leave = await Leave.findById(req.params.id);
@@ -486,7 +486,7 @@ router.put('/:id/withdraw', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// PUT /api/leaves/:id/hr-inprocess — HR marks leave as In Process
+// PUT /api/leaves/:id/hr-inprocess - HR marks leave as In Process
 router.put('/:id/hr-inprocess', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = approveRejectSchema.safeParse(req.body);
@@ -547,7 +547,7 @@ router.put('/:id/hr-inprocess', authenticate, requireRole('HR_ADMIN', 'SUPER_ADM
   }
 });
 
-// PUT /api/leaves/:id/hr-approve — HR final approval
+// PUT /api/leaves/:id/hr-approve - HR final approval
 router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = approveRejectSchema.safeParse(req.body);
@@ -585,7 +585,7 @@ router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN
       await createNotification({
         userEmail: employee.email,
         title: 'Leave Finally Approved',
-        message: `HR approved your ${leave.leaveType} (${leave.startDate} - ${leave.endDate}).`,
+        message: `HR approved your ${leave.leaveType} (${leave.startDate} to ${leave.endDate}).`,
         type: 'leave',
         relatedId: String(leave._id),
       });
@@ -610,7 +610,7 @@ router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN
   }
 });
 
-// PUT /api/leaves/:id/hr-reject — HR final rejection
+// PUT /api/leaves/:id/hr-reject - HR final rejection
 router.put('/:id/hr-reject', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = approveRejectSchema.safeParse(req.body);
@@ -673,7 +673,7 @@ router.put('/:id/hr-reject', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'
   }
 });
 
-// GET /api/leaves/pending-count/:leadEmail — pending leave count for badge
+// GET /api/leaves/pending-count/:leadEmail - pending leave count for badge
 router.get('/pending-count/:leadEmail', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const leadParam = String(req.params.leadEmail);

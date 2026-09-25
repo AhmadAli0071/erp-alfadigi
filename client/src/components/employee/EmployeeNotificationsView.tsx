@@ -103,7 +103,7 @@ export const EmployeeNotificationsView: React.FC<EmployeeNotificationsViewProps>
                 </span>
               )}
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Stay updated on your requests — live</p>
+            <p className="text-xs text-slate-500 font-medium">Stay updated on your requests in real time</p>
           </div>
         </div>
 

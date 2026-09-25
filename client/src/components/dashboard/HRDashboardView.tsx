@@ -12,6 +12,7 @@ import { HRPendingActions } from '../hr/HRPendingActions';
 import { HRRecentActivity } from '../hr/HRRecentActivity';
 import { HRDepartmentOverview } from '../hr/HRDepartmentOverview';
 import { HRQuickActions } from '../hr/HRQuickActions';
+import { HREarningsUpdate } from '../hr/HREarningsUpdate';
 import { HRActionModal } from '../hr/HRActionModal';
 import { SkeletonLoader } from '../hr/SkeletonLoader';
 import { ErrorState } from '../hr/ErrorState';
@@ -129,7 +130,7 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
       {/* 1. Welcome Section (Section 4) */}
       <HRWelcomeSection adminName={user.name} />
 
-      {/* My Shift Today — HR clock-in/out like every other employee */}
+      {/* My Shift Today - HR clock-in/out like every other employee */}
       <ClockButtonsCard user={user} title="My Shift Today" />
 
       {/* 2. Primary KPI Cards (Section 5) - Exactly 6 cards */}
@@ -141,6 +142,9 @@ export const HRDashboardView: React.FC<HRDashboardViewProps> = ({ user, onNaviga
         onReviewAction={(action) => setSelectedActionToReview(action)}
         onNavigate={onNavigate}
       />
+
+      {/* Earnings Update - Sales team earnings (approve requests / direct add) */}
+      <HREarningsUpdate onActionComplete={(msg) => showToast(msg, 'success')} />
 
       {/* 4. Level 3: Attendance Overview (Section 6) */}
       <HRAttendanceOverview attendanceRecords={data.todayAttendance} onNavigate={onNavigate} />

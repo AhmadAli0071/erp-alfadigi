@@ -9,6 +9,8 @@ import { LeadAttendanceView } from './LeadAttendanceView';
 import { LeadLeaveView } from './LeadLeaveView';
 import { LeadTicketsView } from './LeadTicketsView';
 import { LeadTeamView } from './LeadTeamView';
+import { LeadSaleView } from './LeadSaleView';
+import { SalaryEarningsView } from '../common/SalaryEarningsView';
 
 interface LeadDashboardLayoutProps {
   user: User;
@@ -57,6 +59,8 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   };
 
   const isDashboardRoute = currentRoute === '/lead/dashboard' || currentRoute === '/' || !currentRoute;
+  const isEarningsRoute = currentRoute.startsWith('/lead/earnings');
+  const isSalesPageRoute = currentRoute.startsWith('/lead/sales');
   const isTeamRoute = currentRoute.startsWith('/lead/team');
   const isAttendanceRoute = currentRoute.startsWith('/lead/attendance');
   const isLeaveRoute = currentRoute.startsWith('/lead/leave');
@@ -91,6 +95,10 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
         <main className="flex-1 overflow-y-auto custom-scrollbar" id="lead-dashboard-content-area">
           {isDashboardRoute ? (
             <LeadDashboardHomeView user={user} department={department} onNavigate={handleNavigate} />
+          ) : isEarningsRoute ? (
+            <SalaryEarningsView onNavigateToDashboard={() => handleNavigate('/lead/dashboard')} />
+          ) : isSalesPageRoute && department === 'Sales' ? (
+            <LeadSaleView user={user} onNavigateToDashboard={() => handleNavigate('/lead/dashboard')} />
           ) : isTeamRoute ? (
             <LeadTeamView user={user} department={department} onNavigate={handleNavigate} />
           ) : isAttendanceRoute ? (
@@ -103,7 +111,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full animate-fadeIn">
               <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
                 <p className="text-sm font-semibold text-slate-500">
-                  {currentRoute.split('/').pop()?.replace(/-/g, ' ')} — Coming soon
+                  {currentRoute.split('/').pop()?.replace(/-/g, ' ')}. Coming soon
                 </p>
               </div>
             </div>
