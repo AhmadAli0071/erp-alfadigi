@@ -152,7 +152,7 @@ class NotificationService {
     this.showDesktopNotification({
       id: `test_${Date.now()}`,
       title: 'Desktop notifications enabled',
-      message: 'Ab naye notifications yahan + sound ke sath aayenge.',
+      message: 'New notifications will appear here, with sound.',
       type: 'general',
       isRead: true,
       createdAt: new Date().toISOString(),
