@@ -38,6 +38,9 @@ interface LeaveRecord {
   totalDays: number;
   reason: string;
   status: string;
+  leadApprovalDate?: string;
+  hrApprovalDate?: string;
+  hrApprovalNote?: string;
   createdAt: string;
 }
 
@@ -54,7 +57,14 @@ const getHeaders = (): Record<string, string> => {
 
 const postHeaders = (): Record<string, string> => ({ 'Content-Type': 'application/json', ...getHeaders() });
 
-const TEAM_STATUS_OPTIONS = ['ALL', 'Pending', 'Approved', 'Rejected', 'Cancelled'];
+const TEAM_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'ALL', label: 'All Status' },
+  { value: 'Pending', label: 'Pending (Lead Approval)' },
+  { value: 'Approved', label: 'Approved by Lead' },
+  { value: 'Final Approved', label: 'Approved by HR' },
+  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Cancelled', label: 'Cancelled' },
+];
 const MY_STATUS_OPTIONS = ['ALL', 'Pending', 'Approved', 'In Process', 'Final Approved', 'Rejected', 'Cancelled'];
 
 const FALLBACK_LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Annual Leave', 'Unpaid Leave', 'Maternity / Paternity', 'Bereavement Leave', 'Special / Other Leave'];
@@ -179,7 +189,8 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
 
   const summary = {
     pending: leaves.filter((l) => l.status === 'Pending').length,
-    approved: leaves.filter((l) => l.status === 'Approved').length,
+    leadApproved: leaves.filter((l) => l.status === 'Approved').length,
+    hrApproved: leaves.filter((l) => l.status === 'Final Approved').length,
     rejected: leaves.filter((l) => l.status === 'Rejected').length,
   };
 
@@ -378,10 +389,11 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
       {viewTab === 'team' ? (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Pending', value: summary.pending, icon: <Clock className="w-4 h-4 text-amber-600" />, bg: 'bg-amber-500/[0.04] border-amber-200' },
-              { label: 'Approved', value: summary.approved, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-500/[0.04] border-emerald-200' },
+              { label: 'Lead Approved', value: summary.leadApproved, icon: <CheckCircle2 className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-500/[0.04] border-blue-200' },
+              { label: 'HR Approved', value: summary.hrApproved, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-500/[0.04] border-emerald-200' },
               { label: 'Rejected', value: summary.rejected, icon: <XCircle className="w-4 h-4 text-rose-600" />, bg: 'bg-rose-500/[0.04] border-rose-200' },
             ].map((card, idx) => (
               <div key={idx} className={`p-4 rounded-xl border ${card.bg} flex items-center justify-between`}>
@@ -414,7 +426,7 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                   className="appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 >
                   {TEAM_STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s === 'ALL' ? 'All Status' : s}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none">▾</span>
@@ -469,7 +481,17 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                         <td className="px-5 py-3.5 text-xs text-slate-600">{leave.startDate} → {leave.endDate}</td>
                         <td className="px-5 py-3.5 text-xs font-semibold text-slate-700">{leave.totalDays}</td>
                         <td className="px-5 py-3.5">
-                          <StatusBadge status={leave.status as 'Pending' | 'Approved' | 'Rejected'} size="xs" />
+                          <StatusBadge status={leave.status} size="xs" />
+                          {(leave.leadApprovalDate || leave.hrApprovalDate) && (
+                            <div className="mt-1 space-y-0.5">
+                              {leave.leadApprovalDate && (
+                                <div className="text-[10px] text-slate-400 font-medium">Lead: {leave.leadApprovalDate}</div>
+                              )}
+                              {leave.hrApprovalDate && (
+                                <div className="text-[10px] text-emerald-600 font-semibold">HR: {leave.hrApprovalDate}</div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 text-right pr-5">
                           {leave.status === 'Pending' && noLeadApprovalTypes.includes(leave.leaveType) ? (

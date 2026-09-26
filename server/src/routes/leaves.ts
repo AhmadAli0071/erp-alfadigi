@@ -209,6 +209,9 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
         reason: l.reason,
         status: l.status,
         leadApprovalNote: l.leadApprovalNote,
+        leadApprovalDate: l.leadApprovalDate,
+        hrApprovalNote: l.hrApprovalNote,
+        hrApprovalDate: l.hrApprovalDate,
         createdAt: l.createdAt.toISOString(),
       })),
     });
