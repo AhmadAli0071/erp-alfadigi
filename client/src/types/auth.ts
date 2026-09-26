@@ -8,6 +8,7 @@ export interface User {
   department?: string;
   avatar?: string;
   jobTitle: string;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginCredentials {

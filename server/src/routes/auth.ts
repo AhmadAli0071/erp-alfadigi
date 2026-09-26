@@ -94,6 +94,7 @@ router.post(
       department,
       jobTitle,
       createdBy: req.user?.name || 'System',
+      mustChangePassword: true,
     });
 
     console.warn(`[audit] Account created: ${email} (${role}) by ${req.user?.email} (${req.user?.role}) from IP ${req.ip}`);
@@ -179,6 +180,7 @@ router.post('/login', rateLimit(10, 15 * 60 * 1000), async (req, res: Response):
         role: user.role,
         department: user.department,
         jobTitle: user.jobTitle,
+        mustChangePassword: !!user.mustChangePassword,
       },
     });
   } catch (err) {
@@ -201,6 +203,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
     role: req.user.role,
     department: req.user.department,
     jobTitle: req.user.jobTitle,
+    mustChangePassword: !!req.user.mustChangePassword,
   });
 });
 
@@ -231,6 +234,7 @@ router.put('/change-password', authenticate, async (req: AuthRequest, res: Respo
     }
 
     user.password = await bcrypt.hash(parsed.data.newPassword, 12);
+    user.mustChangePassword = false;
     await user.save();
     console.warn(`[audit] Password CHANGE: ${user.email} (self) from IP ${req.ip}`);
 
@@ -354,6 +358,7 @@ router.put('/accounts/:id/password', authenticate, async (req: AuthRequest, res:
       return;
     }
     target.password = await bcrypt.hash(parsed.data.password, 12);
+    target.mustChangePassword = true;
     await target.save();
     console.warn(`[audit] Password RESET: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}`);
     res.json({ success: true, message: 'Password reset successfully.' });

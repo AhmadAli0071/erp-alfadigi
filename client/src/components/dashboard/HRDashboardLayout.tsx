@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../../types/auth';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { EmployeeAttendanceView } from '../employee/EmployeeAttendanceView';
 import { HRSidebar } from '../hr/HRSidebar';
 import { HRHeader } from '../hr/HRHeader';
@@ -19,6 +20,7 @@ interface HRDashboardLayoutProps {
 }
 
 export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLogout }) => {
+  const [showPasswordModal, setShowPasswordModal] = useState(user.mustChangePassword === true);
   const [currentRoute, setCurrentRoute] = useState('/hr/dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -168,6 +170,7 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
           )}
         </main>
       </div>
+      <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
     </div>
   );
 };

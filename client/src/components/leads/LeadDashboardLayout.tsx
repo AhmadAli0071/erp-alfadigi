@@ -11,6 +11,7 @@ import { LeadTicketsView } from './LeadTicketsView';
 import { LeadTeamView } from './LeadTeamView';
 import { LeadSaleView } from './LeadSaleView';
 import { LeadProfileView } from './LeadProfileView';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { SalaryEarningsView } from '../common/SalaryEarningsView';
 
 interface LeadDashboardLayoutProps {
@@ -67,6 +68,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   const isLeaveRoute = currentRoute.startsWith('/lead/leave');
   const isTicketsRoute = currentRoute.startsWith('/lead/tickets');
   const isProfileRoute = currentRoute.startsWith('/lead/profile');
+  const [showPasswordModal, setShowPasswordModal] = useState(user.mustChangePassword === true);
 
   return (
     <div className="flex h-screen w-full bg-[#F7F9FC] text-slate-800 overflow-hidden font-sans relative">
@@ -122,6 +124,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
           )}
         </main>
       </div>
+      <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
     </div>
   );
 };

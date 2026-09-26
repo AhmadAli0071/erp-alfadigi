@@ -11,6 +11,7 @@ export interface IUser extends Document {
   jobTitle: string;
   isActive: boolean;
   createdBy?: string;
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +36,7 @@ const UserSchema = new Schema<IUser>(
     jobTitle: { type: String, required: true, trim: true },
     isActive: { type: Boolean, default: true },
     createdBy: { type: String },
+    mustChangePassword: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

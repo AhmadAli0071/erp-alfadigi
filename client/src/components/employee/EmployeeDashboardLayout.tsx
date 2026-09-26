@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../../types/auth';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { EmployeeSidebar } from './EmployeeSidebar';
 import { EmployeeHeader } from './EmployeeHeader';
 import { EmployeeDashboardView } from './EmployeeDashboardView';
@@ -19,6 +20,7 @@ export const EmployeeDashboardLayout: React.FC<EmployeeDashboardLayoutProps> = (
   const [currentRoute, setCurrentRoute] = useState('/employee/dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(user.mustChangePassword === true);
 
   const handleNavigate = (route: string) => {
     setCurrentRoute(route);
@@ -78,6 +80,7 @@ export const EmployeeDashboardLayout: React.FC<EmployeeDashboardLayoutProps> = (
           )}
         </main>
       </div>
+      <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
     </div>
   );
 };
