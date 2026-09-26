@@ -4,6 +4,7 @@ import { User } from '../../types/auth';
 import { LeadDepartment } from '../../types/lead';
 import { StatusBadge } from '../hr/StatusBadge';
 import { leaveTypeService } from '../../services/leaveTypeService';
+import { LeadLeaveDetailModal } from './LeadLeaveDetailModal';
 import {
   CalendarDays,
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   User as UserIcon,
   Loader2,
   X,
+  Eye,
 } from 'lucide-react';
 
 interface LeadLeaveViewProps {
@@ -39,6 +41,7 @@ interface LeaveRecord {
   reason: string;
   status: string;
   leadApprovalDate?: string;
+  leadApprovalNote?: string;
   hrApprovalDate?: string;
   hrApprovalNote?: string;
   createdAt: string;
@@ -101,6 +104,7 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [detailLeave, setDetailLeave] = useState<LeaveRecord | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // My requests state
@@ -472,7 +476,11 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-200/70">
                     {filteredLeaves.map((leave) => (
-                      <tr key={leave.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr
+                        key={leave.id}
+                        onClick={() => setDetailLeave(leave)}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                      >
                         <td className="px-5 py-3.5">
                           <div className="text-xs font-semibold text-slate-700">{leave.employeeName}</div>
                           <div className="text-[10px] text-slate-500">{leave.employeeCode}</div>
@@ -493,11 +501,27 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                             </div>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-right pr-5">
+                        <td className="px-5 py-3.5 text-right pr-5" onClick={(e) => e.stopPropagation()}>
                           {leave.status === 'Pending' && noLeadApprovalTypes.includes(leave.leaveType) ? (
-                            <span className="text-[10px] text-slate-400 italic">HR decides directly</span>
-                          ) : leave.status === 'Pending' && (
                             <div className="flex items-center justify-end gap-2">
+                              <span className="text-[10px] text-slate-400 italic">HR decides directly</span>
+                              <button
+                                onClick={() => setDetailLeave(leave)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                aria-label="View details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : leave.status === 'Pending' ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setDetailLeave(leave)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                aria-label="View details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 onClick={() => handleApprove(leave.id)}
                                 disabled={actionInProgress === leave.id}
@@ -513,6 +537,14 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
                                 Reject
                               </button>
                             </div>
+                          ) : (
+                            <button
+                              onClick={() => setDetailLeave(leave)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                              aria-label="View details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -739,6 +771,22 @@ export const LeadLeaveView: React.FC<LeadLeaveViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Team leave detail modal */}
+      <LeadLeaveDetailModal
+        leave={detailLeave}
+        actionInProgress={actionInProgress}
+        leadCanDecide={!noLeadApprovalTypes.includes(detailLeave?.leaveType || '')}
+        onClose={() => setDetailLeave(null)}
+        onApprove={(id) => {
+          setDetailLeave(null);
+          handleApprove(id);
+        }}
+        onReject={(id) => {
+          setDetailLeave(null);
+          handleReject(id);
+        }}
+      />
     </div>
   );
 };
