@@ -19,6 +19,7 @@ import {
   Target,
 } from 'lucide-react';
 import { CommissionSummary, fmtUSD } from '../../types/sales';
+import { ChangePasswordCard } from '../common/ChangePasswordCard';
 
 interface EmployeeProfileViewProps {
   user: User;
@@ -302,6 +303,15 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
             Your profile information is managed by HR. If you need to update any details, please contact your HR administrator.
           </p>
         </div>
+      </div>
+
+      {/* Security: Change Password */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-slate-400" />
+          <h3 className="text-sm font-extrabold text-slate-900">Security</h3>
+        </div>
+        <ChangePasswordCard />
       </div>
     </div>
   );

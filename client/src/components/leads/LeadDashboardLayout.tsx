@@ -10,6 +10,7 @@ import { LeadLeaveView } from './LeadLeaveView';
 import { LeadTicketsView } from './LeadTicketsView';
 import { LeadTeamView } from './LeadTeamView';
 import { LeadSaleView } from './LeadSaleView';
+import { LeadProfileView } from './LeadProfileView';
 import { SalaryEarningsView } from '../common/SalaryEarningsView';
 
 interface LeadDashboardLayoutProps {
@@ -65,6 +66,7 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
   const isAttendanceRoute = currentRoute.startsWith('/lead/attendance');
   const isLeaveRoute = currentRoute.startsWith('/lead/leave');
   const isTicketsRoute = currentRoute.startsWith('/lead/tickets');
+  const isProfileRoute = currentRoute.startsWith('/lead/profile');
 
   return (
     <div className="flex h-screen w-full bg-[#F7F9FC] text-slate-800 overflow-hidden font-sans relative">
@@ -107,6 +109,8 @@ export const LeadDashboardLayout: React.FC<LeadDashboardLayoutProps> = ({ user, 
             <LeadLeaveView user={user} department={department} onNavigate={handleNavigate} />
           ) : isTicketsRoute ? (
             <LeadTicketsView user={user} department={department} onNavigate={handleNavigate} />
+          ) : isProfileRoute ? (
+            <LeadProfileView user={user} />
           ) : (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full animate-fadeIn">
               <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">

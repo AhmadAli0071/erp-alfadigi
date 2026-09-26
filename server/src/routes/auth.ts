@@ -34,6 +34,18 @@ const accountPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const STRONG_PASSWORD_MESSAGE = 'Password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a symbol.';
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().regex(STRONG_PASSWORD_REGEX, STRONG_PASSWORD_MESSAGE),
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'New password must be different from the current password.',
+  });
+
 /** HR_ADMIN cannot manage SUPER_ADMIN accounts; SUPER_ADMIN can manage everyone. */
 const canManageAccount = (actorRole: string, targetRole: string): boolean =>
   actorRole === 'SUPER_ADMIN' ? true : targetRole !== 'SUPER_ADMIN';
@@ -190,6 +202,43 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
     department: req.user.department,
     jobTitle: req.user.jobTitle,
   });
+});
+
+// PUT /api/auth/change-password - logged-in user changes their own password
+router.put('/change-password', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated.' });
+      return;
+    }
+
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(parsed.data.currentPassword, user.password);
+    if (!isMatch) {
+      res.status(401).json({ error: 'Current password is incorrect.' });
+      return;
+    }
+
+    user.password = await bcrypt.hash(parsed.data.newPassword, 12);
+    await user.save();
+    console.warn(`[audit] Password CHANGE: ${user.email} (self) from IP ${req.ip}`);
+
+    res.json({ success: true, message: 'Password updated successfully. Use your new password next time.' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Unable to change password.' });
+  }
 });
 
 // GET /api/auth/accounts - list all user accounts (HR only)

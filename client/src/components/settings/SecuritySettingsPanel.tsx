@@ -1,6 +1,7 @@
 import React from 'react';
 import { SecuritySettings } from '../../types/settings';
 import { Shield, KeyRound, Smartphone, Lock, AlertTriangle } from 'lucide-react';
+import { ChangePasswordCard } from '../common/ChangePasswordCard';
 
 interface SecuritySettingsPanelProps {
   settings: SecuritySettings;
@@ -19,6 +20,9 @@ export const SecuritySettingsPanel: React.FC<SecuritySettingsPanelProps> = ({
           Manage session life-cycle timeouts, authentication complexity standards, and brute-force lockout thresholds.
         </p>
       </div>
+
+      {/* Change My Password (self-service) */}
+      <ChangePasswordCard />
 
       <div className="space-y-4">
         {/* Two-Factor Auth */}

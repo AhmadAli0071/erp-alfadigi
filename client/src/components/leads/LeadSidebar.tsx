@@ -9,6 +9,7 @@ import {
   Briefcase,
   BadgeDollarSign,
   Wallet,
+  UserCog,
   ChevronLeft,
   ChevronRight,
   X,
@@ -48,6 +49,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
+    { id: 'profile', label: 'Profile', icon: <UserCog className="w-4 h-4 shrink-0" />, route: '/lead/profile' },
   ];
 
   const salesNavItems = [
@@ -58,6 +60,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
+    { id: 'profile', label: 'Profile', icon: <UserCog className="w-4 h-4 shrink-0" />, route: '/lead/profile' },
   ];
 
   const techNavItems = [
@@ -67,6 +70,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
     { id: 'leave', label: 'Leave', icon: <CalendarDays className="w-4 h-4 shrink-0" />, route: '/lead/leave', badge: pendingCount > 0 ? pendingCount : undefined, badgeColor: 'bg-blue-100/70 text-blue-600 border border-blue-200' },
+    { id: 'profile', label: 'Profile', icon: <UserCog className="w-4 h-4 shrink-0" />, route: '/lead/profile' },
   ];
 
   const navItems = isSales ? salesNavItems : isHrDept ? hrNavItems : techNavItems;
