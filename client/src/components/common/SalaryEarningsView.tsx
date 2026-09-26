@@ -114,8 +114,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
       )}
 
       {/* KPI Cards */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${commission ? 'lg:grid-cols-3' : ''}`}>
-        {/* My Salary */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${commission ? 'lg:grid-cols-3' : ''}`}>        {/* My Salary */}
         <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 p-5 shadow-lg shadow-indigo-600/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-600/30">
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-xl" aria-hidden="true" />
           <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/[0.07] blur-lg" aria-hidden="true" />
@@ -179,7 +178,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
         )}
 
         {/* My Total Earning */}
-        <div className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-5 shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-500/30 ${commission ? '' : 'sm:col-span-2'}`}>
+        <div className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-5 shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-500/30`}>
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/15 blur-xl" aria-hidden="true" />
           <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/[0.08] blur-lg" aria-hidden="true" />
           <Coins className="absolute -right-3 -bottom-3 w-24 h-24 text-white/[0.1] -rotate-12" aria-hidden="true" />

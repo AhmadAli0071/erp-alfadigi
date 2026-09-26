@@ -196,6 +196,16 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
     return;
   }
 
+  // Own employee record for salary & earnings views. Visibility rule:
+  // everyone sees their own salary EXCEPT HR (HR's own salary is SA's business).
+  let employeeSalary: number | undefined;
+  const employee = await Employee.findOne({
+    $or: [{ userId: req.user._id }, { email: req.user.email.toLowerCase() }],
+  }).select('salary jobTitle');
+  if (employee && req.user.role !== 'HR_ADMIN') {
+    employeeSalary = employee.salary;
+  }
+
   res.json({
     id: req.user._id.toString(),
     name: req.user.name,
@@ -204,6 +214,10 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
     department: req.user.department,
     jobTitle: req.user.jobTitle,
     mustChangePassword: !!req.user.mustChangePassword,
+    employee: {
+      salary: employeeSalary,
+      jobTitle: employee?.jobTitle || req.user.jobTitle,
+    },
   });
 });
 
