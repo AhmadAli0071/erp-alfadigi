@@ -27,7 +27,7 @@ const hrCanProcessPending = async (leave: { employeeId: unknown; leaveType?: str
   const leadEmployee = await Employee.findById(employee.reportedTo);
   if (!leadEmployee) return true;
   const leadUser = await User.findOne({ email: leadEmployee.email?.toLowerCase() }).select('role');
-  return leadUser?.role !== 'DEPARTMENT_LEAD';
+  return leadUser?.role !== 'DEPARTMENT_LEAD' && leadUser?.role !== 'HOD';
 };
 
 const createLeaveSchema = z.object({

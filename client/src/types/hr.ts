@@ -68,6 +68,7 @@ export interface AttendanceRecord {
   breakDuration: string; // e.g. "01:00"
   breakMinutesByType?: { lunch: number; namaz: number; washroom: number };
   workingHours: string; // e.g. "08:10"
+  hoursManuallySet?: boolean; // true when HR set working hours directly
   extraHours: string; // e.g. "00:10"
   shortHours: string; // e.g. "00:00"
   status: AttendanceStatus;

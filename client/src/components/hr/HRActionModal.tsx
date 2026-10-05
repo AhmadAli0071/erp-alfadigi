@@ -61,7 +61,7 @@ export const HRActionModal: React.FC<HRActionModalProps> = ({
       />
 
       {/* Modal Dialog Box */}
-      <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl p-6 sm:p-7 z-10 animate-scaleUp text-slate-700 space-y-5">
+          <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl p-5 z-10 animate-scaleUp text-slate-700 space-y-4">
         {/* Close Button */}
         <button
           type="button"

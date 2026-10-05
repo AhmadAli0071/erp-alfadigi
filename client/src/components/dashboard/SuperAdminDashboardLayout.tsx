@@ -6,6 +6,7 @@ import { SuperAdminSidebar } from '../superadmin/SuperAdminSidebar';
 import { SuperAdminHeader } from '../superadmin/SuperAdminHeader';
 import { SuperAdminUsersView } from '../superadmin/SuperAdminUsersView';
 import { SuperAdminSalesView } from '../superadmin/SuperAdminSalesView';
+import { AnnouncementsView } from '../common/AnnouncementsView';
 import { SuperAdminDashboardView } from './SuperAdminDashboardView';
 import { HRAttendanceManagementView } from '../hr/HRAttendanceManagementView';
 import { HRLeaveManagementView } from '../leave/HRLeaveManagementView';
@@ -74,6 +75,7 @@ export const SuperAdminDashboardLayout: React.FC<SuperAdminDashboardLayoutProps>
   const isTicketRoute = currentRoute.startsWith('/admin/tickets');
   const isReportRoute = currentRoute.startsWith('/admin/reports');
   const isSettingsRoute = currentRoute.startsWith('/admin/settings');
+  const isAnnouncementsRoute = currentRoute.startsWith('/admin/announcements');
 
   return (
     <div className="sa-dark flex h-screen w-full bg-[#060609] text-slate-200 overflow-hidden font-sans relative">

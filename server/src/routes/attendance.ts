@@ -30,17 +30,35 @@ const notifyAttendanceEvent = async (
   await notifyEmails(hrUsers.map((u) => u.email), { title, message, type: 'attendance', relatedId });
 };
 
+/** Parses "hh:mm AM/PM" (or "HH:MM") into minutes since midnight. */
+const parseAmPmToMinutes = (t: string): number | null => {
+  const m = /^(\d{1,2}):(\d{2})\s?(AM|PM)$/i.exec(String(t).trim());
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 1 || h > 12 || min > 59) return null;
+  const ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+};
+
 /**
  * Late check: is the given PKT clock-in time later than shiftStart + grace?
+ * shiftStartOverride (per-employee) wins over the org-wide setting.
  * Times before the shift start are early/on-time; anything past the grace
  * window (including after-midnight hours of an overnight shift) is late.
  */
-const isLateClockIn = async (now: Date): Promise<{ late: boolean; grace: number }> => {
+const isLateClockIn = async (now: Date, shiftStartOverride?: string): Promise<{ late: boolean; grace: number }> => {
   const cfg = await getAttendanceConfig();
   const nowPkt = new Date(now.getTime() + 5 * 60 * 60000); // PKT = UTC+5
   const nowMin = nowPkt.getUTCHours() * 60 + nowPkt.getUTCMinutes();
-  const startMin = cfg.start.h * 60 + cfg.start.m;
-  const elapsed = (nowMin - startMin + 1440) % 1440; // minutes since most recent shift start
+  const overrideMin = shiftStartOverride ? parseAmPmToMinutes(shiftStartOverride) : null;
+  const startMin = overrideMin !== null ? overrideMin : cfg.start.h * 60 + cfg.start.m;
+  const endMin = cfg.end.h * 60 + cfg.end.m;
+  let elapsed = nowMin - startMin; // negative = clocked in before shift start (early/on-time)
+  // Overnight shift (end < start): post-midnight clock-ins belong to this shift
+  if (elapsed < 0 && endMin < startMin && nowMin <= endMin) elapsed += 24 * 60;
   return { late: elapsed > cfg.graceMinutes, grace: cfg.graceMinutes };
 };
 
@@ -173,7 +191,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
 
-    const { late } = await isLateClockIn(now);
+    const { late } = await isLateClockIn(now, employee.shiftStartOverride);
     const newStatus = late ? 'Late' : 'Present';
 
     const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
@@ -205,6 +223,23 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
         `${employee.name} clocked in LATE at ${timeStr} (after grace period).`,
         String(attendance._id),
       );
+
+      // Policy: every 2 lates in the month = 1 Half Day (half-day salary cut)
+      const monthPrefix = today.slice(0, 7);
+      const lateCount = await Attendance.countDocuments({
+        employeeId: employee._id,
+        date: new RegExp(`^${monthPrefix}-`),
+        status: 'Late',
+      });
+      if (lateCount > 0 && lateCount % 2 === 0) {
+        await createNotification({
+          userEmail: employee.email,
+          title: 'Half Day Penalty Applied',
+          message: `You have ${lateCount} late arrivals in ${monthPrefix}. Per company policy (2 lates = 1 Half Day), a half-day salary deduction has been applied for this month. See your salary page for details.`,
+          type: 'attendance',
+          relatedId: String(attendance._id),
+        });
+      }
     } else {
       await notifyAttendanceEvent(employee, 'Team Member Clocked In', `${employee.name} clocked in at ${timeStr}.`, String(attendance._id));
     }
@@ -277,13 +312,16 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
     if (working < 0) working += 24 * 60; // overnight shift
     working -= attendance.breakMinutes;
     if (working < 0) working = 0; // never negative
-    attendance.workingMinutes = working;
+    // Keep HR-set manual hours; otherwise use punch-derived minutes
+    if (!attendance.hoursManuallySet) attendance.workingMinutes = working;
 
-    // Auto-assign status (settings-driven, same thresholds as the auto clock-out sweep)
+    // Auto-assign status (settings-driven, same thresholds as the auto clock-out sweep).
+    // Late stays Late all day (2-lates = 1 half-day is applied in salary calc).
     const attCfg = await getAttendanceConfig();
-    if (working >= attCfg.requiredWorkingHours * 60) attendance.status = 'Present';
-    else if (working >= attCfg.requiredWorkingHours * 30) attendance.status = 'Half Day';
-    else attendance.status = 'Short Hours';
+    if (attendance.status !== 'Late') {
+      attendance.status =
+        (attendance.workingMinutes || 0) >= Math.round(attCfg.requiredWorkingHours * 60) ? 'Present' : 'Short Hours';
+    }
 
     await attendance.save();
 
@@ -295,7 +333,7 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
         id: attendance._id,
         clockIn: attendance.clockIn,
         clockOut: timeStr,
-        workingMinutes: working,
+        workingMinutes: attendance.workingMinutes,
         breakMinutes: attendance.breakMinutes,
         status: attendance.status,
       },
@@ -547,11 +585,37 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
         .sort({ date: -1 })
         .populate('employeeId', 'name empId email department jobTitle');
 
+      // Lead's own records so the lead can see their own attendance too
+      const ownRangeRecords = await Attendance.find({
+        employeeId: leadEmployee._id,
+        date: { $gte: startDateParam, $lte: endDateParam },
+      }).sort({ date: -1 });
+
       const teamInfo = new Map(teamMembers.map((m) => [String(m._id), m]));
 
       res.json({
         range: { start: startDateParam, end: endDateParam },
-        records: rangeRecords.map((r) => {
+        records: [
+          ...ownRangeRecords.map((r) => ({
+            employeeId: leadEmployee._id.toString(),
+            employeeName: leadEmployee.name,
+            employeeCode: leadEmployee.empId,
+            employeeEmail: leadEmployee.email,
+            department: leadEmployee.department,
+            jobTitle: leadEmployee.jobTitle,
+            date: r.date,
+            clockIn: r.clockIn || null,
+            clockOut: r.clockOut || null,
+            breakMinutes: r.breakMinutes || 0,
+            workingMinutes: r.workingMinutes || 0,
+            status: r.status,
+            onBreak: !!r.breakStartedAt,
+            breakStartedAt: r.breakStartedAt || null,
+            breakType: r.breakType || null,
+            breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
+            isLead: true,
+          })),
+          ...rangeRecords.map((r) => {
           const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; email: string; department: string; jobTitle: string } | null;
           const info = emp ? teamInfo.get(String(emp._id)) : undefined;
           return {
@@ -572,7 +636,8 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
             breakType: r.breakType || null,
             breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
           };
-        }),
+          }),
+        ],
       });
       return;
     }
@@ -582,7 +647,29 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
       date,
     }).populate('employeeId', 'name empId department jobTitle');
 
-    const allTeam = teamMembers.map((m) => {
+    // Lead's own record so the lead can see their own attendance too
+    const ownRecord = await Attendance.findOne({ employeeId: leadEmployee._id, date });
+    const ownRow = {
+      employeeId: leadEmployee._id.toString(),
+      employeeName: leadEmployee.name,
+      employeeCode: leadEmployee.empId,
+      employeeEmail: leadEmployee.email,
+      department: leadEmployee.department,
+      jobTitle: leadEmployee.jobTitle,
+      date,
+      clockIn: ownRecord?.clockIn || null,
+      clockOut: ownRecord?.clockOut || null,
+      breakMinutes: ownRecord?.breakMinutes || 0,
+      workingMinutes: ownRecord?.workingMinutes || 0,
+      status: ownRecord?.status || 'Absent',
+      onBreak: !!ownRecord?.breakStartedAt,
+      breakStartedAt: ownRecord?.breakStartedAt || null,
+      breakType: ownRecord?.breakType || null,
+      breakMinutesByType: ownRecord?.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
+      isLead: true,
+    };
+
+    const allTeam = [ownRow, ...teamMembers.map((m) => {
       const record = records.find((r) => r.employeeId._id.toString() === m._id.toString());
       return {
         employeeId: m._id.toString(),
@@ -602,7 +689,7 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
         breakType: record?.breakType || null,
         breakMinutesByType: record?.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
       };
-    });
+    })];
 
     res.json({ date, team: allTeam });
   } catch (err) {
@@ -972,6 +1059,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         breakDuration: minutesToHM(r.breakMinutes || 0),
         breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
         workingHours: minutesToHM(worked),
+        hoursManuallySet: !!r.hoursManuallySet,
         extraHours: minutesToHM(extra),
         shortHours: minutesToHM(short),
         status: r.status,
@@ -1083,6 +1171,7 @@ const hrUpdateSchema = z.object({
   notes: z.string().max(500).optional(),
   clockIn: z.string().max(12).nullable().optional(),
   clockOut: z.string().max(12).nullable().optional(),
+  workingMinutes: z.number().min(0).max(1440).nullable().optional(),
 });
 
 const reviewDecisionSchema = z.object({
@@ -1149,8 +1238,14 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const { status, notes, clockIn, clockOut } = parsed.data;
-    if (!status && notes === undefined && clockIn === undefined && clockOut === undefined) {
+    const { status, notes, clockIn, clockOut, workingMinutes } = parsed.data;
+    if (
+      !status &&
+      notes === undefined &&
+      clockIn === undefined &&
+      clockOut === undefined &&
+      workingMinutes === undefined
+    ) {
       res.status(400).json({ error: 'Nothing to update.' });
       return;
     }
@@ -1204,6 +1299,31 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
       } else if (!attendance.clockIn) {
         attendance.workingMinutes = 0;
       }
+      attendance.hoursManuallySet = false;
+    }
+
+    // HR manual working-hours override (wins over punch-derived minutes).
+    // null clears the override and restores punch-based calculation.
+    let hoursChanged = false;
+    if (workingMinutes !== undefined) {
+      hoursChanged = true;
+      attendance.isAutoMarked = false;
+      if (workingMinutes === null) {
+        attendance.hoursManuallySet = false;
+        if (attendance.clockIn && attendance.clockOut) {
+          const inMin = parseClockToMinutes(attendance.clockIn);
+          const outMin = parseClockToMinutes(attendance.clockOut);
+          let working = outMin - inMin;
+          if (working < 0) working += 24 * 60;
+          working -= attendance.breakMinutes || 0;
+          attendance.workingMinutes = Math.max(0, working);
+        } else if (!attendance.clockIn) {
+          attendance.workingMinutes = 0;
+        }
+      } else {
+        attendance.workingMinutes = Math.round(workingMinutes);
+        attendance.hoursManuallySet = true;
+      }
     }
 
     if (notes !== undefined) attendance.notes = notes;
@@ -1213,10 +1333,23 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
       attendance.isAutoMarked = false;
     } else if (timesChanged && attendance.clockIn && attendance.clockOut) {
       // Status not explicitly chosen - recompute from edited hours (settings-driven thresholds)
+      // Late is preserved (late penalties are applied in salary calc).
       const cfg = await getAttendanceConfig();
-      if (attendance.workingMinutes >= cfg.requiredWorkingHours * 60) attendance.status = 'Present';
-      else if (attendance.workingMinutes >= cfg.requiredWorkingHours * 30) attendance.status = 'Half Day';
-      else attendance.status = 'Short Hours';
+      if (attendance.status !== 'Late') {
+        attendance.status = attendance.workingMinutes >= Math.round(cfg.requiredWorkingHours * 60) ? 'Present' : 'Short Hours';
+      }
+    } else if (hoursChanged && attendance.status !== 'Leave') {
+      // Hours edited without picking a status - sync status from the new minutes.
+      // 'Late', 'Work From Home' and 'On Duty' are explicit designations, not minute-driven.
+      const keepStatus = ['Late', 'Work From Home', 'On Duty'].includes(attendance.status);
+      if (!keepStatus) {
+        if (attendance.workingMinutes <= 0) {
+          attendance.status = 'Absent';
+        } else {
+          const cfg = await getAttendanceConfig();
+          attendance.status = attendance.workingMinutes >= Math.round(cfg.requiredWorkingHours * 60) ? 'Present' : 'Short Hours';
+        }
+      }
     }
 
     // Editing the record resolves any pending correction request
@@ -1234,7 +1367,7 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
       await createNotification({
         userEmail: employee.email,
         title: 'Attendance Updated by HR',
-        message: `Your attendance for ${attendance.date} was updated by ${req.user!.name}. Status: ${attendance.status}.${attendance.notes ? ` Note: ${attendance.notes}` : ''}`,
+        message: `Your attendance for ${attendance.date} was updated by ${req.user!.name}. Status: ${attendance.status}, working hours: ${minutesToHM(attendance.workingMinutes || 0)}.${attendance.notes ? ` Note: ${attendance.notes}` : ''}`,
         type: 'attendance',
         relatedId: String(attendance._id),
       });
@@ -1249,6 +1382,7 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
         clockIn: attendance.clockIn || null,
         clockOut: attendance.clockOut || null,
         workingMinutes: attendance.workingMinutes,
+        hoursManuallySet: !!attendance.hoursManuallySet,
         status: attendance.status,
         notes: attendance.notes || '',
         correctionStatus: attendance.correctionStatus,

@@ -55,6 +55,7 @@ interface TeamAttendanceRecord {
   breakStartedAt?: string | null;
   breakType?: 'LUNCH' | 'NAMAZ' | 'WASHROOM' | null;
   breakMinutesByType?: { lunch: number; namaz: number; washroom: number };
+  isLead?: boolean;
 }
 
 const API_BASE = '/api';
@@ -207,6 +208,9 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
     .filter((r) => selectedStatus === 'ALL' || r.status === selectedStatus)
     .filter((r) => !searchQuery || r.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) || r.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()));
 
+  // Lead's own row always stays on top
+  const orderedRecords = [...filteredRecords].sort((a, b) => Number(!!b.isLead) - Number(!!a.isLead));
+
   const summary = {
     present: records.filter((r) => PRESENT_LIKE_STATUSES.includes(r.status)).length,
     absent: records.filter((r) => r.status === 'Absent').length,
@@ -225,7 +229,7 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
   const isLiveDay = rangeDays === 'day' && selectedDate === utcToday();
 
   const renderMemberBreakControl = (rec: TeamAttendanceRecord): React.ReactNode => {
-    if (!isLiveDay || !rec.employeeEmail) return <span className="text-xs text-slate-300">-</span>;
+    if (!isLiveDay || !rec.employeeEmail || rec.isLead) return <span className="text-xs text-slate-300">-</span>;
 
     const busy = breakBusyFor === rec.employeeId;
 
@@ -467,10 +471,17 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/70">
-                {filteredRecords.map((rec) => (
-                  <tr key={rec.employeeId} className="hover:bg-slate-50/80 transition-colors">
+                {orderedRecords.map((rec) => (
+                  <tr key={rec.employeeId} className={`transition-colors ${rec.isLead ? 'bg-indigo-50/60 hover:bg-indigo-50' : 'hover:bg-slate-50/80'}`}>
                     <td className="px-5 py-3.5">
-                      <div className="text-xs font-semibold text-slate-700">{rec.employeeName}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-700">{rec.employeeName}</span>
+                        {rec.isLead && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 text-[9px] font-bold uppercase tracking-wide">
+                            You · Lead
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-slate-500">{rec.employeeCode} · {rec.jobTitle}</div>
                     </td>
                     {rangeDays !== 'day' && (
@@ -502,11 +513,18 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRecords.map((rec) => (
-            <div key={rec.employeeId} className="p-4 rounded-2xl bg-white/80 border border-slate-200/80 shadow-sm">
+          {orderedRecords.map((rec) => (
+            <div key={rec.employeeId} className={`p-4 rounded-2xl border shadow-sm ${rec.isLead ? 'bg-indigo-50/60 border-indigo-200' : 'bg-white/80 border-slate-200/80'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="text-xs font-bold text-slate-900">{rec.employeeName}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-900">{rec.employeeName}</span>
+                    {rec.isLead && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 text-[9px] font-bold uppercase tracking-wide">
+                        You · Lead
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[10px] text-slate-500">{rec.employeeCode} · {rec.jobTitle}{rangeDays !== 'day' ? ` · ${dayLabel(rec.date)}` : ''}</div>
                 </div>
                 <StatusBadge status={rec.status as 'Present' | 'Absent' | 'Late' | 'On Leave' | 'Half Day'} size="xs" />
@@ -517,11 +535,19 @@ export const LeadAttendanceView: React.FC<LeadAttendanceViewProps> = ({
                   <div className="text-xs font-bold text-slate-700">{rec.clockIn || '-'}</div>
                 </div>
                 <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500">Clock Out</div>
+                  <div className="text-xs font-bold text-slate-700">{rec.clockOut || '-'}</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
                   <div className="text-[10px] text-slate-500">Working</div>
                   <div className="text-xs font-bold text-slate-700">{formatMinutes(rec.workingMinutes)}</div>
                 </div>
+                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
+                  <div className="text-[10px] text-slate-500">Break</div>
+                  <div className="text-xs font-bold text-slate-700">{formatMinutes(rec.breakMinutes)}</div>
+                </div>
               </div>
-              {isLiveDay && (
+              {isLiveDay && !rec.isLead && (
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-end">
                   {renderMemberBreakControl(rec)}
                 </div>

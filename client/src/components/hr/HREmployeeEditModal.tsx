@@ -210,7 +210,7 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
       <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={onClose} />
       <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-lg animate-scaleUp max-h-[90vh] overflow-y-auto custom-scrollbar">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200/70">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-200/70">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
               <Pencil className="w-5 h-5 text-indigo-600" />
@@ -259,7 +259,7 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
 
         <div className="p-5">
           {tab === 'details' ? (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label>
@@ -383,7 +383,7 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
                 <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-700 leading-relaxed">
@@ -479,13 +479,13 @@ export const HREmployeeEditModal: React.FC<HREmployeeEditModalProps> = ({
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setShowDeleteConfirm(false)} />
-            <div className="relative bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm animate-scaleUp">
+            <div className="relative bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 w-full max-w-sm animate-scaleUp">
               <div className="text-center">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto mb-3">
                   <Trash2 className="w-6 h-6 text-rose-600" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 mb-1">Delete Employee</h3>
-                <p className="text-xs text-slate-500 mb-5">
+                <p className="text-xs text-slate-500 mb-4">
                   Are you sure you want to deactivate <span className="font-bold">{employee.name}</span>? They will no longer be able to log in.
                 </p>
                 <div className="flex items-center gap-3">

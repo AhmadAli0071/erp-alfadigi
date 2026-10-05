@@ -5,6 +5,7 @@ import {
   X,
   Pencil,
   Clock,
+  Timer,
   FileText,
   AlertCircle,
   Home,
@@ -16,6 +17,8 @@ export interface HRAttendanceUpdatePayload {
   notes?: string;
   clockIn?: string | null;
   clockOut?: string | null;
+  /** Direct working-hours override in minutes; null restores punch-based calc. */
+  workingMinutes?: number | null;
 }
 
 interface HRAttendanceEditModalProps {
@@ -50,10 +53,23 @@ const toTimeInput = (display: string): string => {
   return `${String(h).padStart(2, '0')}:${min}`;
 };
 
+/** "07:40" → 460 */
+const timeToMinutes = (value: string): number | null => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+};
+
 export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ record, onClose, onSubmit }) => {
   const [status, setStatus] = useState<AttendanceStatus>('Present');
+  const [statusTouched, setStatusTouched] = useState(false);
   const [clockIn, setClockIn] = useState('');
   const [clockOut, setClockOut] = useState('');
+  const [workingHours, setWorkingHours] = useState('');
+  const [hoursEdited, setHoursEdited] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -61,8 +77,11 @@ export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ re
   useEffect(() => {
     if (record) {
       setStatus(record.status);
+      setStatusTouched(false);
       setClockIn(toTimeInput(record.clockInTime));
       setClockOut(toTimeInput(record.clockOutTime));
+      setWorkingHours(record.workingHours && record.workingHours !== '-' ? record.workingHours : '00:00');
+      setHoursEdited(false);
       setNotes(record.notes || '');
       setErrorMsg(null);
     }
@@ -76,12 +95,24 @@ export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ re
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setErrorMsg(null);
-    const ok = await onSubmit(record.id, {
+    const payload: HRAttendanceUpdatePayload = {
       status,
       notes: notes.trim(),
       clockIn: clockIn || null,
       clockOut: clockOut || null,
-    });
+    };
+    if (hoursEdited) {
+      const mins = timeToMinutes(workingHours);
+      if (mins === null) {
+        setIsSubmitting(false);
+        setErrorMsg('Working hours must be a valid time like 07:40.');
+        return;
+      }
+      payload.workingMinutes = mins;
+      // Hours edited but status untouched → let the server derive it from the new minutes.
+      if (!statusTouched) delete payload.status;
+    }
+    const ok = await onSubmit(record.id, payload);
     setIsSubmitting(false);
     if (ok) onClose();
     else setErrorMsg('Server could not save this update. Please try again.');
@@ -91,7 +122,7 @@ export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ re
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" id="hr-attendance-edit-modal">
       <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl p-6 z-10 animate-scaleUp text-slate-700 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="relative w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl p-5 z-10 animate-scaleUp text-slate-700 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
         <button
           type="button"
           onClick={onClose}
@@ -151,7 +182,10 @@ export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ re
                   key={opt.value}
                   type="button"
                   title={opt.hint}
-                  onClick={() => setStatus(opt.value)}
+                  onClick={() => {
+                    setStatus(opt.value);
+                    setStatusTouched(true);
+                  }}
                   className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                     active
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
@@ -198,6 +232,44 @@ export const HRAttendanceEditModal: React.FC<HRAttendanceEditModalProps> = ({ re
         </div>
         <p className="text-[10px] text-slate-400 -mt-2">
           Editing both times recalculates working hours automatically. Clear a time to remove the punch.
+        </p>
+
+        {/* Direct working-hours override */}
+        <div className="grid grid-cols-2 gap-3 items-end">
+          <label className="block">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Timer className="w-3 h-3" /> Working Hours
+            </span>
+            <input
+              type="time"
+              value={workingHours}
+              onChange={(e) => {
+                setWorkingHours(e.target.value);
+                setHoursEdited(true);
+              }}
+              className="w-full mt-1 px-2.5 py-2 rounded-xl bg-slate-100/50 border border-slate-200/80 text-slate-900 text-xs font-mono focus:outline-none focus:border-indigo-500"
+            />
+          </label>
+          <div className="pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setHoursEdited(false);
+                setWorkingHours(record.workingHours && record.workingHours !== '-' ? record.workingHours : '00:00');
+              }}
+              disabled={!hoursEdited}
+              className="px-3 py-2 rounded-xl border border-slate-200/80 text-[10px] font-bold text-slate-500 hover:bg-slate-100/60 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Reset to punches
+            </button>
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-400 -mt-2">
+          {hoursEdited
+            ? 'Saved as a manual override — this value will be used for salary instead of clock in/out.'
+            : record.hoursManuallySet
+              ? 'Working hours are currently set manually by HR. Editing keeps the manual value unless you reset.'
+              : 'Leave untouched to keep hours derived from clock in/out.'}
         </p>
 
         {/* Notes */}

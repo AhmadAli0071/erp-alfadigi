@@ -10,6 +10,7 @@ export const isHr = (req: AuthRequest): boolean =>
  * Access rule for reading/acting on an employee's data:
  * - the employee themself
  * - HR admins
+ * - the HOD (sees everyone, read-oriented)
  * - the lead the employee reports to
  */
 export const canAccessEmployee = async (
@@ -20,6 +21,7 @@ export const canAccessEmployee = async (
   const requesterEmail = req.user.email.toLowerCase();
   if (requesterEmail === targetEmail.toLowerCase()) return true;
   if (HR_ROLES.includes(req.user.role)) return true;
+  if (req.user.role === 'HOD') return true;
 
   const requester = await Employee.findOne({
     email: requesterEmail,

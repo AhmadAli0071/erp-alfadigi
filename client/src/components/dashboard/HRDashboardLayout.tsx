@@ -13,6 +13,9 @@ import { HRReportsView } from '../reports/HRReportsView';
 import { HRSettingsView } from '../settings/HRSettingsView';
 import { HREmployeesManagementView } from '../employees/HREmployeesManagementView';
 import { HRPlaceholderView } from '../hr/HRPlaceholderView';
+import { HODDashboardView } from '../hod/HODDashboardView';
+import { HRSalaryCalcView } from '../hr/HRSalaryCalcView';
+import { HRAnnouncementsView } from '../hr/HRAnnouncementsView';
 
 interface HRDashboardLayoutProps {
   user: User;
@@ -61,6 +64,9 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
     currentRoute === '/hr/dashboard' || currentRoute === '/' || !currentRoute;
 
   const isAttendanceRoute = currentRoute.startsWith('/hr/attendance');
+  const isLiveRosterRoute = currentRoute.startsWith('/hr/live-roster');
+  const isSalaryCalcRoute = currentRoute.startsWith('/hr/salary-calc');
+  const isAnnouncementsRoute = currentRoute.startsWith('/hr/announcements');
   const isLeaveRoute = currentRoute.startsWith('/hr/leaves');
   const isTicketRoute = currentRoute.startsWith('/hr/tickets');
   const isReportRoute = currentRoute.startsWith('/hr/reports');
@@ -126,6 +132,16 @@ export const HRDashboardLayout: React.FC<HRDashboardLayoutProps> = ({ user, onLo
                 onNavigateToDashboard={() => handleNavigate('/hr/dashboard')}
                 initialPreset={getAttendancePreset()}
               />
+            </div>
+          ) : isLiveRosterRoute ? (
+            <HODDashboardView user={user} />
+          ) : isSalaryCalcRoute ? (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <HRSalaryCalcView onNavigateToDashboard={() => handleNavigate('/hr/dashboard')} />
+            </div>
+          ) : isAnnouncementsRoute ? (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
+              <HRAnnouncementsView onNavigateToDashboard={() => handleNavigate('/hr/dashboard')} />
             </div>
           ) : currentRoute.startsWith('/hr/my-attendance') ? (
             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">

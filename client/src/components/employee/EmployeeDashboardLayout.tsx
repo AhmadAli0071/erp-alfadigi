@@ -10,6 +10,7 @@ import { EmployeeTicketsView } from './EmployeeTicketsView';
 import { EmployeeNotificationsView } from './EmployeeNotificationsView';
 import { EmployeeProfileView } from './EmployeeProfileView';
 import { SalaryEarningsView } from '../common/SalaryEarningsView';
+import { AnnouncementsView } from '../common/AnnouncementsView';
 
 interface EmployeeDashboardLayoutProps {
   user: User;
@@ -32,6 +33,7 @@ export const EmployeeDashboardLayout: React.FC<EmployeeDashboardLayoutProps> = (
   const isTicketsRoute = currentRoute.startsWith('/employee/tickets');
   const isNotificationsRoute = currentRoute.startsWith('/employee/notifications');
   const isEarningsRoute = currentRoute.startsWith('/employee/earnings');
+  const isAnnouncementsRoute = currentRoute.startsWith('/employee/announcements');
   const isProfileRoute = currentRoute.startsWith('/employee/profile');
 
   return (
@@ -69,6 +71,8 @@ export const EmployeeDashboardLayout: React.FC<EmployeeDashboardLayoutProps> = (
             <EmployeeNotificationsView user={user} onNavigate={handleNavigate} />
           ) : isEarningsRoute ? (
             <SalaryEarningsView onNavigateToDashboard={() => handleNavigate('/employee/dashboard')} />
+          ) : isAnnouncementsRoute ? (
+            <AnnouncementsView subtitle="Company-wide updates from HR" />
           ) : isProfileRoute ? (
             <EmployeeProfileView user={user} onNavigate={handleNavigate} />
           ) : (

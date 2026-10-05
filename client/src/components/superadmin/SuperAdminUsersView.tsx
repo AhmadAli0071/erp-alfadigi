@@ -51,6 +51,7 @@ const ROLE_META: Record<UserRole, { label: string; chip: string; card: string; i
   SUPER_ADMIN: { label: 'Super Admin', chip: 'bg-rose-400/10 text-rose-300 border-rose-400/20', card: 'bg-rose-400/[0.06] border-rose-400/20', icon: Crown },
   HR_ADMIN: { label: 'HR Admin', chip: 'bg-indigo-400/10 text-indigo-300 border-indigo-400/20', card: 'bg-indigo-400/[0.06] border-indigo-400/20', icon: ShieldCheck },
   DEPARTMENT_LEAD: { label: 'Dept Lead', chip: 'bg-sky-400/10 text-sky-300 border-sky-400/20', card: 'bg-sky-400/[0.06] border-sky-400/20', icon: UserCog },
+  HOD: { label: 'HOD', chip: 'bg-amber-400/10 text-amber-300 border-amber-400/20', card: 'bg-amber-400/[0.06] border-amber-400/20', icon: Crown },
   EMPLOYEE: { label: 'Employee', chip: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/20', card: 'bg-emerald-400/[0.06] border-emerald-400/20', icon: UserCheck },
 };
 

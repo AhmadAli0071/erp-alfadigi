@@ -16,7 +16,11 @@ import reportRoutes from './routes/reports.js';
 import salaryRequestRoutes from './routes/salaryRequests.js';
 import salesRoutes from './routes/sales.js';
 import saleRequestRoutes from './routes/saleRequests.js';
+import hodRoutes from './routes/hod.js';
+import salaryCalcRoutes from './routes/salaryCalc.js';
+import announcementRoutes from './routes/announcements.js';
 import { startAutoAbsentJob } from './jobs/autoAbsent.js';
+import { startSalarySnapshotJob } from './jobs/salarySnapshot.js';
 
 const app = express();
 
@@ -58,6 +62,9 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/salary-requests', salaryRequestRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/sale-requests', saleRequestRoutes);
+app.use('/api/hod', hodRoutes);
+app.use('/api/salary-calc', salaryCalcRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 // 404 for unknown API routes
 app.use('/api', (_req, res) => {
@@ -86,6 +93,7 @@ const start = async () => {
     console.log('✅ MongoDB connected');
 
     startAutoAbsentJob();
+    startSalarySnapshotJob();
 
     app.listen(config.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.port}`);

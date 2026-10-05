@@ -77,4 +77,4 @@ export const currentMonthKey = (): string => {
 };
 
 export const fmtUSD = (n: number): string =>
-  `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  `Rs ${n.toLocaleString('en-PK', { maximumFractionDigits: 2 })}`;

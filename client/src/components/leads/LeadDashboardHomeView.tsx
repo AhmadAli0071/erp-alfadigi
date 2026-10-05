@@ -463,7 +463,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
                         {row.clockOut ? formatMinutes(row.workingMinutes) : row.clockIn ? 'Live' : '-'}
                       </td>
                       <td className="py-3 text-xs font-mono text-slate-500">
-                        {row.breakMinutes > 0 ? formatMinutes(row.breakMinutes) : '-'}
+                        {row.breakMinutes > 0 ? `${row.breakMinutes} min` : '-'}
                       </td>
                     </tr>
                   ))}

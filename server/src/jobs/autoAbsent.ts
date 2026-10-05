@@ -75,14 +75,14 @@ export const getAttendanceConfig = async (): Promise<AttendanceConfig> => {
     return {
       start: parseShiftTime(String(att.shiftStart || '06:00 PM')),
       end: parseShiftTime(String(att.shiftEnd || '03:00 AM')),
-      requiredWorkingHours: Number(att.requiredWorkingHours) || 8,
+      requiredWorkingHours: Number(att.requiredWorkingHours) || 7.67,
       graceMinutes: Number(att.gracePeriodMinutes) || 10,
     };
   } catch {
     return {
       start: { h: 18, m: 0 },
       end: { h: 3, m: 0 },
-      requiredWorkingHours: 8,
+      requiredWorkingHours: 7.67,
       graceMinutes: 10,
     };
   }
@@ -111,8 +111,9 @@ const shiftEndUtcFor = (recordDate: string, cfg: AttendanceConfig): Date => {
 };
 
 const statusForWorkingMinutes = (working: number, requiredHours: number): IAttendance['status'] => {
-  if (working >= requiredHours * 60) return 'Present';
-  if (working >= requiredHours * 30) return 'Half Day';
+  // Half Day is no longer auto-assigned from working minutes —
+  // only 2 lates in a month count as 1 Half Day (applied in salary calc).
+  if (working >= Math.round(requiredHours * 60)) return 'Present';
   return 'Short Hours';
 };
 
@@ -145,10 +146,13 @@ export const runAttendanceSweep = async (): Promise<SweepResult> => {
     const endUtc = pktToUtcMinutes(cfg.end.h, cfg.end.m);
     rec.clockOut = formatShiftTime(cfg.end.h, cfg.end.m);
     rec.clockOutAt = shiftEnd;
-    rec.workingMinutes = working;
-    // Respect explicit HR designations - WFH / On Duty are not recomputed by minutes
-    if (rec.status !== 'Work From Home' && rec.status !== 'On Duty') {
-      rec.status = statusForWorkingMinutes(working, cfg.requiredWorkingHours);
+    // HR manually set working hours → punch-derived minutes must not overwrite them
+    if (!rec.hoursManuallySet) {
+      rec.workingMinutes = working;
+      // Respect explicit HR designations - WFH / On Duty / Late are not recomputed by minutes
+      if (rec.status !== 'Work From Home' && rec.status !== 'On Duty' && rec.status !== 'Late') {
+        rec.status = statusForWorkingMinutes(working, cfg.requiredWorkingHours);
+      }
     }
     rec.notes = `${rec.notes ? `${rec.notes} | ` : ''}Auto clock-out at shift end (${formatShiftTime(endUtc.h, endUtc.m)} UTC scheduled)`;
     await rec.save();

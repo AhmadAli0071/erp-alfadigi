@@ -444,15 +444,15 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     },
     {
       label: 'Break',
-      value: formatMinutes(breakMinutes),
+      value: `${breakMinutes} min`,
       icon: <Coffee className="w-4 h-4 text-amber-600" />,
       color: 'bg-amber-50 border-amber-200',
       sub:
         breakMinutes > 0
           ? [
-              usedFor('lunch') > 0 ? `L ${formatMinutes(usedFor('lunch'))}` : null,
-              usedFor('namaz') > 0 ? `N ${formatMinutes(usedFor('namaz'))}` : null,
-              usedFor('washroom') > 0 ? `W ${formatMinutes(usedFor('washroom'))}` : null,
+              usedFor('lunch') > 0 ? `L ${usedFor('lunch')}m` : null,
+              usedFor('namaz') > 0 ? `N ${usedFor('namaz')}m` : null,
+              usedFor('washroom') > 0 ? `W ${usedFor('washroom')}m` : null,
             ]
               .filter(Boolean)
               .join(' · ')
@@ -509,7 +509,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
                 clockState === 'on_break'
                   ? `End ${activeBreakLabel.toLowerCase()} break`
                   : breakMinutes > 0
-                  ? `${formatMinutes(breakMinutes)} taken`
+                  ? `${breakMinutes} min taken`
                   : 'Take a pause'
               }
               icon={<Coffee className="w-9 h-9 drop-shadow" />}

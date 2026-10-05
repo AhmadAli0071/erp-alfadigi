@@ -17,6 +17,7 @@ export interface IEmployee extends Document {
   status: EmployeeStatus;
   reportedTo?: mongoose.Types.ObjectId;
   isActive: boolean;
+  shiftStartOverride?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +45,7 @@ const EmployeeSchema = new Schema<IEmployee>(
     },
     reportedTo: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },
     isActive: { type: Boolean, default: true },
+    shiftStartOverride: { type: String, default: '' },
   },
   { timestamps: true }
 );

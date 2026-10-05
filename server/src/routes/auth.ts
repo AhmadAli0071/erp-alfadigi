@@ -6,7 +6,6 @@ import { config } from '../config.js';
 import { User } from '../models/User.js';
 import { Employee } from '../models/Employee.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
-import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -14,7 +13,7 @@ const registerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'EMPLOYEE']).default('EMPLOYEE'),
+  role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'HOD', 'EMPLOYEE']).default('EMPLOYEE'),
   department: z.string().optional(),
   jobTitle: z.string().min(1, 'Job title is required'),
   reportedTo: z.string().optional(),
@@ -28,7 +27,7 @@ const loginSchema = z.object({
 
 const accountStatusSchema = z.object({ isActive: z.boolean() });
 const accountRoleSchema = z.object({
-  role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'EMPLOYEE']),
+  role: z.enum(['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'HOD', 'EMPLOYEE']),
 });
 const accountPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -143,8 +142,8 @@ router.post(
   }
 });
 
-// POST /api/auth/login - max 10 attempts per IP per 15 minutes
-router.post('/login', rateLimit(10, 15 * 60 * 1000), async (req, res: Response): Promise<void> => {
+// POST /api/auth/login
+router.post('/login', async (req, res: Response): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -202,7 +201,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
   const employee = await Employee.findOne({
     $or: [{ userId: req.user._id }, { email: req.user.email.toLowerCase() }],
   }).select('salary jobTitle');
-  if (employee && req.user.role !== 'HR_ADMIN') {
+  if (employee) {
     employeeSalary = employee.salary;
   }
 

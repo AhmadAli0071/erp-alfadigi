@@ -85,6 +85,7 @@ export const AttendanceSettingsPanel: React.FC<AttendanceSettingsPanelProps> = (
               type="number"
               min={1}
               max={16}
+              step={0.01}
               value={settings.requiredWorkingHours}
               onChange={(e) => onChange({ requiredWorkingHours: Number(e.target.value) })}
               className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 font-mono"

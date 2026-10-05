@@ -197,7 +197,10 @@ body {
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      /* transform: none (not translateY(0)) — a frozen transform here turns the
+         animated container into a containing block, breaking position:fixed
+         children (modals/drawers render inside the view instead of viewport). */
+      transform: none;
     }
   }
 
@@ -208,7 +211,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: scale(1) translateY(0);
+      transform: none;
     }
   }
 
@@ -228,7 +231,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: none;
     }
   }
 
@@ -239,7 +242,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: none;
     }
   }
 
@@ -250,7 +253,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: translateX(0);
+      transform: none;
     }
   }
 

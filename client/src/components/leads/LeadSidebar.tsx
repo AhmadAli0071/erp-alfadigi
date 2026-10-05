@@ -2,6 +2,7 @@ import React from 'react';
 import { BrandLogo } from '../common/BrandLogo';
 import {
   LayoutDashboard,
+  Megaphone,
   Users,
   Clock,
   CalendarDays,
@@ -44,6 +45,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const hrNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone className="w-4 h-4 shrink-0" />, route: '/lead/announcements' },
     { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
     { id: 'attendance', label: 'Attendance', icon: <Clock className="w-4 h-4 shrink-0" />, route: '/lead/attendance' },
@@ -54,6 +56,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const salesNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone className="w-4 h-4 shrink-0" />, route: '/lead/announcements' },
     { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
     { id: 'sales', label: 'Sales', icon: <BadgeDollarSign className="w-4 h-4 shrink-0" />, route: '/lead/sales' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },
@@ -65,6 +68,7 @@ export const LeadSidebar: React.FC<LeadSidebarProps> = ({
 
   const techNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, route: '/lead/dashboard' },
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone className="w-4 h-4 shrink-0" />, route: '/lead/announcements' },
     { id: 'earnings', label: 'Salary & Earnings', icon: <Wallet className="w-4 h-4 shrink-0" />, route: '/lead/earnings' },
     { id: 'tickets', label: 'Tickets', icon: <Ticket className="w-4 h-4 shrink-0" />, route: '/lead/tickets', badge: openTicketsCount > 0 ? openTicketsCount : undefined, badgeColor: 'bg-purple-100/70 text-purple-600 border border-purple-200' },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4 shrink-0" />, route: '/lead/team' },

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrandLogo } from '../common/BrandLogo';
 import {
   LayoutDashboard,
+  Megaphone,
   Users,
   ShieldCheck,
   CalendarCheck,
@@ -31,6 +32,7 @@ interface SuperAdminSidebarProps {
 
 const NAV_ITEMS: { route: string; label: string; icon: React.FC<{ className?: string }>; badgeColor?: string }[] = [
   { route: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { route: '/admin/announcements', label: 'Announcements', icon: Megaphone },
   { route: '/admin/users', label: 'Users & Roles', icon: Users },
   { route: '/admin/employees', label: 'Employees', icon: ShieldCheck },
   { route: '/admin/sales', label: 'Sales & Commission', icon: BadgeDollarSign },

@@ -299,7 +299,7 @@ export const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({
                       <td className="py-3.5 px-3 text-xs text-slate-600">{rec.clockIn || '-'}</td>
                       <td className="py-3.5 px-3 text-xs text-slate-600">{rec.clockOut || '-'}</td>
                       <td className="py-3.5 px-3 text-xs font-semibold text-slate-700">{formatMinutes(rec.workingMinutes)}</td>
-                      <td className="py-3.5 px-3 text-xs text-slate-500">{formatMinutes(rec.breakMinutes)}</td>
+                      <td className="py-3.5 px-3 text-xs text-slate-500">{rec.breakMinutes} min</td>
                       <td className="py-3.5 px-3">
                         <StatusBadge status={rec.status as 'Present' | 'Absent' | 'Late' | 'Half Day' | 'On Leave'} size="xs" />
                       </td>

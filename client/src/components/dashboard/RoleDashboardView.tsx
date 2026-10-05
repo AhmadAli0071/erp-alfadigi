@@ -5,6 +5,7 @@ import { HRDashboardLayout } from './HRDashboardLayout';
 import { LeadDashboardLayout } from '../leads/LeadDashboardLayout';
 import { EmployeeDashboardLayout } from '../employee/EmployeeDashboardLayout';
 import { SuperAdminDashboardLayout } from './SuperAdminDashboardLayout';
+import { HodDashboardLayout } from '../hod/HodDashboardLayout';
 import {
   ShieldAlert,
   Users,
@@ -41,6 +42,11 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({
   // If the logged-in user is a Department Lead, render the appropriate Lead Dashboard
   if (user.role === 'DEPARTMENT_LEAD') {
     return <LeadDashboardLayout user={user} onLogout={onLogout} />;
+  }
+
+  // If the logged-in user is the HOD, render the exclusive HOD command center
+  if (user.role === 'HOD') {
+    return <HodDashboardLayout user={user} onLogout={onLogout} />;
   }
 
   // If the logged-in user is an Employee, render the Employee Portal
@@ -90,6 +96,20 @@ export const RoleDashboardView: React.FC<RoleDashboardViewProps> = ({
             'Resource Allocation',
             'Department Shift Sign-off',
             'Performance Metrics',
+          ],
+        };
+      case 'HOD':
+        return {
+          title: 'HOD Command Center',
+          subtitle: 'Company-wide Live Oversight — All Departments, Leads & Teams',
+          badge: 'HOD',
+          badgeColor: 'bg-amber-50 text-amber-600 border-amber-200',
+          icon: <Briefcase className="w-6 h-6 text-amber-600" />,
+          permissions: [
+            'Live Company Pulse',
+            'All Departments Oversight',
+            'Lead & Team Status Tracking',
+            'Break & Shift Monitoring',
           ],
         };
       case 'EMPLOYEE':

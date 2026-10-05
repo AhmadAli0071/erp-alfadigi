@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Activity,
+  IndianRupee,
+  Megaphone,
 } from 'lucide-react';
 
 interface HRSidebarProps {
@@ -54,6 +57,24 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       label: 'Attendance',
       icon: <Clock className="w-4 h-4 shrink-0" />,
       route: '/hr/attendance',
+    },
+    {
+      id: 'live-roster',
+      label: 'Live Roster',
+      icon: <Activity className="w-4 h-4 shrink-0" />,
+      route: '/hr/live-roster',
+    },
+    {
+      id: 'salary-calc',
+      label: 'Salary Calc',
+      icon: <IndianRupee className="w-4 h-4 shrink-0" />,
+      route: '/hr/salary-calc',
+    },
+    {
+      id: 'announcements',
+      label: 'Announcements',
+      icon: <Megaphone className="w-4 h-4 shrink-0" />,
+      route: '/hr/announcements',
     },
     {
       id: 'my-attendance',

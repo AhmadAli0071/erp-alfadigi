@@ -81,7 +81,7 @@ export const HRAttendanceDetailDrawer: React.FC<HRAttendanceDetailDrawerProps> =
       {/* Slide-over panel (Desktop: right side drawer, Mobile: full screen / max-w-full) */}
       <div className="relative w-full sm:max-w-md md:max-w-lg bg-white/85 backdrop-blur-2xl border-l border-slate-200/80 sm:rounded-l-3xl shadow-2xl z-10 flex flex-col h-full overflow-hidden animate-slideInRight text-slate-700">
         {/* Drawer Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200/70 flex items-start justify-between shrink-0 bg-white/75 backdrop-blur-xl">
+        <div className="px-4 py-3.5 border-b border-slate-200/70 flex items-start justify-between shrink-0 bg-white/75 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-indigo-100/70 border border-indigo-200 text-indigo-600 font-extrabold text-base flex items-center justify-center shadow-inner shrink-0">
               {record.employeeName
@@ -116,7 +116,7 @@ export const HRAttendanceDetailDrawer: React.FC<HRAttendanceDetailDrawerProps> =
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
           {/* Pending Correction Request */}
           {correctionPending && onCorrectionAction && (
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
@@ -387,7 +387,7 @@ export const HRAttendanceDetailDrawer: React.FC<HRAttendanceDetailDrawerProps> =
         </div>
 
         {/* Drawer Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-200/70 bg-white/75 backdrop-blur-xl shrink-0 flex items-center justify-end gap-2.5">
+        <div className="px-4 py-3 border-t border-slate-200/70 bg-white/75 backdrop-blur-xl shrink-0 flex items-center justify-end gap-2.5">
           {onEdit && (
             <button
               type="button"

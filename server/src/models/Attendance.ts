@@ -15,6 +15,8 @@ export interface IAttendance extends Document {
   breakType?: BreakType | null;
   breakMinutesByType: { lunch: number; namaz: number; washroom: number };
   workingMinutes: number;
+  /** HR set working minutes manually — auto clock-out sweep must not overwrite them */
+  hoursManuallySet?: boolean;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
   isAutoMarked?: boolean;
@@ -48,6 +50,7 @@ const AttendanceSchema = new Schema<IAttendance>(
       washroom: { type: Number, default: 0 },
     },
     workingMinutes: { type: Number, default: 0 },
+    hoursManuallySet: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Work From Home', 'On Duty', 'Pending OT', 'Short Hours'],

@@ -39,13 +39,12 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-// Salary visibility: Super Admin sees all; HR sees everyone's EXCEPT their own
-// (HR's own salary is Super Admin's business); everyone else sees only their own.
+// Salary visibility: Super Admin and HR see all salaries; everyone else sees only their own.
 const canViewSalary = (req: AuthRequest, employeeEmail: string): boolean => {
   if (!req.user) return false;
   const requesterEmail = req.user.email.toLowerCase();
   if (req.user.role === 'SUPER_ADMIN') return true;
-  if (req.user.role === 'HR_ADMIN') return requesterEmail !== employeeEmail.toLowerCase();
+  if (req.user.role === 'HR_ADMIN') return true;
   return requesterEmail === employeeEmail.toLowerCase();
 };
 
@@ -150,8 +149,8 @@ router.get('/team/:leadId', authenticate, async (req: AuthRequest, res: Response
 // GET /api/employees/leads - get all department leads (for dropdown)
 router.get('/leads', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Leads are defined by USER ROLE (DEPARTMENT_LEAD) - not by job title keywords
-    const leadUsers = await User.find({ role: 'DEPARTMENT_LEAD', isActive: true }).select('email');
+    // Leads are defined by USER ROLE (DEPARTMENT_LEAD / HOD) - not by job title keywords
+    const leadUsers = await User.find({ role: { $in: ['DEPARTMENT_LEAD', 'HOD'] }, isActive: true }).select('email');
     const leadEmails = leadUsers.map((u) => u.email?.toLowerCase()).filter(Boolean);
     const leads = await Employee.find({ email: { $in: leadEmails }, status: 'Active', isActive: true }).sort({ name: 1 });
 

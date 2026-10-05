@@ -27,7 +27,8 @@ const DEPARTMENT_OPTIONS = ['HR', 'Sales', 'Tech'];
 
 const ROLE_OPTIONS: { value: UserRole; label: string; hint: string }[] = [
   { value: 'EMPLOYEE', label: 'Employee', hint: 'Self-service portal access' },
-  { value: 'DEPARTMENT_LEAD', label: 'Department Lead', hint: 'Team dashboard + approvals' },
+    { value: 'DEPARTMENT_LEAD', label: 'Department Lead', hint: 'Team dashboard + approvals' },
+    { value: 'HOD', label: 'HOD', hint: 'All-departments live command center' },
   { value: 'HR_ADMIN', label: 'HR Admin', hint: 'Full HR management access' },
 ];
 
@@ -139,7 +140,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={onClose} />
-        <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-md p-6 animate-scaleUp">
+        <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-md p-5 animate-scaleUp">
           <div className="flex flex-col items-center text-center pb-5 border-b border-slate-200/70">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
               <CheckCircle2 className="w-7 h-7 text-emerald-600" />
@@ -152,7 +153,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
             </p>
           </div>
 
-          <div className="space-y-3 mt-5">
+          <div className="space-y-3 mt-4">
             <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-white border border-slate-200/70 shrink-0">
@@ -216,7 +217,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-200/70">
+          <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-slate-200/70">
             <button
               type="button"
               onClick={() => {
@@ -249,9 +250,9 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-[3px]" onClick={onClose} />
-      <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-lg p-6 animate-scaleUp max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-2xl w-full max-w-lg p-5 animate-scaleUp max-h-[90vh] overflow-y-auto custom-scrollbar">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200/70 mb-5">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200/70 mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
               <UserPlus className="w-5 h-5 text-indigo-600" />
@@ -273,7 +274,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
         </div>
 
         {/* Form */}
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -482,7 +483,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-200/70">
+        <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-slate-200/70">
           <button
             type="button"
             onClick={onClose}
