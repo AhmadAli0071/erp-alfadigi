@@ -61,17 +61,27 @@ const parseAmPmToMinutes = (t: string): number | null => {
   return h * 60 + min;
 };
 
-/** Days the employee could actually work in this month: from joinedDate (or month start) to month end, capped at 30. */
-const expectedDaysFor = (joinedDate: string | undefined, month: string): number => {
+/** Saturday / Sunday — paid non-working days for every employee. */
+const isWeekendDate = (date: string): boolean => {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+};
+
+const dayName = (date: string): string => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(`${date}T00:00:00Z`).getUTCDay()];
+
+/** Every calendar date from the employee's start (joinedDate or month start) to month end. */
+const windowDates = (joinedDate: string | undefined, month: string): string[] => {
   const [y, m] = month.split('-').map(Number);
   const monthEndDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const monthEnd = `${month}-${String(monthEndDay).padStart(2, '0')}`;
+  const valid = !!joinedDate && /^\d{4}-\d{2}-\d{2}$/.test(joinedDate);
+  if (valid && joinedDate! > monthEnd) return [];
   const monthStart = `${month}-01`;
-  if (!joinedDate || !/^\d{4}-\d{2}-\d{2}$/.test(joinedDate)) return Math.min(30, monthEndDay);
-  if (joinedDate > monthEnd) return 0;
-  const start = joinedDate > monthStart ? joinedDate : monthStart;
-  const startDay = Number(start.slice(8, 10));
-  return Math.max(1, Math.min(30, monthEndDay - startDay + 1));
+  const start = valid && joinedDate! > monthStart ? joinedDate! : monthStart;
+  const startDay = Math.max(1, Number(start.slice(8, 10)) || 1);
+  const dates: string[] = [];
+  for (let d = startDay; d <= monthEndDay; d++) dates.push(`${month}-${String(d).padStart(2, '0')}`);
+  return dates;
 };
 
 const expandLeaveDates = (start: string, end: string, month: string): string[] => {
@@ -102,12 +112,17 @@ export const calcEmployeeMonth = async (
   now: Date
 ): Promise<SalaryCalcRow> => {
   const requiredMinutes = Math.max(1, Math.round(cfg.requiredHoursPerDay * 60));
-  // Expected days = only the days the employee existed in the system this month (join-date aware)
-  const expectedDays = expectedDaysFor(employee.joinedDate, month);
+  // Expected days = every calendar day the employee existed this month (join-date aware).
+  const window = windowDates(employee.joinedDate, month);
+  const expectedDays = window.length;
   const expectedMinutes = expectedDays * requiredMinutes;
   const baseSalary = Math.max(0, employee.salary || 0);
   const perDayRate = baseSalary / SALARY_MONTH_DAYS;
-  const perMinuteRate = baseSalary / expectedMinutes;
+  const perMinuteRate = expectedMinutes > 0 ? baseSalary / expectedMinutes : 0;
+  // Sat/Sun are non-working but PAID for every employee — never deducted, even when
+  // the auto-absent sweep marks them Absent.
+  const weekendDates = window.filter(isWeekendDate);
+  const weekendSet = new Set(weekendDates);
 
   const [records, leaves, leaveTypes] = await Promise.all([
     Attendance.find({ employeeId: employee._id as never, date: new RegExp(`^${month}-`) }).sort({ date: 1 }),
@@ -142,6 +157,7 @@ export const calcEmployeeMonth = async (
   let paidLeaveDays = 0;
   let unpaidLeaveDays = 0;
   let absentDays = 0;
+  let paidWeekendDays = 0;
   let shortfallMinutes = 0;
   const log: SalaryLogEntry[] = [];
 
@@ -162,6 +178,20 @@ export const calcEmployeeMonth = async (
 
   for (const rec of records) {
     const isToday = rec.date === today;
+    // Weekends are paid non-working days: never absent, never short, no late penalty.
+    if (weekendSet.has(rec.date)) {
+      if (rec.otStatus === 'APPROVED' && rec.otApprovedMinutes > 0) {
+        otMinutes += rec.otApprovedMinutes;
+        log.push({
+          date: rec.date,
+          type: '+',
+          reason: `Approved overtime — ${fmtHM(rec.otApprovedMinutes)}`,
+          minutes: rec.otApprovedMinutes,
+          amount: Math.round(rec.otApprovedMinutes * perMinuteRate),
+        });
+      }
+      continue;
+    }
     if (rec.status === 'Leave') {
       if (paidLeaveDates.has(rec.date)) {
         paidLeaveDays++;
@@ -246,10 +276,24 @@ export const calcEmployeeMonth = async (
     }
   }
 
+  // Saturday/Sunday are paid for everyone — credit each elapsed weekend as a full
+  // paid day (only weekends already passed, matching how elapsed weekdays count).
+  for (const d of weekendDates) {
+    if (d > today) continue;
+    paidWeekendDays++;
+    log.push({
+      date: d,
+      type: '+',
+      reason: `${dayName(d)} — weekend (paid non-working day)`,
+      minutes: requiredMinutes,
+      amount: Math.round(requiredMinutes * perMinuteRate),
+    });
+  }
+
   shortfallMinutes += penaltyMinutes;
   const countableMinutes = Math.min(
     expectedMinutes,
-    Math.max(0, workedMinutes + otMinutes + paidLeaveDays * requiredMinutes - penaltyMinutes)
+    Math.max(0, workedMinutes + otMinutes + paidLeaveDays * requiredMinutes + paidWeekendDays * requiredMinutes - penaltyMinutes)
   );
   const payable = expectedMinutes > 0 ? Math.round(baseSalary * (countableMinutes / expectedMinutes)) : 0;
   const deduction = Math.max(0, baseSalary - payable);
