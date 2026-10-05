@@ -465,7 +465,7 @@ export const HRAttendanceManagementView: React.FC<HRAttendanceManagementViewProp
       </div>
 
       {/* 2. Quick Date Range Toolbar */}
-      <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl px-3 py-2.5 shadow-sm flex flex-col lg:flex-row lg:items-center gap-2.5">
+      <div className="relative z-10 bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl px-3 py-2.5 shadow-sm flex flex-col lg:flex-row lg:items-center gap-2.5">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-100 shrink-0 hidden sm:block">
             <Calendar className="w-3.5 h-3.5 text-indigo-600" />
