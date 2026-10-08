@@ -151,7 +151,7 @@ export const HODEmployeeDetailDrawer: React.FC<HODEmployeeDetailDrawerProps> = (
     const month = tab === 'salary' ? salaryMonth : currentMonthKey();
     try {
       const [profileRes, attRes, leaveRes, ticketRes, salaryRes] = await Promise.all([
-        fetch(`${API_BASE}/employees/my/${encodeURIComponent(email)}`, { headers: getHeaders() }),
+        fetch(`${API_BASE}/employees/me/${encodeURIComponent(email)}`, { headers: getHeaders() }),
         fetch(`${API_BASE}/attendance/history/${encodeURIComponent(email)}?days=31`, { headers: getHeaders() }),
         fetch(`${API_BASE}/leaves/my/${encodeURIComponent(email)}`, { headers: getHeaders() }),
         fetch(`${API_BASE}/tickets/my/${encodeURIComponent(email)}`, { headers: getHeaders() }),
