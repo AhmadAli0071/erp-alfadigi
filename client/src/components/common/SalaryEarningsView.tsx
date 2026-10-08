@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CommissionSummary, Sale, currentMonthKey, fmtUSD } from '../../types/sales';
+import { CommissionSummary, Sale, currentMonthKey, fmtPKR } from '../../types/sales';
 import {
   ArrowLeft,
   RefreshCw,
@@ -191,7 +191,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
             </div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-100/90 mt-4">My Salary</div>
             <div className="text-[28px] leading-tight font-extrabold text-white mt-0.5 tracking-tight">
-              {salary !== undefined ? fmtUSD(salary) : '-'}
+              {salary !== undefined ? fmtPKR(salary) : '-'}
             </div>
             <div className="text-[11px] font-medium text-indigo-100/80 mt-1">Current monthly salary</div>
           </div>
@@ -219,7 +219,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
               </div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/90 mt-4">My Commission</div>
               <div className="text-[28px] leading-tight font-extrabold text-white mt-0.5 tracking-tight">
-                {fmtUSD(commission.commission)}
+                {fmtPKR(commission.commission)}
               </div>
               {/* Mini progress */}
               <div className="mt-2.5 h-1.5 rounded-full bg-white/20 overflow-hidden">
@@ -230,7 +230,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
               </div>
               <div className="flex items-center justify-between mt-1.5">
                 <div className="text-[11px] font-medium text-emerald-50/90">
-                  {fmtUSD(commission.totalSales)} / {fmtUSD(commission.target)}
+                  {fmtPKR(commission.totalSales)} / {fmtPKR(commission.target)}
                 </div>
                 <div className="text-[10px] font-extrabold text-white/90">{pct}%</div>
               </div>
@@ -254,16 +254,16 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
             </div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-amber-100/95 mt-4">My Total Earning</div>
             <div className="text-[28px] leading-tight font-extrabold text-white mt-0.5 tracking-tight">
-              {fmtUSD(totalEarning)}
+              {fmtPKR(totalEarning)}
             </div>
             {commission && (
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-[10px] font-bold text-white/95">
-                  Salary {fmtUSD(salary || 0)}
+                  Salary {fmtPKR(salary || 0)}
                 </span>
                 <span className="text-white/60 text-[10px] font-bold">+</span>
                 <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-[10px] font-bold text-white/95">
-                  Commission {fmtUSD(commission.commission)}
+                  Commission {fmtPKR(commission.commission)}
                 </span>
               </div>
             )}
@@ -292,12 +292,12 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
               {calc.deduction > 0 && (
                 <div className="text-right">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Deduction</div>
-                  <div className="text-sm font-extrabold text-rose-600">− {fmtHM(calc.shortfallMinutes)} · Rs {calc.deduction.toLocaleString('en-PK')}</div>
+                  <div className="text-sm font-extrabold text-rose-600">− {fmtHM(calc.shortfallMinutes)} · PKR {calc.deduction.toLocaleString('en-PK')}</div>
                 </div>
               )}
               <div className="text-right">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payable</div>
-                <div className="text-2xl font-extrabold text-emerald-700">Rs {(calc.finalPayable ?? calc.payable).toLocaleString('en-PK')}</div>
+                <div className="text-2xl font-extrabold text-emerald-700">PKR {(calc.finalPayable ?? calc.payable).toLocaleString('en-PK')}</div>
                 {calc.adjustments && calc.adjustments.length > 0 && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700 text-[8px] font-extrabold uppercase tracking-wide mt-0.5">
                     Manually adjusted
@@ -322,7 +322,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
                     <span className="text-[10px] font-bold text-slate-400 font-mono shrink-0">{l.date}</span>
                     <span className="text-[11px] font-semibold text-slate-700 flex-1 min-w-0 truncate">{l.reason}</span>
                     <span className={`text-[11px] font-extrabold font-mono shrink-0 ${l.type === '-' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {l.type === '-' ? '−' : '+'} Rs {l.amount.toLocaleString('en-PK')}
+                      {l.type === '-' ? '−' : '+'} PKR {l.amount.toLocaleString('en-PK')}
                     </span>
                   </div>
                 ))}
@@ -350,7 +350,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Monthly Target</h3>
                 <p className="text-[11px] text-slate-500">
-                  Target {fmtUSD(commission.target)} · extra ke 10% commission
+                  Target {fmtPKR(commission.target)} · extra ke 10% commission
                 </p>
               </div>
             </div>
@@ -370,7 +370,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
             />
           </div>
           <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400">
-            <span>{fmtUSD(commission.totalSales)} earned</span>
+            <span>{fmtPKR(commission.totalSales)} earned</span>
             <span>{pct}% of target</span>
           </div>
         </div>
@@ -409,7 +409,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
                       <td className="px-5 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">{fmtDate(s.saleDate)}</td>
                       <td className="px-5 py-3 text-xs font-bold text-slate-800">{s.clientName || '-'}</td>
                       <td className="px-5 py-3 text-xs font-semibold text-slate-500">{s.createdBy || '-'}</td>
-                      <td className="px-5 py-3 text-right text-xs font-extrabold text-emerald-600 whitespace-nowrap">{fmtUSD(s.amount)}</td>
+                      <td className="px-5 py-3 text-right text-xs font-extrabold text-emerald-600 whitespace-nowrap">{fmtPKR(s.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

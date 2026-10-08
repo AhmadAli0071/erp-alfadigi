@@ -18,7 +18,7 @@ import {
   Wallet,
   Target,
 } from 'lucide-react';
-import { CommissionSummary, fmtUSD } from '../../types/sales';
+import { CommissionSummary, fmtPKR } from '../../types/sales';
 import { ChangePasswordCard } from '../common/ChangePasswordCard';
 
 interface EmployeeProfileViewProps {
@@ -148,7 +148,7 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
     { label: 'Designation', value: profile.jobTitle, icon: <Briefcase className="w-4 h-4 text-indigo-600" /> },
     {
       label: 'Current Salary',
-      value: profile.salary && profile.salary > 0 ? `Rs ${profile.salary.toLocaleString('en-US')}` : 'Not set',
+      value: profile.salary && profile.salary > 0 ? `PKR ${profile.salary.toLocaleString('en-US')}` : 'Not set',
       icon: <Wallet className="w-4 h-4 text-indigo-600" />,
     },
     // Commission + total earning for Sales department members
@@ -156,12 +156,12 @@ export const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({
       ? [
           {
             label: 'Commission (This Month)',
-            value: `${fmtUSD(myCommission.commission)}${myCommission.unlocked ? '' : ' (locked)'}`,
+            value: `${fmtPKR(myCommission.commission)}${myCommission.unlocked ? '' : ' (locked)'}`,
             icon: <Target className="w-4 h-4 text-indigo-600" />,
           },
           {
             label: 'Total Earning',
-            value: `${profile.salary && profile.salary > 0 ? `Rs ${profile.salary.toLocaleString('en-US')}` : 'Rs 0'} + ${fmtUSD(myCommission.commission)}`,
+            value: `${profile.salary && profile.salary > 0 ? `PKR ${profile.salary.toLocaleString('en-US')}` : 'PKR 0'} + ${fmtPKR(myCommission.commission)}`,
             icon: <Wallet className="w-4 h-4 text-indigo-600" />,
           },
         ]

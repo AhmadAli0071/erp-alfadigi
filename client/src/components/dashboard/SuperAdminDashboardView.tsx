@@ -247,9 +247,9 @@ export const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = (
                     <span className="text-[10px] text-slate-500 font-mono">{r.employeeEmail}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-[11px] font-semibold text-slate-500">Rs {r.currentSalary.toLocaleString('en-US')}</span>
+                    <span className="text-[11px] font-semibold text-slate-500">PKR {r.currentSalary.toLocaleString('en-US')}</span>
                     <ArrowRight className="w-3 h-3 text-teal-400" />
-                    <span className="text-[11px] font-extrabold text-teal-300">Rs {r.newSalary.toLocaleString('en-US')}</span>
+                    <span className="text-[11px] font-extrabold text-teal-300">PKR {r.newSalary.toLocaleString('en-US')}</span>
                     <span className="text-[10px] text-slate-500">· requested by {r.requestedByName}</span>
                   </div>
                 </div>

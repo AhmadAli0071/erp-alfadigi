@@ -345,7 +345,7 @@ export const HODEmployeeDetailDrawer: React.FC<HODEmployeeDetailDrawerProps> = (
                     ].map((k, i) => (
                       <div key={i} className={`p-3.5 rounded-2xl border ${k.cls}`}>
                         <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">{k.label}</div>
-                        <div className="text-lg font-extrabold font-mono mt-0.5">{k.raw ? k.value : `$${Number(k.value || 0).toLocaleString()}`}</div>
+                        <div className="text-lg font-extrabold font-mono mt-0.5">{k.raw ? k.value : `PKR ${Number(k.value || 0).toLocaleString()}`}</div>
                       </div>
                     ))}
                   </div>
@@ -371,7 +371,7 @@ export const HODEmployeeDetailDrawer: React.FC<HODEmployeeDetailDrawerProps> = (
                         <div key={adj.id} className="flex items-center justify-between gap-3 text-xs">
                           <span className="text-slate-700 font-medium truncate">{adj.type} — {adj.reason}</span>
                           <span className={`font-extrabold font-mono shrink-0 ${adj.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {adj.amount >= 0 ? '+' : ''}${Math.abs(adj.amount).toLocaleString()}
+                            {adj.amount >= 0 ? '+' : ''}PKR {Math.abs(adj.amount).toLocaleString()}
                           </span>
                         </div>
                       ))}

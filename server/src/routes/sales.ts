@@ -83,7 +83,7 @@ router.post(
           superAdmins.map((u) => u.email),
           {
             title: 'Earning Added by HR',
-            message: `HR ${req.user!.name} added $${amount.toLocaleString('en-US')} earning for ${employee.name}.`,
+            message: `HR ${req.user!.name} added PKR ${amount.toLocaleString('en-US')} earning for ${employee.name}.`,
             type: 'general',
             relatedId: sale._id.toString(),
           }

@@ -129,7 +129,7 @@ router.post(
       const recipients = [...superAdmins.map((u) => u.email), ...hrAdmins.map((u) => u.email)];
       await notifyEmails(recipients, {
         title: 'New Sale Request',
-        message: `${req.user!.name} reported a sale of $${amount.toLocaleString('en-US')} for ${employee.name}. Pending approval.`,
+        message: `${req.user!.name} reported a sale of PKR ${amount.toLocaleString('en-US')} for ${employee.name}. Pending approval.`,
         type: 'general',
         relatedId: request._id.toString(),
       });
@@ -245,7 +245,7 @@ router.put(
       await createNotification({
         userEmail: request.requestedByEmail,
         title: 'Sale Request Approved',
-        message: `${req.user!.name} (${req.user!.role === 'HR_ADMIN' ? 'HR' : 'Super Admin'}) approved the sale request: $${request.amount.toLocaleString('en-US')} for ${request.employeeName}. Earning updated.`,
+        message: `${req.user!.name} (${req.user!.role === 'HR_ADMIN' ? 'HR' : 'Super Admin'}) approved the sale request: PKR ${request.amount.toLocaleString('en-US')} for ${request.employeeName}. Earning updated.`,
         type: 'general',
         relatedId: sale._id.toString(),
       });
@@ -288,7 +288,7 @@ router.put(
       await createNotification({
         userEmail: request.requestedByEmail,
         title: 'Sale Request Rejected',
-        message: `${req.user!.name} rejected the sale request: $${request.amount.toLocaleString('en-US')} for ${request.employeeName}.`,
+        message: `${req.user!.name} rejected the sale request: PKR ${request.amount.toLocaleString('en-US')} for ${request.employeeName}.`,
         type: 'general',
         relatedId: request._id.toString(),
       });

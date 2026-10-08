@@ -76,5 +76,5 @@ export const currentMonthKey = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-export const fmtUSD = (n: number): string =>
-  `Rs ${n.toLocaleString('en-PK', { maximumFractionDigits: 2 })}`;
+export const fmtPKR = (n: number): string =>
+  `PKR ${n.toLocaleString('en-PK', { maximumFractionDigits: 2 })}`;

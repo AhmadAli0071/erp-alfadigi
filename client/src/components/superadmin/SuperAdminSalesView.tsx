@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sale, SaleRequest, CommissionRow, currentMonthKey, fmtUSD } from '../../types/sales';
+import { Sale, SaleRequest, CommissionRow, currentMonthKey, fmtPKR } from '../../types/sales';
 import {
   ArrowLeft,
   RefreshCw,
@@ -129,7 +129,7 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
   };
 
   const handleDeleteSale = async (sale: Sale) => {
-    if (!window.confirm(`Delete this ${fmtUSD(sale.amount)} sale for ${sale.employeeName}?`)) return;
+    if (!window.confirm(`Delete this ${fmtPKR(sale.amount)} sale for ${sale.employeeName}?`)) return;
     setBusyId(sale.id);
     try {
       const res = await fetch(`${API_BASE}/sales/${sale.id}`, { method: 'DELETE', headers: getHeaders() });
@@ -280,7 +280,7 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
                           <div className="text-[10px] font-medium text-slate-500 truncate">{fmtDate(r.saleDate)}</div>
                         </div>
                       </div>
-                      <div className="text-lg font-extrabold text-amber-300">{fmtUSD(r.amount)}</div>
+                      <div className="text-lg font-extrabold text-amber-300">{fmtPKR(r.amount)}</div>
                       <div className="flex items-center gap-2">
                         {r.status === 'Pending' && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/20">
@@ -493,12 +493,12 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
 
                   <div className="mt-3 flex items-end justify-between">
                     <div>
-                      <div className="text-lg font-extrabold text-white leading-none">{fmtUSD(p.totalSales)}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">{p.salesCount} sales · target {fmtUSD(p.target)}</div>
+                      <div className="text-lg font-extrabold text-white leading-none">{fmtPKR(p.totalSales)}</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{p.salesCount} sales · target {fmtPKR(p.target)}</div>
                     </div>
                     <div className="text-right">
                       <div className={`text-lg font-extrabold leading-none ${p.commission > 0 ? 'text-amber-300' : 'text-slate-600'}`}>
-                        {fmtUSD(p.commission)}
+                        {fmtPKR(p.commission)}
                       </div>
                       <div className="text-[10px] text-slate-500 mt-1">commission</div>
                     </div>
@@ -515,7 +515,7 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
                     />
                   </div>
                   <div className="mt-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                    {p.unlocked ? `Unlocked, ${fmtUSD(p.extraAmount)} extra at ${p.rate * 100}%` : `${pct}% of target, locked`}
+                    {p.unlocked ? `Unlocked, ${fmtPKR(p.extraAmount)} extra at ${p.rate * 100}%` : `${pct}% of target, locked`}
                   </div>
                 </div>
               );
@@ -570,7 +570,7 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
                     </td>
                     <td className="px-5 py-3.5 text-xs font-semibold text-slate-300">{s.clientName || '-'}</td>
                     <td className="px-5 py-3.5 text-xs text-slate-500 max-w-[220px] truncate">{s.description || '-'}</td>
-                    <td className="px-5 py-3.5 text-right text-xs font-extrabold text-amber-300 whitespace-nowrap">{fmtUSD(s.amount)}</td>
+                    <td className="px-5 py-3.5 text-right text-xs font-extrabold text-amber-300 whitespace-nowrap">{fmtPKR(s.amount)}</td>
                     <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-500">{s.createdBy || '-'}</td>
                     <td className="px-5 py-3.5 text-right">
                       <button

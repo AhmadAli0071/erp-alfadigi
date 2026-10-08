@@ -88,7 +88,7 @@ router.post(
         superAdmins.map((u) => u.email),
         {
           title: 'Salary Change Request',
-          message: `${req.user!.name} requested a salary change for ${employee.name}: Rs ${employee.salary.toLocaleString('en-US')} → Rs ${newSalary.toLocaleString('en-US')}.`,
+          message: `${req.user!.name} requested a salary change for ${employee.name}: PKR ${employee.salary.toLocaleString('en-US')} → PKR ${newSalary.toLocaleString('en-US')}.`,
           type: 'general',
           relatedId: request._id.toString(),
         }
@@ -158,7 +158,7 @@ router.put(
       await createNotification({
         userEmail: request.requestedByEmail,
         title: 'Salary Change Approved',
-        message: `Super Admin approved the salary change for ${request.employeeName}: Rs ${request.currentSalary.toLocaleString('en-US')} → Rs ${request.newSalary.toLocaleString('en-US')}.`,
+        message: `Super Admin approved the salary change for ${request.employeeName}: PKR ${request.currentSalary.toLocaleString('en-US')} → PKR ${request.newSalary.toLocaleString('en-US')}.`,
         type: 'general',
         relatedId: request._id.toString(),
       });
@@ -201,7 +201,7 @@ router.put(
       await createNotification({
         userEmail: request.requestedByEmail,
         title: 'Salary Change Rejected',
-        message: `Super Admin rejected the salary change request for ${request.employeeName} (Rs ${request.newSalary.toLocaleString('en-US')}).`,
+        message: `Super Admin rejected the salary change request for ${request.employeeName} (PKR ${request.newSalary.toLocaleString('en-US')}).`,
         type: 'general',
         relatedId: request._id.toString(),
       });

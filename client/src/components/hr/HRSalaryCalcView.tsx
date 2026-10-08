@@ -84,7 +84,7 @@ const getHeaders = (): Record<string, string> => {
   }
 };
 
-const rs = (n: number): string => `Rs ${Math.round(n).toLocaleString('en-PK')}`;
+const rs = (n: number): string => `PKR ${Math.round(n).toLocaleString('en-PK')}`;
 const fmtH = (mins: number): string => `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
 const currentMonth = (): string => {
   const d = new Date(Date.now() + 5 * 60 * 60000);
@@ -111,7 +111,7 @@ export const HRSalaryCalcView: React.FC<{ onNavigateToDashboard: () => void }> =
       body: JSON.stringify({ month, employeeId, type, amount, reason }),
     });
     const body = await res.json().catch(() => ({}));
-    setToast(res.ok ? { ok: true, text: `${type[0].toUpperCase() + type.slice(1)} of Rs ${amount.toLocaleString('en-PK')} saved.` } : { ok: false, text: body.error || 'Adjustment failed.' });
+    setToast(res.ok ? { ok: true, text: `${type[0].toUpperCase() + type.slice(1)} of PKR ${amount.toLocaleString('en-PK')} saved.` } : { ok: false, text: body.error || 'Adjustment failed.' });
     setTimeout(() => setToast(null), 5000);
     if (res.ok) fetchCalc();
     return res.ok;
@@ -131,7 +131,7 @@ export const HRSalaryCalcView: React.FC<{ onNavigateToDashboard: () => void }> =
       body: JSON.stringify({ newSalary, reason }),
     });
     const body = await res.json().catch(() => ({}));
-    setToast(res.ok ? { ok: true, text: `Base salary updated to Rs ${newSalary.toLocaleString('en-PK')}.` } : { ok: false, text: body.error || 'Update failed.' });
+    setToast(res.ok ? { ok: true, text: `Base salary updated to PKR ${newSalary.toLocaleString('en-PK')}.` } : { ok: false, text: body.error || 'Update failed.' });
     setTimeout(() => setToast(null), 5000);
     if (res.ok) fetchCalc();
     return res.ok;
@@ -524,7 +524,7 @@ const AdjustModal: React.FC<{
 
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              {type === 'override' ? 'Final Payable Amount (Rs)' : 'Amount (Rs)'}
+              {type === 'override' ? 'Final Payable Amount (PKR)' : 'Amount (PKR)'}
             </label>
             <input
               type="number"
@@ -563,7 +563,7 @@ const AdjustModal: React.FC<{
                   <div key={a.id} className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50/70 px-3 py-2">
                     <BadgeCheck className={`w-3.5 h-3.5 shrink-0 ${a.type === 'bonus' ? 'text-emerald-500' : a.type === 'deduction' ? 'text-rose-500' : 'text-slate-700'}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-bold text-slate-700 capitalize">{a.type} · Rs {a.amount.toLocaleString('en-PK')}</div>
+                      <div className="text-[11px] font-bold text-slate-700 capitalize">{a.type} · PKR {a.amount.toLocaleString('en-PK')}</div>
                       <div className="text-[9px] text-slate-400 truncate">{a.reason || 'No reason'} — {a.byName}</div>
                     </div>
                     <button onClick={() => onDelete(a.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 cursor-pointer" title="Remove">
@@ -617,7 +617,7 @@ const BaseEditModal: React.FC<{
             <div className="text-sm font-extrabold text-slate-800">{rs(row.baseSalary)}</div>
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">New Salary (Rs)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">New Salary (PKR)</label>
             <input
               type="number"
               min={0}

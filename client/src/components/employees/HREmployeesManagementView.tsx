@@ -541,7 +541,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                       {canSeeSalary && (
                         <td className="py-3.5 px-3">
                           <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
-                            {emp.salary && emp.salary > 0 ? `Rs ${emp.salary.toLocaleString('en-US')}` : '-'}
+                            {emp.salary && emp.salary > 0 ? `PKR ${emp.salary.toLocaleString('en-US')}` : '-'}
                           </span>
                         </td>
                       )}
@@ -650,7 +650,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
                       <div className="text-slate-400 text-[10px] mb-0.5">Salary</div>
                       <div className="font-semibold text-slate-700">
-                        {emp.salary && emp.salary > 0 ? `Rs ${emp.salary.toLocaleString('en-US')}` : '-'}
+                        {emp.salary && emp.salary > 0 ? `PKR ${emp.salary.toLocaleString('en-US')}` : '-'}
                       </div>
                     </div>
                   )}

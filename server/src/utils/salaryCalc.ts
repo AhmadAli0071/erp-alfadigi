@@ -384,7 +384,7 @@ export const applyAdjustments = (row: SalaryCalcRow, docs: AdjLike[]): SalaryCal
     row.log.push({
       date: stamp,
       type: '+',
-      reason: `[Manual] Payable override by ${lastOverride.byName} — set to Rs ${lastOverride.amount.toLocaleString('en-US')}${lastOverride.reason ? ` — ${lastOverride.reason}` : ''}`,
+      reason: `[Manual] Payable override by ${lastOverride.byName} — set to PKR ${lastOverride.amount.toLocaleString('en-US')}${lastOverride.reason ? ` — ${lastOverride.reason}` : ''}`,
       minutes: 0,
       amount: 0,
     });

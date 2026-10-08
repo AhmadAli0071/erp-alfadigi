@@ -206,7 +206,7 @@ router.put('/base/:employeeId', authenticate, requireRole('HR_ADMIN', 'SUPER_ADM
     const oldSalary = emp.salary;
     emp.salary = newSalary;
     await emp.save();
-    console.warn(`[audit] Base salary DIRECT UPDATE: ${emp.email} Rs ${oldSalary.toLocaleString('en-US')} -> Rs ${newSalary.toLocaleString('en-US')} by ${req.user!.email} (${req.user!.role}) — ${reason || 'no reason'}`);
+    console.warn(`[audit] Base salary DIRECT UPDATE: ${emp.email} PKR ${oldSalary.toLocaleString('en-US')} -> PKR ${newSalary.toLocaleString('en-US')} by ${req.user!.email} (${req.user!.role}) — ${reason || 'no reason'}`);
     res.json({ success: true, oldSalary, newSalary });
   } catch (err) {
     console.error('Base salary update error:', err);
@@ -255,7 +255,7 @@ router.post('/adjust', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asy
       byName: req.user!.name,
       byEmail: req.user!.email,
     });
-    console.warn(`[audit] Salary ADJUSTMENT (${type} Rs ${Math.round(amt)}): ${emp.email} for ${month} by ${req.user!.email} — ${reason || 'no reason'}`);
+    console.warn(`[audit] Salary ADJUSTMENT (${type} PKR ${Math.round(amt)}): ${emp.email} for ${month} by ${req.user!.email} — ${reason || 'no reason'}`);
     res.status(201).json({ success: true, adjustment: { id: adj._id.toString(), type, amount: Math.round(amt) } });
   } catch (err) {
     console.error('Salary adjust error:', err);
@@ -272,7 +272,7 @@ router.delete('/adjust/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'
       return;
     }
     await adj.deleteOne();
-    console.warn(`[audit] Salary adjustment REMOVED (${adj.type} Rs ${adj.amount}): ${adj.email} for ${adj.month} by ${req.user!.email}`);
+    console.warn(`[audit] Salary adjustment REMOVED (${adj.type} PKR ${adj.amount}): ${adj.email} for ${adj.month} by ${req.user!.email}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Salary adjust delete error:', err);
@@ -290,7 +290,7 @@ router.get('/month/export', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN',
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const lines: string[] = [];
     lines.push(`Salary Calculation,${month},30-day basis`);
-    lines.push(`Employee ID,Name,Department,Job Title,Base Salary (Rs),Per Day (Rs),Expected Hours,Worked Hours,OT Hours,Paid Leave (days),Unpaid Leave (days),Absent (days),Shortfall Hours,Calculated (Rs),Adjustments (Rs),Final Payable (Rs),Deduction (Rs)`);
+    lines.push(`Employee ID,Name,Department,Job Title,Base Salary (PKR),Per Day (PKR),Expected Hours,Worked Hours,OT Hours,Paid Leave (days),Unpaid Leave (days),Absent (days),Shortfall Hours,Calculated (PKR),Adjustments (PKR),Final Payable (PKR),Deduction (PKR)`);
     for (const r of filtered) {
       const adjDelta = r.finalPayable - r.payable;
       lines.push(

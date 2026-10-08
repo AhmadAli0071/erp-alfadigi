@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/auth';
-import { SaleRequest, fmtUSD } from '../../types/sales';
+import { SaleRequest, fmtPKR } from '../../types/sales';
 import {
   ArrowLeft,
   RefreshCw,
@@ -227,7 +227,7 @@ export const LeadSaleView: React.FC<LeadSaleViewProps> = ({ user, onNavigateToDa
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending</div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-extrabold text-slate-900">{fmtUSD(summary.pending.total)}</span>
+                <span className="text-lg font-extrabold text-slate-900">{fmtPKR(summary.pending.total)}</span>
                 <span className="text-[10px] font-bold text-slate-400">{summary.pending.count} request{summary.pending.count === 1 ? '' : 's'}</span>
               </div>
             </div>
@@ -239,7 +239,7 @@ export const LeadSaleView: React.FC<LeadSaleViewProps> = ({ user, onNavigateToDa
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approved</div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-extrabold text-slate-900">{fmtUSD(summary.approved.total)}</span>
+                <span className="text-lg font-extrabold text-slate-900">{fmtPKR(summary.approved.total)}</span>
                 <span className="text-[10px] font-bold text-slate-400">{summary.approved.count} request{summary.approved.count === 1 ? '' : 's'}</span>
               </div>
             </div>
@@ -251,7 +251,7 @@ export const LeadSaleView: React.FC<LeadSaleViewProps> = ({ user, onNavigateToDa
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rejected</div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-extrabold text-slate-900">{fmtUSD(summary.rejected.total)}</span>
+                <span className="text-lg font-extrabold text-slate-900">{fmtPKR(summary.rejected.total)}</span>
                 <span className="text-[10px] font-bold text-slate-400">{summary.rejected.count} request{summary.rejected.count === 1 ? '' : 's'}</span>
               </div>
             </div>
@@ -444,7 +444,7 @@ export const LeadSaleView: React.FC<LeadSaleViewProps> = ({ user, onNavigateToDa
                       <div className="text-xs font-semibold text-slate-700">{r.clientName || '-'}</div>
                       {r.clientCompany && <div className="text-[10px] text-slate-400">{r.clientCompany}</div>}
                     </td>
-                    <td className="px-5 py-3 text-right text-xs font-extrabold text-indigo-600 whitespace-nowrap">{fmtUSD(r.amount)}</td>
+                    <td className="px-5 py-3 text-right text-xs font-extrabold text-indigo-600 whitespace-nowrap">{fmtPKR(r.amount)}</td>
                     <td className="px-5 py-3"><StatusChip status={r.status} /></td>
                     <td className="px-5 py-3 text-[11px] font-semibold text-slate-500">
                       {r.reviewedBy ? `${r.reviewedBy}${r.reviewedByRole === 'HR_ADMIN' ? ' (HR)' : ''}` : '-'}

@@ -321,7 +321,7 @@ export const HRCreateUserModal: React.FC<HRCreateUserModalProps> = ({
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-                Rs
+                PKR
               </span>
               <input
                 type="number"
