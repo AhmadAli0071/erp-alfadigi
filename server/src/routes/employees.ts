@@ -39,12 +39,14 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-// Salary visibility: Super Admin and HR see all salaries; everyone else sees only their own.
+// Salary visibility: Super Admin and HR see all salaries; HOD sees their team's;
+// everyone else sees only their own.
 const canViewSalary = (req: AuthRequest, employeeEmail: string): boolean => {
   if (!req.user) return false;
   const requesterEmail = req.user.email.toLowerCase();
   if (req.user.role === 'SUPER_ADMIN') return true;
   if (req.user.role === 'HR_ADMIN') return true;
+  if (req.user.role === 'HOD') return true;
   return requesterEmail === employeeEmail.toLowerCase();
 };
 

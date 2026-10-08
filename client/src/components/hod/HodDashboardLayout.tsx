@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { User } from '../../types/auth';
 import { HODDashboardView } from './HODDashboardView';
+import { HODLeavesView } from './HODLeavesView';
+import { HODTicketsView } from './HODTicketsView';
 import { AnnouncementsView } from '../common/AnnouncementsView';
+import { SalaryEarningsView } from '../common/SalaryEarningsView';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { BrandLogo } from '../common/BrandLogo';
-import { Crown, LayoutDashboard, LogOut, ShieldCheck, Sparkles, UserCircle, Megaphone } from 'lucide-react';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import { Crown, LayoutDashboard, LogOut, ShieldCheck, Sparkles, UserCircle, Megaphone, Wallet, Inbox, Ticket } from 'lucide-react';
 
 interface HodDashboardLayoutProps {
   user: User;
@@ -15,18 +19,44 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
   const [currentRoute, setCurrentRoute] = useState('/hod/dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(user.mustChangePassword === true);
+  const [pendingLeaves, setPendingLeaves] = useState(0);
+  const [pendingTickets, setPendingTickets] = useState(0);
 
   const navItems = [
-    { route: '/hod/dashboard', label: 'Company Pulse', icon: LayoutDashboard },
-    { route: '/hod/announcements', label: 'Announcements', icon: Megaphone },
-    { route: '/hod/profile', label: 'My Profile', icon: UserCircle },
+    { route: '/hod/dashboard', label: 'Company Pulse', icon: LayoutDashboard, badge: 0 },
+    { route: '/hod/leaves', label: 'Leaves', icon: Inbox, badge: pendingLeaves },
+    { route: '/hod/tickets', label: 'Tickets', icon: Ticket, badge: pendingTickets },
+    { route: '/hod/earnings', label: 'Salary & Earnings', icon: Wallet, badge: 0 },
+    { route: '/hod/announcements', label: 'Announcements', icon: Megaphone, badge: 0 },
+    { route: '/hod/profile', label: 'My Profile', icon: UserCircle, badge: 0 },
   ];
 
-  const activeRoute = currentRoute.startsWith('/hod/profile')
-    ? '/hod/profile'
-    : currentRoute.startsWith('/hod/announcements')
-      ? '/hod/announcements'
-      : '/hod/dashboard';
+  const activeRoute = navItems.find((n) => currentRoute.startsWith(n.route))?.route || '/hod/dashboard';
+
+  const fetchCounts = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('alfa_digi_erp_token') || sessionStorage.getItem('alfa_digi_erp_token');
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const [leaveRes, ticketRes] = await Promise.all([
+        fetch('/api/leaves/hod-count', { headers }),
+        fetch('/api/tickets/hod-count', { headers }),
+      ]);
+      if (leaveRes.ok) {
+        const data = await leaveRes.json();
+        setPendingLeaves(data.count || 0);
+      }
+      if (ticketRes.ok) {
+        const data = await ticketRes.json();
+        setPendingTickets(data.count || 0);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts, currentRoute]);
+
+  useRealtimeRefresh(fetchCounts);
 
   return (
     <div className="flex h-screen w-full bg-[#F7F9FC] text-slate-800 overflow-hidden font-sans relative">
@@ -71,7 +101,12 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -122,10 +157,14 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
                   <h1 className="text-sm font-extrabold text-slate-900 truncate">
-                    {activeRoute === '/hod/profile' ? 'My Profile' : 'HOD Command Center'}
+                    {navItems.find((n) => n.route === activeRoute)?.label === 'Company Pulse'
+                      ? 'HOD Command Center'
+                      : navItems.find((n) => n.route === activeRoute)?.label || 'HOD Command Center'}
                   </h1>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium truncate">Alfa Digi Corp · All Departments Overview</p>
+                <p className="text-[10px] text-slate-500 font-medium truncate">
+                  {user.department ? `Alfa Digi Corp · ${user.department} Department` : 'Alfa Digi Corp · All Departments Overview'}
+                </p>
               </div>
             </div>
             <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400/15 to-amber-100/10 border border-amber-300/40 text-amber-700 text-[10px] font-extrabold uppercase tracking-widest">
@@ -134,7 +173,7 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto custom-scrollbar">
           {activeRoute === '/hod/profile' ? (
             <div className="p-8 max-w-2xl mx-auto">              <div className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 p-6 shadow-sm">
                 <div className="flex items-center gap-4 pb-5 border-b border-slate-200/70">
@@ -150,17 +189,23 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
                 <div className="grid grid-cols-2 gap-3 pt-5">
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Role</div>
-                    <div className="text-xs font-bold text-slate-800 mt-0.5">Head of Departments</div>
+                    <div className="text-xs font-bold text-slate-800 mt-0.5">Head of Department</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Access</div>
-                    <div className="text-xs font-bold text-slate-800 mt-0.5">All Departments · Read</div>
+                    <div className="text-xs font-bold text-slate-800 mt-0.5">{user.department || 'Department'} · Approvals + Read</div>
                   </div>
                 </div>
               </div>
             </div>
           ) : activeRoute === '/hod/announcements' ? (
             <AnnouncementsView title="Announcement Board" subtitle="Company-wide updates from HR" />
+          ) : activeRoute === '/hod/earnings' ? (
+            <SalaryEarningsView onNavigateToDashboard={() => setCurrentRoute('/hod/dashboard')} />
+          ) : activeRoute === '/hod/leaves' ? (
+            <HODLeavesView user={user} onNavigate={setCurrentRoute} />
+          ) : activeRoute === '/hod/tickets' ? (
+            <HODTicketsView user={user} onNavigate={setCurrentRoute} />
           ) : (
             <HODDashboardView user={user} />
           )}

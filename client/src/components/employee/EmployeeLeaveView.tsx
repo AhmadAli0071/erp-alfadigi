@@ -28,7 +28,7 @@ const STATUS_OPTIONS = ['ALL', 'Pending', 'Approved', 'Final Approved', 'Rejecte
 const approvalStage = (status: string): { label: string; cls: string } => {
   switch (status) {
     case 'Pending':
-      return { label: 'Awaiting Lead', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+      return { label: 'Awaiting HOD', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'Approved':
     case 'In Process':
       return { label: 'Lead OK, Awaiting HR', cls: 'bg-blue-50 text-blue-700 border-blue-200' };

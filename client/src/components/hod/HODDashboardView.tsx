@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { ClockButtonsCard } from '../attendance/ClockButtonsCard';
 import { User } from '../../types/auth';
+import { HODEmployeeDetailDrawer } from './HODEmployeeDetailDrawer';
 import {
   Building2,
   Coffee,
@@ -20,7 +21,6 @@ import {
   TrendingUp,
   BarChart3,
   Trophy,
-  Lock,
 } from 'lucide-react';
 
 interface PersonAttendance {
@@ -57,6 +57,7 @@ interface Section {
 interface OverviewData {
   date: string;
   serverTime: string;
+  department?: string | null;
   summary: { totalStaff: number; clockedIn: number; onBreak: number; notIn: number; onLeave: number };
   sections: Section[];
 }
@@ -258,6 +259,7 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
   const [nowTick, setNowTick] = useState(Date.now());
   const [pktClock, setPktClock] = useState('');
   const [tab, setTab] = useState<TabKey>('overview');
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -407,7 +409,11 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
     const a = p.attendance;
     const live = liveMinutes(p);
     return (
-      <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-400/70 via-amber-200/40 to-amber-400/30 shadow-lg shadow-amber-500/10">
+      <div
+        onClick={() => openPerson(p)}
+        title={`View ${p.name}'s details`}
+        className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-400/70 via-amber-200/40 to-amber-400/30 shadow-lg shadow-amber-500/10 cursor-pointer hover:shadow-xl hover:shadow-amber-500/20 transition-shadow"
+      >
         <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-4 h-full">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -449,7 +455,11 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
     const a = p.attendance;
     const live = liveMinutes(p);
     return (
-      <div className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm p-3.5 hover:shadow-md transition-shadow">
+      <div
+        onClick={() => openPerson(p)}
+        title={`View ${p.name}'s details`}
+        className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm p-3.5 hover:shadow-md hover:border-indigo-300/80 transition-all cursor-pointer"
+      >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <Avatar p={p} size="w-9 h-9" />
@@ -491,8 +501,7 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
   const activeSection = data?.sections.find((s) => s.department === tab);
   const deptTotals = activeSection?.totals;
 
-  const isLocked = (key: TabKey): boolean =>
-    user.role === 'HOD' && (key === 'Sales' || key === 'HR');
+  const openPerson = (p: Person) => setSelectedPerson(p);
 
   const Card: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }> = ({ title, icon, children, className }) => (
     <div className={`rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm p-4 ${className || ''}`}>
@@ -541,37 +550,33 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
       <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/80 border border-slate-200/70 overflow-x-auto">
         {([
           { key: 'overview' as TabKey, label: 'Overview', icon: <Activity className="w-3.5 h-3.5" /> },
-          { key: 'Tech' as TabKey, label: 'Tech', icon: <Building2 className="w-3.5 h-3.5" /> },
-          { key: 'Sales' as TabKey, label: 'Sales', icon: <TrendingUp className="w-3.5 h-3.5" /> },
-          { key: 'HR' as TabKey, label: 'HR', icon: <Users className="w-3.5 h-3.5" /> },
-        ]).map((t) => {
-          const locked = isLocked(t.key);
-          return (
+          ...(data?.department
+            ? [{ key: data.department as TabKey, label: data.department, icon: <Building2 className="w-3.5 h-3.5" /> }]
+            : ([
+                { key: 'Tech' as TabKey, label: 'Tech', icon: <Building2 className="w-3.5 h-3.5" /> },
+                { key: 'Sales' as TabKey, label: 'Sales', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+                { key: 'HR' as TabKey, label: 'HR', icon: <Users className="w-3.5 h-3.5" /> },
+              ] as { key: TabKey; label: string; icon: React.ReactNode }[])),
+        ]).map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            title={locked ? 'Restricted department' : undefined}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
               tab === t.key
-                ? locked
-                  ? 'bg-slate-500 text-white shadow-lg shadow-slate-500/20'
-                  : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
-                : locked
-                  ? 'text-slate-400 hover:text-slate-500 hover:bg-white/60'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
+                ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
             }`}
           >
-            {locked ? <Lock className="w-3.5 h-3.5" /> : t.icon}
+            {t.icon}
             {t.label}
-            {!locked && t.key !== 'overview' && data && (
+            {t.key !== 'overview' && data && (
               <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-mono ${tab === t.key ? 'bg-white/15 text-amber-300' : 'bg-slate-200/70 text-slate-500'}`}>
                 {data.sections.find((s) => s.department === t.key)?.totals.staff ?? 0}
               </span>
             )}
           </button>
-          );
-        })}
+        ))}
       </div>
 
       {isLoading && !data ? (
@@ -646,7 +651,12 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
                 {attentionPeople.map(({ p, kind }) => {
                   const meta = DEPT_META[p.department] || DEPT_META.Tech;
                   return (
-                    <div key={p.employeeId} className="flex items-center gap-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 px-3 py-2.5">
+                    <div
+                      key={p.employeeId}
+                      onClick={() => openPerson(p)}
+                      title={`View ${p.name}'s details`}
+                      className="flex items-center gap-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 px-3 py-2.5 cursor-pointer hover:border-indigo-300/80 hover:bg-white transition-colors"
+                    >
                       <Avatar p={p} size="w-8 h-8" />
                       <div className="min-w-0 flex-1">
                         <div className="text-[11px] font-bold text-slate-800 truncate">{p.name}</div>
@@ -668,16 +678,6 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
             )}
           </Card>
         </>
-      ) : isLocked(tab) ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-xl p-14 text-center shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto mb-3">
-            <Lock className="w-7 h-7 text-slate-400" />
-          </div>
-          <p className="text-sm font-bold text-slate-700">Department Restricted</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-            The <strong>{tab}</strong> department view is locked for your role. Company Overview and Tech stay available.
-          </p>
-        </div>
       ) : activeSection ? (
         <>
           {/* Dept mini KPIs */}
@@ -735,6 +735,14 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
       <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium pt-1">
         <Clock className="w-3 h-3" /> Auto-refreshes every 30 seconds · {data?.date}
       </div>
+
+      {selectedPerson && (
+        <HODEmployeeDetailDrawer
+          email={selectedPerson.email}
+          name={selectedPerson.name}
+          onClose={() => setSelectedPerson(null)}
+        />
+      )}
     </div>
   );
 };

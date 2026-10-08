@@ -5,7 +5,7 @@ import { Employee } from '../models/Employee.js';
 import { User } from '../models/User.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { notifyEmails, createNotification } from '../services/notificationService.js';
-import { canAccessEmployee, isHr } from '../utils/access.js';
+import { canAccessEmployee, isHr, hodDepartment, hodEmailsForDepartment, notifyDeptHods, deptHasApprover } from '../utils/access.js';
 import { LeaveType } from '../models/LeaveType.js';
 
 const router = Router();
@@ -15,19 +15,18 @@ const notifyHrAdmins = async (input: { title: string; message: string; relatedId
   await notifyEmails(hrUsers.map((u) => u.email), { ...input, type: 'leave' });
 };
 
-// HR acts as first approver when the employee has no DEPARTMENT_LEAD in their reporting chain (direct report to HR / unassigned)
+// HR acts on a Pending leave directly only when the employee's department has NO HOD
+// to take the first approval step (HOD step sits between employee and HR).
+// The department's own HOD is excluded, so an HOD's own leave falls through to HR.
 const hrCanProcessPending = async (leave: { employeeId: unknown; leaveType?: string }): Promise<boolean> => {
-  // Leave types flagged "no lead approval required" skip the lead step entirely
+  // Leave types flagged "no approval required" skip the manager step entirely
   if (leave.leaveType) {
     const lt = await LeaveType.findOne({ name: leave.leaveType }).select('requiresLeadApproval');
     if (lt && !lt.requiresLeadApproval) return true;
   }
   const employee = await Employee.findById(leave.employeeId as string);
-  if (!employee?.reportedTo) return true;
-  const leadEmployee = await Employee.findById(employee.reportedTo);
-  if (!leadEmployee) return true;
-  const leadUser = await User.findOne({ email: leadEmployee.email?.toLowerCase() }).select('role');
-  return leadUser?.role !== 'DEPARTMENT_LEAD' && leadUser?.role !== 'HOD';
+  if (!employee) return true;
+  return !(await deptHasApprover(employee.department, employee.email));
 };
 
 const createLeaveSchema = z.object({
@@ -136,19 +135,21 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
       status: 'Pending',
     });
 
-    // Notify lead (if employee reports to someone)
-    if (employee.reportedTo) {
-      const lead = await Employee.findById(employee.reportedTo);
-      if (lead) {
-        await createNotification({
-          userEmail: lead.email,
-          title: 'New Leave Request',
-          message: `${employee.name} requested ${parsed.data.leaveType} (${diffDays} day${diffDays > 1 ? 's' : ''}).`,
-          type: 'leave',
-          relatedId: String(leave._id),
-        });
-      }
-    }
+    // Notify the department HOD (falls back to HR when the department has no HOD)
+    await notifyDeptHods(
+      employee.department,
+      {
+        title: 'New Leave Request',
+        message: `${employee.name} requested ${parsed.data.leaveType} (${diffDays} day${diffDays > 1 ? 's' : ''}).`,
+        type: 'leave',
+        relatedId: String(leave._id),
+      },
+      () => notifyHrAdmins({
+        title: 'New Leave Request',
+        message: `${employee.name} (${employee.department}) requested ${parsed.data.leaveType} (${diffDays} day${diffDays > 1 ? 's' : ''}).`,
+        relatedId: String(leave._id),
+      })
+    );
 
     res.status(201).json({
       success: true,
@@ -221,6 +222,67 @@ router.get('/team/:leadEmail', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
+// GET /api/leaves/hod?status= - leave requests for the HOD's department
+router.get('/hod', authenticate, requireRole('HOD'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const dept = await hodDepartment(req);
+    if (!dept) {
+      res.json({ leaves: [], department: null });
+      return;
+    }
+    const status = String(req.query.status || 'ALL');
+    const members = await Employee.find({ department: dept, isActive: true }).select('_id');
+    const filter: Record<string, unknown> = { employeeId: { $in: members.map((m) => m._id) } };
+    if (status !== 'ALL') filter.status = status;
+
+    const leaves = await Leave.find(filter).sort({ createdAt: -1 }).populate('employeeId', 'name empId department jobTitle email');
+
+    res.json({
+      department: dept,
+      leaves: leaves.map((l) => ({
+        id: l._id,
+        employeeId: (l.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string; jobTitle: string; email?: string }),
+        employeeName: (l.employeeId as unknown as { name: string }).name,
+        employeeCode: (l.employeeId as unknown as { empId: string }).empId,
+        employeeEmail: (l.employeeId as unknown as { email?: string }).email,
+        department: (l.employeeId as unknown as { department: string }).department,
+        jobTitle: (l.employeeId as unknown as { jobTitle: string }).jobTitle,
+        leaveType: l.leaveType,
+        startDate: l.startDate,
+        endDate: l.endDate,
+        totalDays: l.totalDays,
+        reason: l.reason,
+        status: l.status,
+        leadApprovalNote: l.leadApprovalNote,
+        leadApprovalDate: l.leadApprovalDate,
+        hrApprovalNote: l.hrApprovalNote,
+        hrApprovalDate: l.hrApprovalDate,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('Get HOD leaves error:', err);
+    res.status(500).json({ error: 'Unable to load leave requests.' });
+  }
+});
+
+// GET /api/leaves/hod-count - pending leave count for the HOD sidebar badge
+router.get('/hod-count', authenticate, requireRole('HOD'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const dept = await hodDepartment(req);
+    if (!dept) {
+      res.json({ count: 0 });
+      return;
+    }
+    const members = await Employee.find({ department: dept, isActive: true }).select('_id');
+    const count = await Leave.countDocuments({ employeeId: { $in: members.map((m) => m._id) }, status: 'Pending' });
+    res.json({ count });
+  } catch (err) {
+    console.error('Get HOD leave count error:', err);
+    res.json({ count: 0 });
+  }
+});
+
 // GET /api/leaves/my/:email - employee's own leave history
 router.get('/my/:email', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -276,46 +338,53 @@ router.put('/:id/approve', authenticate, async (req: AuthRequest, res: Response)
     // Leave types without lead approval go straight to HR - leads cannot action them
     const leaveTypeDoc = await LeaveType.findOne({ name: leave.leaveType }).select('requiresLeadApproval');
     if (leaveTypeDoc && !leaveTypeDoc.requiresLeadApproval) {
-      res.status(400).json({ error: 'This leave type skips lead approval, HR decides it directly.' });
-      return;
-    }
-
-    const leadEmployee = await Employee.findOne({ email: req.user?.email?.toLowerCase() });
-    if (!leadEmployee) {
-      res.status(404).json({ error: 'Lead not found.' });
+      res.status(400).json({ error: 'This leave type skips manager approval, HR decides it directly.' });
       return;
     }
 
     const employee = await Employee.findById(leave.employeeId);
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found.' });
+      return;
+    }
 
-    // Only the assigned lead of this employee may approve
-    if (!employee || !employee.reportedTo || employee.reportedTo.toString() !== leadEmployee._id.toString()) {
-      res.status(403).json({ error: 'Only the assigned lead can approve this request.' });
+    // HOD of the employee's department is the first approver (lead step removed)
+    const hodDept = await hodDepartment(req);
+    if (!hodDept || hodDept !== employee.department) {
+      res.status(403).json({ error: 'Only the HOD of this department can approve this request.' });
+      return;
+    }
+    if (employee.email?.toLowerCase() === req.user!.email.toLowerCase()) {
+      res.status(403).json({ error: 'You cannot approve your own leave request.' });
+      return;
+    }
+
+    const approver = await Employee.findOne({ email: req.user!.email.toLowerCase() });
+    if (!approver) {
+      res.status(404).json({ error: 'Approver profile not found.' });
       return;
     }
 
     leave.status = 'Approved';
-    leave.leadApproverId = leadEmployee._id;
+    leave.leadApproverId = approver._id;
     leave.leadApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.leadApprovalNote = parsed.data?.note || '';
     await leave.save();
     await syncEmployeeLeaveStatus(leave.employeeId, leave.startDate);
 
     // Notify employee + HR admins
-    if (employee) {
-      await createNotification({
-        userEmail: employee.email,
-        title: 'Leave Approved by Lead',
-        message: `${leadEmployee.name} approved your ${leave.leaveType}. Waiting for HR final decision.`,
-        type: 'leave',
-        relatedId: String(leave._id),
-      });
-      await notifyHrAdmins({
-        title: 'Leave Awaiting HR Decision',
-        message: `${employee.name}'s ${leave.leaveType} was approved by lead and needs your final decision.`,
-        relatedId: String(leave._id),
-      });
-    }
+    await createNotification({
+      userEmail: employee.email,
+      title: 'Leave Approved by HOD',
+      message: `${approver.name} approved your ${leave.leaveType}. Waiting for HR final decision.`,
+      type: 'leave',
+      relatedId: String(leave._id),
+    });
+    await notifyHrAdmins({
+      title: 'Leave Awaiting HR Decision',
+      message: `${employee.name}'s ${leave.leaveType} was approved by ${employee.department} HOD and needs your final decision.`,
+      relatedId: String(leave._id),
+    });
 
     res.json({ success: true, message: 'Leave approved.' });
   } catch (err) {
@@ -342,41 +411,48 @@ router.put('/:id/reject', authenticate, async (req: AuthRequest, res: Response):
     // Leave types without lead approval go straight to HR - leads cannot action them
     const leaveTypeDoc = await LeaveType.findOne({ name: leave.leaveType }).select('requiresLeadApproval');
     if (leaveTypeDoc && !leaveTypeDoc.requiresLeadApproval) {
-      res.status(400).json({ error: 'This leave type skips lead approval, HR decides it directly.' });
-      return;
-    }
-
-    const leadEmployee = await Employee.findOne({ email: req.user?.email?.toLowerCase() });
-    if (!leadEmployee) {
-      res.status(404).json({ error: 'Lead not found.' });
+      res.status(400).json({ error: 'This leave type skips manager approval, HR decides it directly.' });
       return;
     }
 
     const employee = await Employee.findById(leave.employeeId);
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found.' });
+      return;
+    }
 
-    // Only the assigned lead of this employee may reject
-    if (!employee || !employee.reportedTo || employee.reportedTo.toString() !== leadEmployee._id.toString()) {
-      res.status(403).json({ error: 'Only the assigned lead can reject this request.' });
+    // HOD of the employee's department is the first approver (lead step removed)
+    const hodDept = await hodDepartment(req);
+    if (!hodDept || hodDept !== employee.department) {
+      res.status(403).json({ error: 'Only the HOD of this department can reject this request.' });
+      return;
+    }
+    if (employee.email?.toLowerCase() === req.user!.email.toLowerCase()) {
+      res.status(403).json({ error: 'You cannot reject your own leave request.' });
+      return;
+    }
+
+    const approver = await Employee.findOne({ email: req.user!.email.toLowerCase() });
+    if (!approver) {
+      res.status(404).json({ error: 'Approver profile not found.' });
       return;
     }
 
     leave.status = 'Rejected';
-    leave.leadApproverId = leadEmployee._id;
+    leave.leadApproverId = approver._id;
     leave.leadApprovalDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     leave.leadApprovalNote = parsed.data?.note || '';
     await leave.save();
     await syncEmployeeLeaveStatus(leave.employeeId);
 
     // Notify employee only (rejected leaves don't go to HR)
-    if (employee) {
-      await createNotification({
-        userEmail: employee.email,
-        title: 'Leave Rejected',
-        message: `${leadEmployee.name} rejected your ${leave.leaveType}.${parsed.data?.note ? ` Note: ${parsed.data.note}` : ''}`,
-        type: 'leave',
-        relatedId: String(leave._id),
-      });
-    }
+    await createNotification({
+      userEmail: employee.email,
+      title: 'Leave Rejected',
+      message: `${approver.name} rejected your ${leave.leaveType}.${parsed.data?.note ? ` Note: ${parsed.data.note}` : ''}`,
+      type: 'leave',
+      relatedId: String(leave._id),
+    });
 
     res.json({ success: true, message: 'Leave rejected.' });
   } catch (err) {
@@ -502,7 +578,7 @@ router.put('/:id/hr-inprocess', authenticate, requireRole('HR_ADMIN', 'SUPER_ADM
     if (leave.status !== 'Approved' && leave.status !== 'In Process') {
       const directToHr = leave.status === 'Pending' && (await hrCanProcessPending(leave));
       if (!directToHr) {
-        res.status(400).json({ error: 'Only lead-approved leaves can be processed.' });
+        res.status(400).json({ error: 'Only HOD-approved leaves can be processed.' });
         return;
       }
     }
@@ -563,7 +639,7 @@ router.put('/:id/hr-approve', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN
     if (leave.status !== 'Approved' && leave.status !== 'In Process') {
       const directToHr = leave.status === 'Pending' && (await hrCanProcessPending(leave));
       if (!directToHr) {
-        res.status(400).json({ error: 'Only lead-approved leaves can be approved by HR.' });
+        res.status(400).json({ error: 'Only HOD-approved leaves can be approved by HR.' });
         return;
       }
     }
@@ -626,7 +702,7 @@ router.put('/:id/hr-reject', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'
     if (leave.status !== 'Approved' && leave.status !== 'In Process') {
       const directToHr = leave.status === 'Pending' && (await hrCanProcessPending(leave));
       if (!directToHr) {
-        res.status(400).json({ error: 'Only lead-approved leaves can be rejected by HR.' });
+        res.status(400).json({ error: 'Only HOD-approved leaves can be rejected by HR.' });
         return;
       }
     }

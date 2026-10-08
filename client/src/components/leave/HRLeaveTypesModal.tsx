@@ -312,7 +312,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
 
               <div className="flex flex-wrap items-center gap-2">
                 {renderToggle('Paid', form.isPaid, (v) => setForm({ ...form, isPaid: v }))}
-                {renderToggle('Lead Approval', form.requiresLeadApproval, (v) => setForm({ ...form, requiresLeadApproval: v }))}
+                {renderToggle('HOD Approval', form.requiresLeadApproval, (v) => setForm({ ...form, requiresLeadApproval: v }))}
                 {renderToggle('Document Required', form.requiresDocument, (v) => setForm({ ...form, requiresDocument: v }))}
               </div>
 
@@ -426,7 +426,7 @@ export const HRLeaveTypesModal: React.FC<HRLeaveTypesModalProps> = ({ isOpen, on
                       <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 flex-wrap">
                         {type.requiresLeadApproval && (
                           <span className="flex items-center gap-1 text-slate-600">
-                            <CheckCircle className="w-3 h-3 text-emerald-600" /> Lead Approval
+                            <CheckCircle className="w-3 h-3 text-emerald-600" /> HOD Approval
                           </span>
                         )}
                         {type.requiresDocument && (

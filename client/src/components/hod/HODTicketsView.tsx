@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { User } from '../../types/auth';
-import { LeadDepartment } from '../../types/lead';
 import { StatusBadge } from '../hr/StatusBadge';
 import {
   Ticket,
-  ArrowLeft,
   Search,
   ChevronDown,
   AlertCircle,
@@ -22,9 +20,8 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 
-interface LeadTicketsViewProps {
+interface HODTicketsViewProps {
   user: User;
-  department: LeadDepartment;
   onNavigate: (route: string) => void;
 }
 
@@ -77,14 +74,9 @@ const PRIORITY_COLORS: Record<string, string> = {
   Urgent: 'bg-rose-100 text-rose-700',
 };
 
-export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
-  user,
-  department,
-  onNavigate,
-}) => {
+export const HODTicketsView: React.FC<HODTicketsViewProps> = ({ user, onNavigate }) => {
   const [viewTab, setViewTab] = useState<'team' | 'my'>('team');
 
-  // Shared state
   const [searchQuery, setSearchQuery] = useState('');
   const [tickets, setTickets] = useState<TicketRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,11 +84,9 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
   const [showDetailModal, setShowDetailModal] = useState<TicketRecord | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedNewStatus, setSelectedNewStatus] = useState('');
+  const [department, setDepartment] = useState<string | null>(null);
 
-  // Team tab state
   const [selectedStatus, setSelectedStatus] = useState('ALL');
-
-  // My tickets state
   const [mySelectedStatus, setMySelectedStatus] = useState('ALL');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formSubject, setFormSubject] = useState('');
@@ -106,6 +96,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
@@ -113,12 +104,13 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
     try {
       const url =
         viewTab === 'team'
-          ? `${API_BASE}/tickets/team/${user.email}?status=${selectedStatus}`
+          ? `${API_BASE}/tickets/hod?status=${selectedStatus}`
           : `${API_BASE}/tickets/my/${user.email}`;
       const res = await fetch(url, { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setTickets(data.tickets || []);
+      setDepartment(data.department || null);
     } catch {
       setError('Unable to load tickets.');
     } finally {
@@ -130,12 +122,15 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
     fetchTickets();
   }, [fetchTickets]);
 
-  // Live refresh: SSE notification ya window focus par tickets refetch
   useRealtimeRefresh(fetchTickets);
 
-  const filteredTickets = tickets.filter((t) =>
-    (viewTab === 'my' ? mySelectedStatus === 'ALL' || t.status === mySelectedStatus : true) &&
-    (!searchQuery || t.subject.toLowerCase().includes(searchQuery.toLowerCase()) || (t.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase()) || t.ticketCode.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredTickets = tickets.filter(
+    (t) =>
+      (viewTab === 'my' ? mySelectedStatus === 'ALL' || t.status === mySelectedStatus : true) &&
+      (!searchQuery ||
+        t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.ticketCode.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const summary = {
@@ -147,17 +142,26 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
   };
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
+    setStatusError(null);
+    setActionInProgress(ticketId);
     try {
       const res = await fetch(`${API_BASE}/tickets/${ticketId}/status`, {
         method: 'PUT',
         headers: postHeaders(),
         body: JSON.stringify({ status: newStatus }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setShowDetailModal(null);
         fetchTickets();
+      } else {
+        setStatusError(data.error || 'Could not update the status.');
       }
-    } catch { /* ignore */ }
+    } catch {
+      setStatusError('Could not update the status.');
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -245,20 +249,21 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
-
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => onNavigate('/lead/dashboard')}
+            onClick={() => onNavigate('/hod/dashboard')}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100/60 transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Tickets</h1>
-            <p className="text-xs text-slate-500 font-medium">{department} team support tickets & your own tickets</p>
+            <p className="text-xs text-slate-500 font-medium">
+              {department ? `${department} department tickets & your own tickets` : 'Loading department…'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -267,7 +272,6 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
               type="button"
               onClick={() => setShowCreateForm(true)}
               className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-colors cursor-pointer"
-              id="lead-create-ticket-btn"
             >
               <Plus className="w-4 h-4" />
               New Ticket
@@ -286,7 +290,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
       {/* Team / My Tabs */}
       <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/70 w-fit">
         {([
-          { id: 'team' as const, label: 'Team Tickets', icon: <Users className="w-3.5 h-3.5" /> },
+          { id: 'team' as const, label: 'Department Tickets', icon: <Users className="w-3.5 h-3.5" /> },
           { id: 'my' as const, label: 'My Tickets', icon: <UserIcon className="w-3.5 h-3.5" /> },
         ]).map((tab) => (
           <button
@@ -358,6 +362,14 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
           <p className="text-sm font-semibold text-rose-600">{error}</p>
           <button onClick={fetchTickets} className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer">Try again</button>
         </div>
+      ) : viewTab === 'team' && !department ? (
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <Ticket className="w-6 h-6 opacity-60" />
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-1">No department assigned</p>
+          <p className="text-xs text-slate-400">Ask HR to set your department on your employee record to unlock approvals.</p>
+        </div>
       ) : filteredTickets.length === 0 ? (
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-10 shadow-sm text-center">
           <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center mx-auto mb-3 text-slate-400">
@@ -367,7 +379,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
             {viewTab === 'team' ? 'No tickets' : 'No tickets yet'}
           </p>
           <p className="text-xs text-slate-400">
-            {viewTab === 'team' ? 'Team support tickets will appear here.' : 'Create a ticket and track its progress here.'}
+            {viewTab === 'team' ? 'Department support tickets will appear here.' : 'Create a ticket and track its progress here.'}
           </p>
         </div>
       ) : (
@@ -389,7 +401,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
                 {filteredTickets.map((ticket) => (
                   <tr
                     key={ticket.id}
-                    onClick={() => { setShowDetailModal(ticket); setSelectedNewStatus(ticket.status); }}
+                    onClick={() => { setShowDetailModal(ticket); setSelectedNewStatus(ticket.status); setStatusError(null); }}
                     className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                   >
                     <td className="px-5 py-3.5 text-xs font-bold text-indigo-600">{ticket.ticketCode}</td>
@@ -580,27 +592,33 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
 
             {/* Status Update */}
             {showDetailModal.status !== 'Cancelled' && !['Closed', 'Rejected'].includes(showDetailModal.status) ? (
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-bold text-slate-600">Update Status:</span>
-              <div className="relative flex-1">
-                <select
-                  value={selectedNewStatus}
-                  onChange={(e) => setSelectedNewStatus(e.target.value)}
-                  className="w-full appearance-none pl-2.5 pr-7 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] font-semibold text-slate-700 cursor-pointer"
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-600">Update Status:</span>
+                <div className="relative flex-1">
+                  <select
+                    value={selectedNewStatus}
+                    onChange={(e) => setSelectedNewStatus(e.target.value)}
+                    className="w-full appearance-none pl-2.5 pr-7 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] font-semibold text-slate-700 cursor-pointer"
+                  >
+                    {['Open', 'In Progress', 'Pending', 'Resolved'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▾</span>
+                </div>
+                <button
+                  onClick={() => handleUpdateStatus(showDetailModal.id, selectedNewStatus)}
+                  disabled={selectedNewStatus === showDetailModal.status || actionInProgress === showDetailModal.id}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
                 >
-                  {['Open', 'In Progress', 'Pending'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▾</span>
+                  {actionInProgress === showDetailModal.id ? '…' : 'Update'}
+                </button>
               </div>
-              <button
-                onClick={() => handleUpdateStatus(showDetailModal.id, selectedNewStatus)}
-                disabled={selectedNewStatus === showDetailModal.status}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-40"
-              >
-                Update
-              </button>
+              <p className="text-[10px] text-slate-400 mt-1.5">
+                “Resolved” forwards this ticket to HR for final closure.
+              </p>
+              {statusError && <p className="text-[11px] text-rose-600 font-semibold mt-1">{statusError}</p>}
             </div>
             ) : (
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 mb-3 text-center">
@@ -633,7 +651,7 @@ export const LeadTicketsView: React.FC<LeadTicketsViewProps> = ({
               )}
             </div>
 
-            {/* Add Message - read-only once ticket reaches a final status */}
+            {/* Add Message */}
             {['Closed', 'Rejected', 'Cancelled'].includes(showDetailModal.status) ? (
               <p className="pt-3 border-t border-slate-200/70 text-xs text-slate-400 italic">
                 This ticket is {showDetailModal.status}. Replies are disabled.

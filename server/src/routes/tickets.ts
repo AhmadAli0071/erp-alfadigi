@@ -5,7 +5,7 @@ import { Employee } from '../models/Employee.js';
 import { User } from '../models/User.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { notifyEmails, createNotification } from '../services/notificationService.js';
-import { canAccessEmployee, isHr } from '../utils/access.js';
+import { canAccessEmployee, isHr, hodDepartment, notifyDeptHods } from '../utils/access.js';
 
 const router = Router();
 
@@ -82,19 +82,21 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<
       throw new Error('Ticket creation failed.');
     }
 
-    // Notify lead (if employee reports to someone)
-    if (employee.reportedTo) {
-      const lead = await Employee.findById(employee.reportedTo);
-      if (lead) {
-        await createNotification({
-          userEmail: lead.email,
-          title: 'New Ticket Created',
-          message: `${employee.name} created ticket ${ticket.ticketCode}: "${ticket.subject}" (${ticket.priority}).`,
-          type: 'ticket',
-          relatedId: String(ticket._id),
-        });
-      }
-    }
+    // Notify the department HOD (falls back to HR when the department has no HOD)
+    await notifyDeptHods(
+      employee.department,
+      {
+        title: 'New Ticket Created',
+        message: `${employee.name} created ticket ${ticket.ticketCode}: "${ticket.subject}" (${ticket.priority}).`,
+        type: 'ticket',
+        relatedId: String(ticket._id),
+      },
+      () => notifyHrAdmins({
+        title: 'New Ticket Created',
+        message: `${employee.name} (${employee.department}) created ticket ${ticket.ticketCode}: "${ticket.subject}" (${ticket.priority}).`,
+        relatedId: String(ticket._id),
+      })
+    );
 
     res.status(201).json({
       success: true,
@@ -254,6 +256,71 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
 router.get('/hr-count', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const count = await Ticket.countDocuments({ status: { $nin: ['Closed', 'Rejected', 'Cancelled'] } });
+    res.json({ count });
+  } catch {
+    res.json({ count: 0 });
+  }
+});
+
+// GET /api/tickets/hod?status= - tickets for the HOD's department
+router.get('/hod', authenticate, requireRole('HOD'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const dept = await hodDepartment(req);
+    if (!dept) {
+      res.json({ tickets: [], department: null });
+      return;
+    }
+    const status = String(req.query.status || 'ALL');
+    const members = await Employee.find({ department: dept, isActive: true }).select('_id');
+    const filter: Record<string, unknown> = { employeeId: { $in: members.map((m) => m._id) } };
+    if (status !== 'ALL') filter.status = status;
+
+    const tickets = await Ticket.find(filter).sort({ createdAt: -1 }).populate('employeeId', 'name empId department');
+
+    res.json({
+      department: dept,
+      tickets: tickets.map((t) => ({
+        id: t._id,
+        ticketCode: t.ticketCode,
+        subject: t.subject,
+        description: t.description,
+        employeeId: (t.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string }),
+        employeeName: (t.employeeId as unknown as { name: string }).name,
+        employeeCode: (t.employeeId as unknown as { empId: string }).empId,
+        department: (t.employeeId as unknown as { department: string }).department || t.department,
+        ticketType: t.ticketType,
+        priority: t.priority,
+        status: t.status,
+        messages: t.messages.map((m, i) => ({
+          id: `msg_${i}`,
+          senderName: m.senderName,
+          senderRole: m.senderRole,
+          message: m.message,
+          timestamp: m.timestamp?.toISOString() || '',
+        })),
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('Get HOD tickets error:', err);
+    res.status(500).json({ error: 'Unable to load tickets.' });
+  }
+});
+
+// GET /api/tickets/hod-count - open tickets in the HOD's department (sidebar badge)
+router.get('/hod-count', authenticate, requireRole('HOD'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const dept = await hodDepartment(req);
+    if (!dept) {
+      res.json({ count: 0 });
+      return;
+    }
+    const members = await Employee.find({ department: dept, isActive: true }).select('_id');
+    const count = await Ticket.countDocuments({
+      employeeId: { $in: members.map((m) => m._id) },
+      status: { $nin: ['Closed', 'Rejected', 'Cancelled', 'Resolved'] },
+    });
     res.json({ count });
   } catch {
     res.json({ count: 0 });
@@ -478,18 +545,31 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
       return;
     }
 
-    // Only the ticket owner, their lead, or HR may change status
+    // Owner and lead may manage working statuses, but 'Resolved' (send to HR) is HOD/HR only
     const owner = await Employee.findById(ticket.employeeId);
     if (!owner) {
       res.status(404).json({ error: 'Ticket owner not found.' });
       return;
     }
-    if (!isHr(req) && owner.email.toLowerCase() !== req.user!.email.toLowerCase()) {
-      const requester = await Employee.findOne({ email: req.user!.email.toLowerCase(), isActive: true });
-      const isLead = !!requester && !!owner.reportedTo && owner.reportedTo.toString() === requester._id.toString();
-      if (!isLead) {
-        res.status(403).json({ error: 'Insufficient permissions.' });
-        return;
+
+    const isSelf = owner.email.toLowerCase() === req.user!.email.toLowerCase();
+    if (!isHr(req)) {
+      const hodDept = await hodDepartment(req);
+      const isDeptHod = !!hodDept && hodDept === owner.department && !isSelf;
+      if (!isDeptHod) {
+        // Leads and the owner can only manage working statuses, never endorse to HR
+        if (parsed.data.status === 'Resolved') {
+          res.status(403).json({ error: 'Only the department HOD or HR can forward this ticket to HR.' });
+          return;
+        }
+        if (!isSelf) {
+          const requester = await Employee.findOne({ email: req.user!.email.toLowerCase(), isActive: true });
+          const isLead = !!requester && !!owner.reportedTo && owner.reportedTo.toString() === requester._id.toString();
+          if (!isLead) {
+            res.status(403).json({ error: 'Insufficient permissions.' });
+            return;
+          }
+        }
       }
     }
 
@@ -503,7 +583,7 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
         'In Progress': 'is now In Progress',
         'Pending': 'is Pending',
         'Open': 'was reopened',
-        'Resolved': 'was Resolved by your lead, sent to HR for final decision',
+        'Resolved': 'was forwarded to HR for final decision',
       };
       await createNotification({
         userEmail: owner.email,
@@ -514,12 +594,12 @@ router.put('/:id/status', authenticate, async (req: AuthRequest, res: Response):
       });
     }
 
-    // If resolved by lead → notify HR admins
+    // If forwarded to HR by the HOD → notify HR admins
     if (parsed.data.status === 'Resolved') {
       const ownerName = owner?.name || 'An employee';
       await notifyHrAdmins({
         title: 'Ticket Awaiting HR Decision',
-        message: `${ownerName}'s ticket ${ticket.ticketCode} ("${ticket.subject}") was resolved by lead and needs your final decision.`,
+        message: `${ownerName}'s ticket ${ticket.ticketCode} ("${ticket.subject}") was forwarded to HR by the ${owner?.department} HOD and needs your final decision.`,
         relatedId: String(ticket._id),
       });
     }

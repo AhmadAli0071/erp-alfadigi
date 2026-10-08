@@ -267,7 +267,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
     {
       title: 'Pending Leaves',
       value: pendingLeavesCount,
-      context: 'Awaiting your approval',
+      context: 'Awaiting HOD review',
       icon: <Calendar className="w-5 h-5 text-orange-600" />,
       tagLabel: pendingLeavesCount > 0 ? 'Action Needed' : 'Clear',
       tagColor: pendingLeavesCount > 0 ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -367,7 +367,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
               <h4 className="text-sm font-bold text-slate-900 mb-1.5">Leave Requests</h4>
               <p className="text-xs text-slate-500 leading-relaxed min-h-[36px]">
                 {pendingLeavesCount > 0
-                  ? `${pendingLeavesCount} team leave request${pendingLeavesCount === 1 ? '' : 's'} pending your approval.`
+                  ? `${pendingLeavesCount} team leave request${pendingLeavesCount === 1 ? '' : 's'} awaiting your HOD review.`
                   : 'No leave requests waiting for your review.'}
               </p>
             </div>
@@ -495,7 +495,7 @@ export const LeadDashboardHomeView: React.FC<LeadDashboardHomeViewProps> = ({
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 tracking-tight">Pending Leave Requests</h3>
-                    <p className="text-xs text-slate-500">Waiting for your approval</p>
+                    <p className="text-xs text-slate-500">Awaiting your HOD review, then HR finalises</p>
                   </div>
                 </div>
                 <button type="button" onClick={() => onNavigate('/lead/leave')} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer">
