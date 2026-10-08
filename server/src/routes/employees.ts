@@ -10,6 +10,7 @@ import { Notification } from '../models/Notification.js';
 import { SalaryChangeRequest } from '../models/SalaryChangeRequest.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { canAccessEmployee, isHr } from '../utils/access.js';
+import { nextEmpId } from '../utils/empId.js';
 
 const router = Router();
 
@@ -289,8 +290,7 @@ router.post(
 
       let employee;
       for (let attempt = 0; attempt < 5; attempt++) {
-        const count = await Employee.countDocuments();
-        const empId = `EMP-${String(count + 1 + attempt).padStart(3, '0')}`;
+        const empId = await nextEmpId();
         try {
           employee = await Employee.create({
             userId: userId || undefined,

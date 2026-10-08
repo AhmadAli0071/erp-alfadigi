@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { User } from '../models/User.js';
 import { Employee } from '../models/Employee.js';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { nextEmpId } from '../utils/empId.js';
 
 const router = Router();
 
@@ -101,8 +102,7 @@ router.post(
     // Also create Employee record so user appears in employee directory
     let employeeCreated = false;
     for (let attempt = 0; attempt < 5 && !employeeCreated; attempt++) {
-      const empCount = await Employee.countDocuments();
-      const empId = `EMP-${String(empCount + 1 + attempt).padStart(3, '0')}`;
+      const empId = await nextEmpId();
       try {
         await Employee.create({
           userId: user._id,
@@ -120,7 +120,11 @@ router.post(
         employeeCreated = true;
       } catch (err) {
         const dupCode = (err as { code?: number })?.code;
-        if (dupCode !== 11000 || attempt === 4) throw err;
+        if (dupCode !== 11000 || attempt === 4) {
+          // never leave an account without its employee record
+          await User.deleteOne({ _id: user._id });
+          throw err;
+        }
       }
     }
 
