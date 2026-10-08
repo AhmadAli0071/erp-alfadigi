@@ -458,7 +458,7 @@ export const SuperAdminSalesView: React.FC<SuperAdminSalesViewProps> = ({ onNavi
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-white">Commission Summary, {monthLabel(month)}</h3>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent $500 · Lead $3000 · 10% of extra</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent PKR 500 · Lead PKR 3000 · 10% of extra</span>
         </div>
         {isLoading && summary.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
