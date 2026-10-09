@@ -68,9 +68,15 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
     // Join login accounts so HR can see and change roles (Employee has no role field)
     let roleByEmail = new Map<string, { id: string; role: string }>();
     if (isHr(req) && employees.length > 0) {
-      const emails = employees.map((e) => e.email.toLowerCase());
-      const users = await User.find({ email: { $in: emails } }).select('role');
-      roleByEmail = new Map(users.map((u) => [u.email.toLowerCase(), { id: u._id.toString(), role: u.role }]));
+      const emails = employees
+        .map((e) => e.email?.toLowerCase())
+        .filter((em): em is string => !!em);
+      const users = await User.find({ email: { $in: emails } }).select('role email');
+      roleByEmail = new Map(
+        users
+          .filter((u) => u.email)
+          .map((u) => [u.email.toLowerCase(), { id: u._id.toString(), role: u.role }])
+      );
     }
 
     res.json({
@@ -86,8 +92,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
         joinedDate: e.joinedDate,
         salary: canViewSalary(req, e.email) ? e.salary : undefined,
         status: e.status,
-        role: roleByEmail.get(e.email.toLowerCase())?.role ?? null,
-        accountId: roleByEmail.get(e.email.toLowerCase())?.id ?? null,
+        role: e.email ? roleByEmail.get(e.email.toLowerCase())?.role ?? null : null,
+        accountId: e.email ? roleByEmail.get(e.email.toLowerCase())?.id ?? null : null,
         reportedTo: e.reportedTo
           ? {
               id: (e.reportedTo as unknown as { _id: { toString(): string } })._id.toString(),
