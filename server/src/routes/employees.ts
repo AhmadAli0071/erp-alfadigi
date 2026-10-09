@@ -64,6 +64,15 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
     const employees = await Employee.find(filter)
       .populate('reportedTo', 'name empId jobTitle')
       .sort({ createdAt: -1 });
+
+    // Join login accounts so HR can see and change roles (Employee has no role field)
+    let roleByEmail = new Map<string, { id: string; role: string }>();
+    if (isHr(req) && employees.length > 0) {
+      const emails = employees.map((e) => e.email.toLowerCase());
+      const users = await User.find({ email: { $in: emails } }).select('role');
+      roleByEmail = new Map(users.map((u) => [u.email.toLowerCase(), { id: u._id.toString(), role: u.role }]));
+    }
+
     res.json({
       employees: employees.map((e) => ({
         id: e._id.toString(),
@@ -77,6 +86,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
         joinedDate: e.joinedDate,
         salary: canViewSalary(req, e.email) ? e.salary : undefined,
         status: e.status,
+        role: roleByEmail.get(e.email.toLowerCase())?.role ?? null,
+        accountId: roleByEmail.get(e.email.toLowerCase())?.id ?? null,
         reportedTo: e.reportedTo
           ? {
               id: (e.reportedTo as unknown as { _id: { toString(): string } })._id.toString(),

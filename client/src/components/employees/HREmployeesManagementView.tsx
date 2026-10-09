@@ -17,11 +17,13 @@ import {
   UserCog,
   CheckCircle2,
   Trash2,
+  Shield,
 } from 'lucide-react';
 import { Employee, DepartmentName } from '../../types/hr';
 import { StatusBadge } from '../hr/StatusBadge';
 import { HRCreateUserModal } from '../hr/HRCreateUserModal';
 import { HREmployeeEditModal } from '../hr/HREmployeeEditModal';
+import { HRChangeRoleModal } from '../hr/HRChangeRoleModal';
 import { authService } from '../../services/authService';
 
 const API_BASE = '/api';
@@ -78,6 +80,24 @@ const getAvatarTint = (id: string): string => {
 
 const formatValue = (val: number) => (val > 0 ? val : '-');
 
+const ROLE_DISPLAY: Record<string, { label: string; chip: string }> = {
+  SUPER_ADMIN: { label: 'Super Admin', chip: 'bg-rose-50 text-rose-600 border-rose-200' },
+  HR_ADMIN: { label: 'HR Admin', chip: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+  DEPARTMENT_LEAD: { label: 'Lead', chip: 'bg-sky-50 text-sky-600 border-sky-200' },
+  HOD: { label: 'HOD', chip: 'bg-amber-50 text-amber-600 border-amber-200' },
+  EMPLOYEE: { label: 'Employee', chip: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+};
+
+const RoleBadge: React.FC<{ role?: string | null }> = ({ role }) => {
+  if (!role) return <span className="text-[10px] text-slate-400 font-medium">-</span>;
+  const meta = ROLE_DISPLAY[role] || { label: role, chip: 'bg-slate-100 text-slate-600 border-slate-200' };
+  return (
+    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${meta.chip}`}>
+      {meta.label}
+    </span>
+  );
+};
+
 export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps> = ({
   onNavigateToDashboard,
 }) => {
@@ -88,6 +108,7 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
   const [error, setError] = useState<string | null>(null);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [roleChangeEmployee, setRoleChangeEmployee] = useState<Employee | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [department, setDepartment] = useState<DepartmentFilter>('ALL');
@@ -514,9 +535,12 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                         <span className="text-xs font-medium text-slate-600">{emp.department}</span>
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className="text-xs font-medium text-slate-600 truncate block max-w-[180px]">
-                          {emp.jobTitle}
-                        </span>
+                        <div className="space-y-1 max-w-[180px]">
+                          <RoleBadge role={emp.role} />
+                          <span className="text-[11px] font-medium text-slate-500 truncate block">
+                            {emp.jobTitle}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3.5 px-3">
                         {emp.reportedTo ? (
@@ -556,6 +580,17 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
+                          {emp.accountId && (
+                            <button
+                              type="button"
+                              onClick={() => setRoleChangeEmployee(emp)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                              title="Change role (Employee / Lead / HOD)"
+                              id={`btn-change-role-${emp.id}`}
+                            >
+                              <Shield className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDeletePermanent(emp)}
@@ -631,7 +666,10 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-bold text-slate-900 truncate">{emp.name}</div>
-                      <div className="text-[10px] font-mono text-slate-500">{emp.empId}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-mono text-slate-500">{emp.empId}</span>
+                        <RoleBadge role={emp.role} />
+                      </div>
                     </div>
                   </div>
                   <StatusBadge status={emp.status} size="xs" />
@@ -681,6 +719,16 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
                   >
                     Edit
                   </button>
+                  {emp.accountId && (
+                    <button
+                      type="button"
+                      onClick={() => setRoleChangeEmployee(emp)}
+                      className="flex-1 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-bold transition-colors cursor-pointer"
+                      title="Change role (Employee / Lead / HOD)"
+                    >
+                      Change Role
+                    </button>
+                  )}
                   {emp.status === 'Inactive' ? (
                     <button
                       type="button"
@@ -736,6 +784,18 @@ export const HREmployeesManagementView: React.FC<HREmployeesManagementViewProps>
           employee={editingEmployee}
           onClose={() => setEditingEmployee(null)}
           onUpdated={() => fetchEmployees(false)}
+        />
+      )}
+
+      {roleChangeEmployee && (
+        <HRChangeRoleModal
+          employee={roleChangeEmployee}
+          onClose={() => setRoleChangeEmployee(null)}
+          onRoleChanged={(msg) => {
+            setRoleChangeEmployee(null);
+            showToast(msg);
+            fetchEmployees(false);
+          }}
         />
       )}
     </div>

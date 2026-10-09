@@ -55,7 +55,7 @@ const ROLE_META: Record<UserRole, { label: string; chip: string; card: string; i
   EMPLOYEE: { label: 'Employee', chip: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/20', card: 'bg-emerald-400/[0.06] border-emerald-400/20', icon: UserCheck },
 };
 
-const ALL_ROLES: UserRole[] = ['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'EMPLOYEE'];
+const ALL_ROLES: UserRole[] = ['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'HOD', 'EMPLOYEE'];
 
 const generatePassword = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';

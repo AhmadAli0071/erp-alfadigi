@@ -322,11 +322,15 @@ router.put('/accounts/:id/status', authenticate, async (req: AuthRequest, res: R
   }
 });
 
-// PUT /api/auth/accounts/:id/role - change an account's role (Super Admin only)
+// Roles an HR Admin may assign (or hold) — HR_ADMIN / SUPER_ADMIN are Super Admin territory
+const HR_ASSIGNABLE_ROLES = ['EMPLOYEE', 'DEPARTMENT_LEAD', 'HOD'];
+
+// PUT /api/auth/accounts/:id/role - change an account's role
+// Super Admin: any role. HR Admin: only Employee / Department Lead / HOD (both current and new).
 router.put('/accounts/:id/role', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (!req.user || req.user.role !== 'SUPER_ADMIN') {
-      res.status(403).json({ error: 'Only a Super Admin can change account roles.' });
+    if (!req.user || (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'HR_ADMIN')) {
+      res.status(403).json({ error: 'Only a Super Admin or HR Admin can change account roles.' });
       return;
     }
     const parsed = accountRoleSchema.safeParse(req.body);
@@ -343,10 +347,38 @@ router.put('/accounts/:id/role', authenticate, async (req: AuthRequest, res: Res
       res.status(400).json({ error: 'You cannot change your own role.' });
       return;
     }
+    if (
+      req.user.role === 'HR_ADMIN' &&
+      (!HR_ASSIGNABLE_ROLES.includes(target.role) || !HR_ASSIGNABLE_ROLES.includes(parsed.data.role))
+    ) {
+      res.status(403).json({ error: 'HR Admin can only switch roles between Employee, Department Lead and HOD.' });
+      return;
+    }
+    const previousRole = target.role;
     target.role = parsed.data.role;
     await target.save();
-    console.warn(`[audit] Role changed to ${target.role}: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}`);
-    res.json({ success: true, account: { id: target._id.toString(), role: target.role } });
+
+    // Demote cascade: a Lead/HOD becoming a regular employee must lose their reporting line
+    let detachedReports = 0;
+    if (previousRole !== 'EMPLOYEE' && target.role === 'EMPLOYEE') {
+      const emp = await Employee.findOne({
+        $or: [{ userId: target._id }, { email: target.email.toLowerCase() }],
+      });
+      if (emp) {
+        const result = await Employee.updateMany({ reportedTo: emp._id }, { reportedTo: null });
+        detachedReports = result.modifiedCount || 0;
+      }
+    }
+
+    console.warn(
+      `[audit] Role changed ${previousRole} -> ${target.role}: ${target.email} by ${req.user.email} (${req.user.role}) from IP ${req.ip}` +
+        (detachedReports ? ` [detached ${detachedReports} direct report(s)]` : '')
+    );
+    res.json({
+      success: true,
+      account: { id: target._id.toString(), role: target.role },
+      detachedReports,
+    });
   } catch (err) {
     console.error('Account role error:', err);
     res.status(500).json({ error: 'Unable to change account role.' });

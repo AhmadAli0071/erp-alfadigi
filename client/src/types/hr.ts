@@ -33,6 +33,8 @@ export interface Employee {
   salary?: number;
   joinedDate: string;
   status: 'Active' | 'On Leave' | 'Inactive';
+  role?: UserRole | null;
+  accountId?: string | null;
   reportedTo?: {
     id: string;
     name: string;
