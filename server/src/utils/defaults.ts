@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   attendance: {
     shiftStart: '06:00 PM',
     shiftEnd: '03:00 AM',
+    autoClockOutTime: '08:00 AM',
     requiredWorkingHours: 7.67, // 7h 40m (460 min)
     gracePeriodMinutes: 10,
     breakDeductionEnabled: true,

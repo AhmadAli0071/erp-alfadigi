@@ -213,14 +213,41 @@ export const calcEmployeeMonth = async (
       continue;
     }
 
+    // Missed clock-out: auto clocked out by the system with 0 hours.
+    // Whole day is cut (unless HR manually set hours). Approved OT still counts.
+    if (rec.isAutoClockedOut && !rec.hoursManuallySet) {
+      const amount = Math.round(requiredMinutes * perMinuteRate);
+      shortfallMinutes += requiredMinutes;
+      log.push({
+        date: rec.date,
+        type: '-',
+        reason: 'Missed clock-out — auto clock-out, hours not counted',
+        minutes: requiredMinutes,
+        amount,
+      });
+      if (rec.otStatus === 'APPROVED' && rec.otApprovedMinutes > 0) {
+        otMinutes += rec.otApprovedMinutes;
+        log.push({
+          date: rec.date,
+          type: '+',
+          reason: `Approved overtime — ${fmtHM(rec.otApprovedMinutes)}`,
+          minutes: rec.otApprovedMinutes,
+          amount: Math.round(rec.otApprovedMinutes * perMinuteRate),
+        });
+      }
+      continue;
+    }
+
     // Present / Late / Half Day / Short Hours / WFH / On Duty — count actual minutes
     let dayMinutes = rec.workingMinutes || 0;
     if (isToday && rec.clockIn && !rec.clockOut && rec.clockInAt) {
-      // Open shift: live minutes so far (minus finished + ongoing breaks)
-      let live = Math.round((now.getTime() - new Date(rec.clockInAt).getTime()) / 60000);
-      live -= rec.breakMinutes || 0;
+      // Open shift: prior sessions' net minutes + current session so far
+      // (minus finished + ongoing breaks of the current session only —
+      // breaks before this session are already netted in workingMinutes)
+      const sessionBreaks = Math.max(0, (rec.breakMinutes || 0) - (rec.sessionBreakBase || 0));
+      let live = Math.round((now.getTime() - new Date(rec.clockInAt).getTime()) / 60000) - sessionBreaks;
       if (rec.breakStartedAt) live -= Math.round((now.getTime() - new Date(rec.breakStartedAt).getTime()) / 60000);
-      dayMinutes = Math.max(0, live);
+      dayMinutes = Math.max(0, (rec.workingMinutes || 0) + live);
       const runningShort = Math.max(0, requiredMinutes - dayMinutes);
       if (runningShort > 0) {
         log.push({ date: rec.date, type: '-', reason: `In shift (running) — ${fmtHM(dayMinutes)} of ${fmtHM(requiredMinutes)}`, minutes: runningShort, amount: Math.round(runningShort * perMinuteRate) });

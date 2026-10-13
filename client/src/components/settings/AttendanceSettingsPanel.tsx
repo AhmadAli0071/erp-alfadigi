@@ -74,6 +74,25 @@ export const AttendanceSettingsPanel: React.FC<AttendanceSettingsPanelProps> = (
           <p className="text-[11px] text-slate-400">Standard overnight shift punch-out cutoff time.</p>
         </div>
 
+        {/* Auto Clock-Out Time */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-rose-600" />
+            Auto Clock-Out Time
+          </label>
+          <input
+            type="text"
+            value={settings.autoClockOutTime ?? '08:00 AM'}
+            onChange={(e) => onChange({ autoClockOutTime: e.target.value })}
+            placeholder="08:00 AM"
+            className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-rose-500 font-mono"
+            id="attendance-auto-clockout-time"
+          />
+          <p className="text-[11px] text-slate-400">
+            Open shifts are auto clocked out at this time (PKT) with 0 working hours — missed clock-out is not counted in salary.
+          </p>
+        </div>
+
         {/* Required Working Hours */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">

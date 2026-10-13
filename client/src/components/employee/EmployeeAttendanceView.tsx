@@ -31,6 +31,7 @@ interface AttendanceRecord {
   clockOut: string | null;
   breakMinutes: number;
   workingMinutes: number;
+  isAutoClockedOut?: boolean;
   status: string;
   correctionStatus?: ReviewStatus;
   correctionReason?: string;
@@ -298,7 +299,21 @@ export const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({
                       <td className="py-3.5 px-4 text-xs font-semibold text-slate-700">{rec.date}</td>
                       <td className="py-3.5 px-3 text-xs text-slate-600">{rec.clockIn || '-'}</td>
                       <td className="py-3.5 px-3 text-xs text-slate-600">{rec.clockOut || '-'}</td>
-                      <td className="py-3.5 px-3 text-xs font-semibold text-slate-700">{formatMinutes(rec.workingMinutes)}</td>
+                      <td className="py-3.5 px-3 text-xs font-semibold text-slate-700">
+                        {rec.isAutoClockedOut ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-mono">00:00</span>
+                            <span
+                              title="You did not clock out on time. The system automatically clocked you out — these hours are not counted in your salary. Contact HR if this was a mistake."
+                              className="px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-bold uppercase tracking-wide"
+                            >
+                              Not counted
+                            </span>
+                          </span>
+                        ) : (
+                          formatMinutes(rec.workingMinutes)
+                        )}
+                      </td>
                       <td className="py-3.5 px-3 text-xs text-slate-500">{rec.breakMinutes} min</td>
                       <td className="py-3.5 px-3">
                         <StatusBadge status={rec.status as 'Present' | 'Absent' | 'Late' | 'Half Day' | 'On Leave'} size="xs" />

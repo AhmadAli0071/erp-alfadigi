@@ -17,6 +17,10 @@ export interface IAttendance extends Document {
   workingMinutes: number;
   /** HR set working minutes manually — auto clock-out sweep must not overwrite them */
   hoursManuallySet?: boolean;
+  /** Auto clocked out by the sweep (missed clock-out) — hours are 0 and not counted in salary */
+  isAutoClockedOut?: boolean;
+  /** breakMinutes accumulated before the current clock-in session (multi same-day sessions) */
+  sessionBreakBase?: number;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
   isAutoMarked?: boolean;
@@ -51,6 +55,8 @@ const AttendanceSchema = new Schema<IAttendance>(
     },
     workingMinutes: { type: Number, default: 0 },
     hoursManuallySet: { type: Boolean, default: false },
+    isAutoClockedOut: { type: Boolean, default: false },
+    sessionBreakBase: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Work From Home', 'On Duty', 'Pending OT', 'Short Hours'],

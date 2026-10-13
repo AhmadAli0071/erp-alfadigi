@@ -12,17 +12,20 @@ const DEPARTMENTS = ['Tech', 'Sales', 'HR'] as const;
 
 const MANAGER_ROLES = ['SUPER_ADMIN', 'HR_ADMIN', 'DEPARTMENT_LEAD', 'HOD'];
 
-/** Live working minutes for an open record: now - clockIn - finished breaks - ongoing break. */
+/** Live working minutes for an open record: prior sessions' net + now - current clockIn - current-session breaks. */
 const liveWorkingMinutes = (rec: IAttendance, now: Date): number => {
   if (!rec.clockIn) return 0;
   if (rec.clockOut) return rec.workingMinutes || 0;
   if (!rec.clockInAt) return 0;
+  // breakMinutes is a day-total; anything before this session is already netted
+  // into workingMinutes (prior sessions), so only the delta belongs to this one.
+  const sessionBreaks = Math.max(0, (rec.breakMinutes || 0) - (rec.sessionBreakBase || 0));
   let mins = Math.round((now.getTime() - new Date(rec.clockInAt).getTime()) / 60000);
-  mins -= rec.breakMinutes || 0;
+  mins -= sessionBreaks;
   if (rec.breakStartedAt) {
     mins -= Math.round((now.getTime() - new Date(rec.breakStartedAt).getTime()) / 60000);
   }
-  return Math.max(0, mins);
+  return Math.max(0, (rec.workingMinutes || 0) + mins);
 };
 
 /**

@@ -294,9 +294,17 @@ export const HRAttendanceTable: React.FC<HRAttendanceTableProps> = ({
 
                   {/* Working Hours */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                    <span className={`font-bold ${record.workingHours >= '08:00' ? 'text-emerald-600' : 'text-slate-600'}`}>
+                    <span className={`font-bold ${record.isAutoClockedOut ? 'text-rose-600' : record.workingHours >= '08:00' ? 'text-emerald-600' : 'text-slate-600'}`}>
                       {record.workingHours}
                     </span>
+                    {record.isAutoClockedOut && (
+                      <span
+                        title="Auto clock-out at 08:00 AM (PKT) — missed clock-out, hours not counted in salary."
+                        className="ml-1.5 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-bold uppercase tracking-wide"
+                      >
+                        Auto CO
+                      </span>
+                    )}
                   </td>
 
                   {/* Extra Hours */}

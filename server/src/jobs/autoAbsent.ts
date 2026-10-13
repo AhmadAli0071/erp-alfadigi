@@ -2,13 +2,15 @@ import cron from 'node-cron';
 import { Employee } from '../models/Employee.js';
 import { Attendance, IAttendance } from '../models/Attendance.js';
 import { Leave } from '../models/Leave.js';
+import { User } from '../models/User.js';
 import { notifyEmails } from '../services/notificationService.js';
 import { ensureSettings } from '../utils/defaults.js';
 
 /**
  * SHIFT: 6 PM – 3 AM (PKT, overnight) by default - configurable via
- * SystemSettings → attendance (shiftStart, shiftEnd, requiredWorkingHours,
- * gracePeriodMinutes). All job timing is derived from those settings.
+ * SystemSettings → attendance (shiftStart, shiftEnd, autoClockOutTime,
+ * requiredWorkingHours, gracePeriodMinutes). All job timing is derived
+ * from those settings.
  *
  * The auto-absent job runs daily at 22:05 UTC (3:05 AM PKT) - right after the
  * shift for the current UTC date has ended. Every active employee without an
@@ -16,8 +18,11 @@ import { ensureSettings } from '../utils/defaults.js';
  * approved leave covering that date).
  *
  * The attendance sweep runs every 5 minutes and:
- *  - Auto clock-outs records whose shift has ended without a manual clock-out
- *    (working minutes are computed from clock-in up to shift end, minus breaks)
+ *  - Auto clock-outs records still open at the auto clock-out time
+ *    (default 08:00 AM PKT, configurable). The employee MISSED their
+ *    clock-out: working minutes are zeroed, isAutoClockedOut is flagged,
+ *    and a warning notification goes to the employee + lead + HR
+ *    (hours are not counted in salary).
  *  - Flips employees back from 'On Leave' to 'Active' once their approved
  *    leave range has passed.
  */
@@ -63,6 +68,7 @@ const formatShiftTime = (h: number, m: number): string => {
 export interface AttendanceConfig {
   start: { h: number; m: number };
   end: { h: number; m: number };
+  autoOut: { h: number; m: number };
   requiredWorkingHours: number;
   graceMinutes: number;
 }
@@ -75,6 +81,7 @@ export const getAttendanceConfig = async (): Promise<AttendanceConfig> => {
     return {
       start: parseShiftTime(String(att.shiftStart || '06:00 PM')),
       end: parseShiftTime(String(att.shiftEnd || '03:00 AM')),
+      autoOut: parseShiftTime(String(att.autoClockOutTime || '08:00 AM')),
       requiredWorkingHours: Number(att.requiredWorkingHours) || 7.67,
       graceMinutes: Number(att.gracePeriodMinutes) || 10,
     };
@@ -82,6 +89,7 @@ export const getAttendanceConfig = async (): Promise<AttendanceConfig> => {
     return {
       start: { h: 18, m: 0 },
       end: { h: 3, m: 0 },
+      autoOut: { h: 8, m: 0 },
       requiredWorkingHours: 7.67,
       graceMinutes: 10,
     };
@@ -95,12 +103,13 @@ const pktToUtcMinutes = (pktH: number, pktM: number): { h: number; m: number } =
 };
 
 /**
- * The UTC datetime at which the shift that STARTED on the given UTC record
- * date ends (including any same-day/next-day wrap in UTC terms).
+ * The UTC datetime at which `time` (PKT) falls for the shift that STARTED
+ * on the given UTC record date (wraps to the next UTC day when needed —
+ * e.g. auto clock-out at 08:00 AM PKT for a 6 PM shift → next day 03:00 UTC).
  */
-const shiftEndUtcFor = (recordDate: string, cfg: AttendanceConfig): Date => {
+const pktTimeUtcFor = (recordDate: string, time: { h: number; m: number }, cfg: AttendanceConfig): Date => {
   const startUtc = pktToUtcMinutes(cfg.start.h, cfg.start.m);
-  const endUtc = pktToUtcMinutes(cfg.end.h, cfg.end.m);
+  const endUtc = pktToUtcMinutes(time.h, time.m);
   const base = new Date(`${recordDate}T00:00:00Z`);
   const start = new Date(base);
   start.setUTCHours(startUtc.h, startUtc.m, 0, 0);
@@ -109,6 +118,10 @@ const shiftEndUtcFor = (recordDate: string, cfg: AttendanceConfig): Date => {
   if (end <= start) end.setTime(end.getTime() + MS_DAY);
   return end;
 };
+
+/** UTC instant of the configured auto clock-out (default 08:00 AM PKT). */
+const autoClockOutUtcFor = (recordDate: string, cfg: AttendanceConfig): Date =>
+  pktTimeUtcFor(recordDate, cfg.autoOut, cfg);
 
 const statusForWorkingMinutes = (working: number, requiredHours: number): IAttendance['status'] => {
   // Half Day is no longer auto-assigned from working minutes —
@@ -126,45 +139,46 @@ export const runAttendanceSweep = async (): Promise<SweepResult> => {
   let autoClockedOut = 0;
   let backToActive = 0;
 
-  // 1) Auto clock-out: open-ended records whose shift has fully ended (+ grace)
+  // 1) Auto clock-out: open-ended records still open at the auto clock-out
+  //    time (default 08:00 AM PKT). Missed clock-out → 0 working hours.
   const openRecords = await Attendance.find({
     clockIn: { $exists: true, $ne: '' },
     $or: [{ clockOut: { $exists: false } }, { clockOut: '' }, { clockOut: null }],
   });
 
   for (const rec of openRecords) {
-    const shiftEnd = shiftEndUtcFor(utcDateFor(new Date(rec.clockInAt || rec.date)), cfg);
-    if (now.getTime() < shiftEnd.getTime() + cfg.graceMinutes * 60000) continue;
+    const autoOutAt = autoClockOutUtcFor(utcDateFor(new Date(rec.clockInAt || rec.date)), cfg);
+    if (now.getTime() < autoOutAt.getTime()) continue;
 
-    const clockInAt = rec.clockInAt ? new Date(rec.clockInAt) : null;
-    let working = clockInAt
-      ? Math.round((shiftEnd.getTime() - clockInAt.getTime()) / 60000)
-      : 0;
-    working -= rec.breakMinutes || 0;
-    if (working < 0) working = 0;
-
-    const endUtc = pktToUtcMinutes(cfg.end.h, cfg.end.m);
-    rec.clockOut = formatShiftTime(cfg.end.h, cfg.end.m);
-    rec.clockOutAt = shiftEnd;
+    const outText = formatShiftTime(cfg.autoOut.h, cfg.autoOut.m);
+    rec.clockOut = outText;
+    rec.clockOutAt = autoOutAt;
+    rec.isAutoClockedOut = true;
     // HR manually set working hours → punch-derived minutes must not overwrite them
     if (!rec.hoursManuallySet) {
-      rec.workingMinutes = working;
+      rec.workingMinutes = 0;
       // Respect explicit HR designations - WFH / On Duty / Late are not recomputed by minutes
       if (rec.status !== 'Work From Home' && rec.status !== 'On Duty' && rec.status !== 'Late') {
-        rec.status = statusForWorkingMinutes(working, cfg.requiredWorkingHours);
+        rec.status = statusForWorkingMinutes(0, cfg.requiredWorkingHours);
       }
     }
-    rec.notes = `${rec.notes ? `${rec.notes} | ` : ''}Auto clock-out at shift end (${formatShiftTime(endUtc.h, endUtc.m)} UTC scheduled)`;
+    rec.notes = `${rec.notes ? `${rec.notes} | ` : ''}Auto clock-out at ${outText} (PKT) — missed clock-out, hours not counted`;
     await rec.save();
     autoClockedOut++;
 
-    const emp = await Employee.findById(rec.employeeId).select('email');
+    const emp = await Employee.findById(rec.employeeId);
     if (emp) {
-      await notifyEmails([emp.email], {
-        title: 'Auto Clock-Out',
-        message: `You missed clock-out on ${rec.date}, system auto clocked you out at ${rec.clockOut} (PKT). Working hours: ${Math.floor(working / 60)}h ${working % 60}m.`,
-        type: 'attendance',
-      });
+      const title = 'Missed Clock-Out — Hours Not Counted';
+      const message = `You did not clock out on time for ${rec.date}. The system automatically clocked you out at ${outText} (PKT). Your working hours are not shown and will not be counted in your salary. If this happened by mistake, please contact HR.`;
+      // Employee directly
+      await notifyEmails([emp.email], { title, message, type: 'attendance', relatedId: String(rec._id) });
+      // Lead + HR (same helper pattern as routes/attendance.ts notifyAttendanceEvent)
+      if (emp.reportedTo) {
+        const lead = await Employee.findById(emp.reportedTo);
+        if (lead) await notifyEmails([lead.email], { title, message, type: 'attendance', relatedId: String(rec._id) });
+      }
+      const hrUsers = await User.find({ role: { $in: ['HR_ADMIN', 'SUPER_ADMIN'] }, isActive: true }).select('email');
+      await notifyEmails(hrUsers.map((u) => u.email), { title, message, type: 'attendance', relatedId: String(rec._id) });
     }
   }
 

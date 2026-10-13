@@ -40,6 +40,8 @@ interface TodayAttendance {
   breakType: BreakTypeKey | null;
   breakMinutesByType: TypeBudgets;
   workingMinutes: number;
+  isAutoClockedOut?: boolean;
+  sessionBreakBase?: number;
   status: string;
 }
 
@@ -95,6 +97,8 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockOutTime, setClockOutTime] = useState<string | null>(null);
   const [workingMinutes, setWorkingMinutes] = useState(0);
+  const [sessionBreakBase, setSessionBreakBase] = useState(0);
+  const [isAutoClockedOut, setIsAutoClockedOut] = useState(false);
   const [breakMinutes, setBreakMinutes] = useState(0);
   const [breakMinutesByType, setBreakMinutesByType] = useState<TypeBudgets>({ lunch: 0, namaz: 0, washroom: 0 });
   const [budgets, setBudgets] = useState<TypeBudgets>({ lunch: 60, namaz: 10, washroom: 10 });
@@ -138,7 +142,19 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           setClockState('working');
         }
         setWorkingMinutes(att.workingMinutes || 0);
+        setSessionBreakBase(att.sessionBreakBase || 0);
+        setIsAutoClockedOut(!!att.isAutoClockedOut);
         setBreakMinutes(att.breakMinutes || 0);
+      } else {
+        setClockState('not_clocked_in');
+        setClockInTime(null);
+        setClockInAt(null);
+        setClockOutTime(null);
+        setWorkingMinutes(0);
+        setSessionBreakBase(0);
+        setIsAutoClockedOut(false);
+        setBreakMinutes(0);
+        setBreakMinutesByType({ lunch: 0, namaz: 0, washroom: 0 });
       }
     } catch {
       // ignore
@@ -166,12 +182,21 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       setClockState('working');
       setClockInTime(data.attendance.clockIn);
       setClockInAt(new Date());
-      setBreakMinutes(0);
-      setBreakMinutesByType({ lunch: 0, namaz: 0, washroom: 0 });
       setBreakStartedAt(null);
       setActiveBreakType(null);
       setShowBreakMenu(false);
       setNowTick(Date.now());
+      if (data.reentered) {
+        // Same-day re-entry: prior sessions' minutes + day-total breaks must
+        // survive — resync from server instead of zeroing local state.
+        setIsAutoClockedOut(false);
+        await fetchTodayStatus();
+      } else {
+        setBreakMinutes(0);
+        setBreakMinutesByType({ lunch: 0, namaz: 0, washroom: 0 });
+        setSessionBreakBase(0);
+        setIsAutoClockedOut(false);
+      }
     } catch {
       setError('Unable to connect to server.');
     } finally {
@@ -389,13 +414,17 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   };
 
   /* ---------- Live timer calculation ---------- */
+  // Base = prior sessions' net minutes + (now − clockInAt) − current-session
+  // breaks (day-total breakMinutes minus the portion from prior sessions).
   const liveElapsed = (() => {
     if (!clockInAt || (clockState !== 'working' && clockState !== 'on_break')) return null;
+    const sessionBreakMs = Math.max(0, breakMinutes - sessionBreakBase) * 60000;
     const totalMs = nowTick - clockInAt.getTime();
     const breakMs =
-      breakMinutes * 60000 +
+      sessionBreakMs +
       (clockState === 'on_break' && breakStartedAt ? nowTick - breakStartedAt.getTime() : 0);
-    return Math.max(0, Math.floor((totalMs - breakMs) / 1000));
+    const priorMs = workingMinutes * 60000;
+    return Math.max(0, Math.floor((priorMs + totalMs - breakMs) / 1000));
   })();
 
   const liveBreakSeconds =
@@ -437,10 +466,15 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     },
     {
       label: 'Working Hours',
-      value: liveElapsed !== null ? formatSeconds(liveElapsed) : formatMinutes(workingMinutes),
-      icon: <Timer className={`w-4 h-4 text-indigo-600 ${liveElapsed !== null ? 'animate-pulse' : ''}`} />,
-      color: 'bg-indigo-50 border-indigo-200',
-      sub: null as string | null,
+      value:
+        isAutoClockedOut && liveElapsed === null
+          ? '—'
+          : liveElapsed !== null
+          ? formatSeconds(liveElapsed)
+          : formatMinutes(workingMinutes),
+      icon: <Timer className={`w-4 h-4 ${isAutoClockedOut && liveElapsed === null ? 'text-rose-600' : `text-indigo-600 ${liveElapsed !== null ? 'animate-pulse' : ''}`}`} />,
+      color: isAutoClockedOut && liveElapsed === null ? 'bg-rose-50 border-rose-200' : 'bg-indigo-50 border-indigo-200',
+      sub: isAutoClockedOut && liveElapsed === null ? 'Not counted (missed clock-out)' : null,
     },
     {
       label: 'Break',
@@ -468,6 +502,8 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       ? `Working since ${clockInTime}`
       : clockState === 'on_break'
       ? `On ${activeBreakLabel} break, relaxing?`
+      : isAutoClockedOut
+      ? 'Missed clock-out — hours not counted in salary'
       : `Shift completed, ${formatMinutes(workingMinutes)} worked`;
 
   return (
@@ -494,12 +530,18 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           <div className="flex items-start justify-center gap-8 sm:gap-14 flex-wrap">
             <RoundActionButton
               label="CLOCK IN"
-              sublabel={clockInTime ? `at ${clockInTime}` : 'Start shift'}
+              sublabel={
+                clockState === 'clocked_out'
+                  ? 'Resume shift'
+                  : clockInTime
+                  ? `at ${clockInTime}`
+                  : 'Start shift'
+              }
               icon={<Play className="w-9 h-9 fill-white drop-shadow" />}
               variant="emerald"
               onClick={handleClockIn}
-              disabled={clockState !== 'not_clocked_in'}
-              active={clockState === 'not_clocked_in'}
+              disabled={clockState !== 'not_clocked_in' && clockState !== 'clocked_out'}
+              active={clockState === 'not_clocked_in' || clockState === 'clocked_out'}
               loading={isLoading === 'in'}
             />
 
@@ -662,10 +704,21 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
 
           {clockState === 'clocked_out' && (
             <div className="mt-6 flex items-center justify-center">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-bold text-emerald-700">Shift completed for today. Great work!</span>
-              </div>
+              {isAutoClockedOut ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                  <span className="text-xs font-bold text-rose-700">
+                    You missed clock-out — working hours are not counted today. Contact HR if this was a mistake.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold text-emerald-700">
+                    Shift completed for today. Clock back in to resume.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

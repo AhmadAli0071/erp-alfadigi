@@ -15,6 +15,7 @@ export interface BreakTypeBudgets {
 export interface AttendanceSettings {
   shiftStart: string; // e.g. "06:00 PM"
   shiftEnd: string; // e.g. "03:00 AM"
+  autoClockOutTime: string; // e.g. "08:00 AM" — open shifts auto closed at this time (PKT), 0 hours
   requiredWorkingHours: number; // e.g. 8
   gracePeriodMinutes: number; // e.g. 5
   breakDeductionEnabled: boolean;

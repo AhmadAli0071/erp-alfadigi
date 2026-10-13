@@ -71,6 +71,7 @@ export interface AttendanceRecord {
   breakMinutesByType?: { lunch: number; namaz: number; washroom: number };
   workingHours: string; // e.g. "08:10"
   hoursManuallySet?: boolean; // true when HR set working hours directly
+  isAutoClockedOut?: boolean; // true when the sweep auto closed the record (missed clock-out, hours not counted)
   extraHours: string; // e.g. "00:10"
   shortHours: string; // e.g. "00:00"
   status: AttendanceStatus;

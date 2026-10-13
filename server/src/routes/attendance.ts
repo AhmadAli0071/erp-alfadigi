@@ -195,13 +195,33 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     const newStatus = late ? 'Late' : 'Present';
 
     const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
-    if (existing && existing.clockIn) {
+    if (existing && existing.clockIn && !existing.clockOut) {
       res.status(409).json({ error: 'Already clocked in today.', attendance: existing });
       return;
     }
 
     let attendance;
-    if (existing) {
+    let reentered = false;
+    if (existing && existing.clockIn && existing.clockOut) {
+      // Re-entry: employee accidentally clocked out earlier today — resume the
+      // shift as a new session on the SAME record (multi same-day sessions).
+      // Existing total hours stay in workingMinutes; breaks stay day-total.
+      reentered = true;
+      if (!existing.hoursManuallySet) {
+        existing.sessionBreakBase = existing.breakMinutes || 0;
+      }
+      existing.clockIn = timeStr;
+      existing.clockInAt = now;
+      existing.clockOut = '';
+      existing.clockOutAt = null;
+      existing.isAutoClockedOut = false;
+      // Re-entry is never "late" (it's a resume, not a first arrival) — but
+      // preserve explicit HR/late designations already on the record.
+      if (existing.status !== 'Late' && existing.status !== 'Work From Home' && existing.status !== 'On Duty') {
+        existing.status = 'Present';
+      }
+      attendance = await existing.save();
+    } else if (existing) {
       existing.clockIn = timeStr;
       existing.clockInAt = now;
       existing.status = newStatus;
@@ -216,7 +236,9 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       });
     }
 
-    if (late) {
+    if (reentered) {
+      await notifyAttendanceEvent(employee, 'Team Member Clocked In', `${employee.name} clocked in at ${timeStr} (resumed shift).`, String(attendance._id));
+    } else if (late) {
       await notifyAttendanceEvent(
         employee,
         'Late Arrival',
@@ -244,7 +266,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       await notifyAttendanceEvent(employee, 'Team Member Clocked In', `${employee.name} clocked in at ${timeStr}.`, String(attendance._id));
     }
 
-    res.json({ success: true, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: newStatus } });
+    res.json({ success: true, reentered, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: attendance.status } });
   } catch (err) {
     console.error('Clock in error:', err);
     res.status(500).json({ error: 'Unable to clock in.' });
@@ -308,9 +330,14 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
 
     const clockInMin = parseTime(attendance.clockIn);
     const clockOutMin = parseTime(timeStr);
-    let working = clockOutMin - clockInMin;
-    if (working < 0) working += 24 * 60; // overnight shift
-    working -= attendance.breakMinutes;
+    let sessionGross = clockOutMin - clockInMin;
+    if (sessionGross < 0) sessionGross += 24 * 60; // overnight shift
+    // Total = prior sessions' net minutes (workingMinutes while record was open)
+    //        + current session gross − breaks taken during the current session.
+    // breakMinutes is a day-total; sessionBreakBase holds the portion consumed
+    // before the current session started, so the delta belongs to this session.
+    const sessionBreaks = Math.max(0, (attendance.breakMinutes || 0) - (attendance.sessionBreakBase || 0));
+    let working = (attendance.workingMinutes || 0) + sessionGross - sessionBreaks;
     if (working < 0) working = 0; // never negative
     // Keep HR-set manual hours; otherwise use punch-derived minutes
     if (!attendance.hoursManuallySet) attendance.workingMinutes = working;
@@ -543,6 +570,9 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
         breakType: attendance.breakType || null,
         breakMinutesByType: attendance.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
         workingMinutes: attendance.workingMinutes,
+        isAutoClockedOut: !!attendance.isAutoClockedOut,
+        sessionBreakBase: attendance.sessionBreakBase || 0,
+        hoursManuallySet: !!attendance.hoursManuallySet,
         status: attendance.status,
       } : null,
     });
@@ -730,6 +760,7 @@ router.get('/history/:email', authenticate, async (req: AuthRequest, res: Respon
         clockOut: r.clockOut || null,
         breakMinutes: r.breakMinutes,
         workingMinutes: r.workingMinutes,
+        isAutoClockedOut: !!r.isAutoClockedOut,
         status: r.status,
         correctionStatus: r.correctionStatus || 'NONE',
         correctionReason: r.correctionReason || '',
@@ -1060,6 +1091,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         breakMinutesByType: r.breakMinutesByType || { lunch: 0, namaz: 0, washroom: 0 },
         workingHours: minutesToHM(worked),
         hoursManuallySet: !!r.hoursManuallySet,
+        isAutoClockedOut: !!r.isAutoClockedOut,
         extraHours: minutesToHM(extra),
         shortHours: minutesToHM(short),
         status: r.status,
@@ -1300,6 +1332,8 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
         attendance.workingMinutes = 0;
       }
       attendance.hoursManuallySet = false;
+      // HR fixed the punches → the auto clock-out (missed clock-out) no longer applies
+      attendance.isAutoClockedOut = false;
     }
 
     // HR manual working-hours override (wins over punch-derived minutes).
@@ -1308,6 +1342,8 @@ router.put('/hr/:id', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), asyn
     if (workingMinutes !== undefined) {
       hoursChanged = true;
       attendance.isAutoMarked = false;
+      // HR intervened on hours → auto clock-out flag no longer applies
+      attendance.isAutoClockedOut = false;
       if (workingMinutes === null) {
         attendance.hoursManuallySet = false;
         if (attendance.clockIn && attendance.clockOut) {
