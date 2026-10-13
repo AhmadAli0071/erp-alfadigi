@@ -25,6 +25,7 @@ export const FaceCaptureModal: React.FC<FaceCaptureModalProps> = ({ open, onCapt
   const [phase, setPhase] = useState<Phase>('starting');
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
 
   const stopStream = () => {
     if (streamRef.current) {
@@ -104,6 +105,7 @@ export const FaceCaptureModal: React.FC<FaceCaptureModalProps> = ({ open, onCapt
       stopStream();
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
+      setCapturedBlob(null);
       setPhase('starting');
       setError(null);
       return;
@@ -144,8 +146,8 @@ export const FaceCaptureModal: React.FC<FaceCaptureModalProps> = ({ open, onCapt
         }
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(URL.createObjectURL(blob));
+        setCapturedBlob(blob);
         setPhase('captured');
-        (capture as unknown as { _blob?: Blob })._blob = blob;
       },
       'image/jpeg',
       0.85
@@ -153,13 +155,16 @@ export const FaceCaptureModal: React.FC<FaceCaptureModalProps> = ({ open, onCapt
   };
 
   const submit = async () => {
-    const blob = (capture as unknown as { _blob?: Blob })._blob;
-    if (!blob) return;
+    const blob = capturedBlob;
+    if (!blob) {
+      setError('No photo captured. Please take a photo first.');
+      return;
+    }
     setPhase('uploading');
     setError(null);
     try {
       await onCapture(blob);
-      (capture as unknown as { _blob?: Blob })._blob = undefined;
+      setCapturedBlob(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
       setPhase('captured');
@@ -169,7 +174,7 @@ export const FaceCaptureModal: React.FC<FaceCaptureModalProps> = ({ open, onCapt
   const retake = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-    (capture as unknown as { _blob?: Blob })._blob = undefined;
+    setCapturedBlob(null);
     setPhase('live');
   };
 
