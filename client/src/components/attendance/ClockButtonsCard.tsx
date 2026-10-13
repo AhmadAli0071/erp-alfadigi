@@ -174,7 +174,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     fetchTodayStatus();
   }, [fetchTodayStatus]);
 
-  const startClockIn = async (photo?: Blob) => {
+  const startClockIn = async (photo?: Blob): Promise<{ ok: boolean; error?: string }> => {
     setIsLoading('in');
     setError(null);
     try {
@@ -195,15 +195,21 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           body: JSON.stringify({ employeeEmail: user.email }),
         });
       }
-      const data = await res.json();
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON response (e.g. HTML error page) — fall through */
+      }
       if (!res.ok) {
-        setError(data.error || 'Unable to clock in.');
-        return false;
+        const msg = (data.error as string) || `Unable to clock in. (HTTP ${res.status})`;
+        setError(msg);
+        return { ok: false, error: msg };
       }
       setClockState('working');
-      setClockInTime(data.attendance.clockIn);
+      setClockInTime((data.attendance as { clockIn?: string })?.clockIn || null);
       setClockInAt(new Date());
-      setFaceVerifyStatus(data.faceVerifyStatus || 'PENDING');
+      setFaceVerifyStatus((data.faceVerifyStatus as string) || 'PENDING');
       setBreakStartedAt(null);
       setActiveBreakType(null);
       setShowBreakMenu(false);
@@ -219,10 +225,11 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
         setSessionBreakBase(0);
         setIsAutoClockedOut(false);
       }
-      return true;
+      return { ok: true };
     } catch {
-      setError('Unable to connect to server.');
-      return false;
+      const msg = 'Unable to connect to server.';
+      setError(msg);
+      return { ok: false, error: msg };
     } finally {
       setIsLoading(null);
     }
@@ -824,9 +831,13 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
         open={showFaceModal}
         clockInTime={clockInTime}
         onCapture={async (blob) => {
-          const ok = await startClockIn(blob);
+          const result = await startClockIn(blob);
+          if (!result.ok) {
+            // Propagate the server error so the modal shows it + stays open
+            throw new Error(result.error || 'Clock-in failed.');
+          }
+          // Success: close the modal and return (parent already updated state)
           setShowFaceModal(false);
-          if (!ok) throw new Error('Clock-in failed');
         }}
         onClose={() => setShowFaceModal(false)}
       />

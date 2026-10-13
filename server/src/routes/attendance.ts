@@ -1,4 +1,4 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction, RequestHandler } from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
 import fs from 'fs';
@@ -111,6 +111,19 @@ const faceCaptureRequired = async (): Promise<boolean> => {
 
 const faceStatusOf = (rec: IAttendance): string => rec.faceCapture?.status || 'NONE';
 
+/**
+ * Wrap a multer middleware so its errors reach the Express async handler as
+ * normal (multer calls next(err) which otherwise skips async handlers).
+ */
+const withMulter = (mw: RequestHandler): RequestHandler => {
+  return (req, res, next) => {
+    mw(req, res, (err?: unknown) => {
+      if (err) next(err);
+      else next();
+    });
+  };
+};
+
 const breakStartSchema = z.object({
   employeeEmail: z.string().email(),
   breakType: z.enum(['LUNCH', 'NAMAZ', 'WASHROOM']),
@@ -219,22 +232,26 @@ const selfEmail = (req: AuthRequest): string => req.user!.email.toLowerCase();
 
 // POST /api/attendance/clock-in
 // Accepts JSON (no photo) or multipart with a `photo` file (face capture).
-router.post('/clock-in', authenticate, faceUpload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
-  const uploadedFile = (req.file as Express.Multer.File | undefined) || undefined;
-  const cleanupUpload = () => {
-    if (uploadedFile) {
-      try {
-        fs.unlinkSync(path.join(FACE_UPLOAD_ROOT, uploadedFile.filename));
-      } catch {
-        /* ignore */
+router.post(
+  '/clock-in',
+  authenticate,
+  withMulter(faceUpload.single('photo')),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const uploadedFile = (req.file as Express.Multer.File | undefined) || undefined;
+    const cleanupUpload = () => {
+      if (uploadedFile) {
+        try {
+          fs.unlinkSync(path.join(FACE_UPLOAD_ROOT, uploadedFile.filename));
+        } catch {
+          /* ignore */
+        }
       }
-    }
-  };
-  try {
-    // Multer body fields arrive as strings
-    const parsed = clockInSchema.safeParse({
-      employeeEmail: (req.body as Record<string, unknown>).employeeEmail,
-    });
+    };
+    try {
+      // Multer body fields arrive as strings
+      const parsed = clockInSchema.safeParse({
+        employeeEmail: (req.body as Record<string, unknown>).employeeEmail,
+      });
     if (!parsed.success) {
       cleanupUpload();
       res.status(400).json({ error: parsed.error.issues[0].message });
@@ -362,7 +379,8 @@ router.post('/clock-in', authenticate, faceUpload.single('photo'), async (req: A
     console.error('Clock in error:', err);
     res.status(500).json({ error: 'Unable to clock in.' });
   }
-});
+  },
+);
 
 // POST /api/attendance/clock-out
 router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {

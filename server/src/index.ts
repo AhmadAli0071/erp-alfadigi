@@ -81,7 +81,25 @@ if (hasClientBuild) {
 // Global error handler - ensures JSON responses instead of HTML error pages
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (res.headersSent) return;
+  // Multer errors (file size, mime type, etc.)
+  if (err && typeof err === 'object' && 'code' in err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({ error: 'Photo must be smaller than 2 MB.' });
+      return;
+    }
+    if (code === 'LIMIT_UNEXPECTED_FILE') {
+      res.status(400).json({ error: 'Unexpected file field.' });
+      return;
+    }
+  }
+  const message = err instanceof Error ? err.message : 'Internal server error.';
   console.error('Unhandled error:', err);
+  // Multer fileFilter throws plain Error — surface its message
+  if (err instanceof Error && /only jpeg|png|webp|image/i.test(err.message)) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
   res.status(500).json({ error: 'Internal server error.' });
 });
 
