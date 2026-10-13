@@ -2,6 +2,19 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export type BreakType = 'LUNCH' | 'NAMAZ' | 'WASHROOM';
 export type ReviewStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+export type FaceVerifyStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED';
+
+/** Face photo captured at clock-in; HR manually verifies who actually showed up. */
+export interface IFaceCapture {
+  /** Stored file basename under uploads/faces/<recordDate>/, e.g. "1697234_ab12cd.jpg" */
+  file?: string;
+  capturedAt?: Date | null;
+  status: FaceVerifyStatus;
+  /** HR email who approved/rejected */
+  verifiedBy?: string;
+  verifiedAt?: Date | null;
+  note?: string;
+}
 
 export interface IAttendance extends Document {
   employeeId: mongoose.Types.ObjectId;
@@ -21,6 +34,8 @@ export interface IAttendance extends Document {
   isAutoClockedOut?: boolean;
   /** breakMinutes accumulated before the current clock-in session (multi same-day sessions) */
   sessionBreakBase?: number;
+  /** Face photo captured at clock-in (present only when a photo was captured) */
+  faceCapture?: IFaceCapture | null;
   status: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave' | 'Work From Home' | 'On Duty' | 'Pending OT' | 'Short Hours';
   notes?: string;
   isAutoMarked?: boolean;
@@ -57,6 +72,20 @@ const AttendanceSchema = new Schema<IAttendance>(
     hoursManuallySet: { type: Boolean, default: false },
     isAutoClockedOut: { type: Boolean, default: false },
     sessionBreakBase: { type: Number, default: 0 },
+    faceCapture: {
+      type: new Schema<IFaceCapture>(
+        {
+          file: { type: String, default: '' },
+          capturedAt: { type: Date, default: null },
+          status: { type: String, enum: ['NONE', 'PENDING', 'VERIFIED', 'REJECTED', 'EXPIRED'], default: 'NONE' },
+          verifiedBy: { type: String, default: '' },
+          verifiedAt: { type: Date, default: null },
+          note: { type: String, default: '' },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
     status: {
       type: String,
       enum: ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Work From Home', 'On Duty', 'Pending OT', 'Short Hours'],

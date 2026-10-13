@@ -1,10 +1,13 @@
 import cron from 'node-cron';
+import path from 'path';
+import fs from 'fs';
 import { Employee } from '../models/Employee.js';
 import { Attendance, IAttendance } from '../models/Attendance.js';
 import { Leave } from '../models/Leave.js';
 import { User } from '../models/User.js';
 import { notifyEmails } from '../services/notificationService.js';
 import { ensureSettings } from '../utils/defaults.js';
+import { FACE_UPLOAD_ROOT } from '../utils/facePhotos.js';
 
 /**
  * SHIFT: 6 PM – 3 AM (PKT, overnight) by default - configurable via
@@ -248,6 +251,56 @@ export const runAbsentScan = async (explicitDate?: string): Promise<AbsentScanRe
   return { date, scannedEmployees: employees.length, markedAbsent, markedLeave };
 };
 
+/**
+ * Face-photo retention: photos are deleted the next day at 08:00 AM PKT
+ * (after HR has had the night + morning to verify). Any record still PENDING
+ * flips to EXPIRED so the HR queue drops it.
+ * Run daily at 03:10 UTC = 08:10 AM PKT.
+ */
+export const runFacePhotoRetention = async (): Promise<{ filesDeleted: number; expired: number }> => {
+  let filesDeleted = 0;
+  let expired = 0;
+
+  // Flip still-pending captures older than today → EXPIRED (drop from HR queue)
+  const todayUtc = utcDateFor(new Date());
+  const stale = await Attendance.find({
+    'faceCapture.status': 'PENDING',
+    date: { $lt: todayUtc },
+  });
+  for (const rec of stale) {
+    if (!rec.faceCapture) continue;
+    rec.faceCapture.status = 'EXPIRED';
+    await rec.save();
+    expired++;
+  }
+
+  // Delete any photo file no longer referenced by today's records.
+  // (Per policy every photo is removed the next morning, so only keep
+  //  files belonging to records dated today or later.)
+  try {
+    if (fs.existsSync(FACE_UPLOAD_ROOT)) {
+      for (const name of fs.readdirSync(FACE_UPLOAD_ROOT)) {
+        const stillNeeded = await Attendance.exists({
+          'faceCapture.file': name,
+          'faceCapture.status': { $in: ['PENDING', 'VERIFIED', 'REJECTED'] },
+        });
+        if (!stillNeeded) {
+          try {
+            fs.unlinkSync(path.join(FACE_UPLOAD_ROOT, name));
+            filesDeleted++;
+          } catch {
+            /* ignore individual file errors */
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[faceRetention] file sweep failed:', err);
+  }
+
+  return { filesDeleted, expired };
+};
+
 export const startAutoAbsentJob = (): void => {
   // 22:05 UTC = 3:05 AM PKT - daily, right after the 6 PM – 3 AM shift ends.
   cron.schedule('5 22 * * *', async () => {
@@ -274,4 +327,17 @@ export const startAutoAbsentJob = (): void => {
     }
   }, { timezone: 'UTC' });
   console.log('[attendanceSweep] Scheduled every 5 minutes');
+
+  // Face-photo retention: 03:10 UTC = 08:10 AM PKT daily
+  cron.schedule('10 3 * * *', async () => {
+    try {
+      const result = await runFacePhotoRetention();
+      if (result.filesDeleted > 0 || result.expired > 0) {
+        console.log(`[faceRetention] deleted ${result.filesDeleted} photos, expired ${result.expired} pending captures`);
+      }
+    } catch (err) {
+      console.error('[faceRetention] failed:', err);
+    }
+  }, { timezone: 'UTC' });
+  console.log('[faceRetention] Scheduled daily at 03:10 UTC (08:10 AM PKT)');
 };

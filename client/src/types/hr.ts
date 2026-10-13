@@ -54,6 +54,21 @@ export interface AttendanceTimelineEvent {
 
 export type ReviewStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export type FaceVerifyStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED';
+
+export interface FaceVerifyItem {
+  id: string;
+  attendanceId: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  department: DepartmentName;
+  dateLabel: string;
+  clockInTime: string;
+  submittedAt: string;
+  faceVerifyStatus: FaceVerifyStatus;
+}
+
 export interface AttendanceRecord {
   id: string;
   employeeId: string;
@@ -79,6 +94,7 @@ export interface AttendanceRecord {
   remarks?: string;
   isOvernight: boolean;
   timeline?: AttendanceTimelineEvent[];
+  faceVerifyStatus?: FaceVerifyStatus;
   correctionStatus?: ReviewStatus;
   correctionReason?: string;
   correctionNote?: string;
@@ -118,9 +134,11 @@ export interface CompanyAttendanceSummary {
   attendanceRate: number;
 }
 
+export type PendingActionType = 'LEAVE_REQUEST' | 'ATTENDANCE_CORRECTION' | 'EXTRA_HOURS' | 'FACE_VERIFICATION';
+
 export interface PendingActionItem {
   id: string;
-  type: 'LEAVE_REQUEST' | 'ATTENDANCE_CORRECTION' | 'EXTRA_HOURS';
+  type: PendingActionType;
   employeeId: string;
   employeeName: string;
   employeeCode: string;

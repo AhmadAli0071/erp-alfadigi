@@ -6,6 +6,7 @@ import {
   Clock,
   Timer,
   CalendarDays,
+  Camera,
   Ticket,
   BarChart3,
   Settings,
@@ -57,6 +58,12 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
       label: 'Attendance',
       icon: <Clock className="w-4 h-4 shrink-0" />,
       route: '/hr/attendance',
+    },
+    {
+      id: 'face-verification',
+      label: 'Face Verification',
+      icon: <Camera className="w-4 h-4 shrink-0" />,
+      route: '/hr/attendance/face-verification',
     },
     {
       id: 'live-roster',
@@ -120,6 +127,11 @@ export const HRSidebar: React.FC<HRSidebarProps> = ({
   const isRouteActive = (route: string) => {
     if (route === '/hr/dashboard') {
       return currentRoute === '/hr/dashboard' || currentRoute === '/' || !currentRoute;
+    }
+    if (route === '/hr/attendance') {
+      // Attendance active on /hr/attendance and its sub-routes,
+      // but NOT on the Face Verification page (which has its own item).
+      return currentRoute.startsWith('/hr/attendance') && !currentRoute.includes('/face-verification');
     }
     return currentRoute.startsWith(route);
   };

@@ -6,6 +6,7 @@ import {
   DepartmentName,
   DepartmentSummaryItem,
   Employee,
+  FaceVerifyItem,
   GlobalSearchResult,
   HRActivityItem,
   HRDashboardKPIs,
@@ -73,6 +74,7 @@ export interface AttendanceReviewItem {
 interface PendingReviewResponse {
   corrections?: { count: number; items?: AttendanceReviewItem[] };
   overtime?: { count: number; totalMinutes: number; employees: number; items?: AttendanceReviewItem[] };
+  faceVerifications?: { count: number; items?: FaceVerifyItem[] };
 }
 
 interface HrLeaveRecord {
@@ -214,6 +216,7 @@ class HRDashboardService {
     const notifications = notificationsRes?.notifications ?? [];
     const pendingCorrections = reviewRes?.corrections ?? { count: 0, items: [] };
     const pendingOvertime = reviewRes?.overtime ?? { count: 0, totalMinutes: 0, employees: 0, items: [] };
+    const pendingFaceVerifications = reviewRes?.faceVerifications ?? { count: 0, items: [] };
 
     this.employeesState = employees;
     this.attendanceState = records;
@@ -268,7 +271,22 @@ class HRDashboardService {
       extraTimeAmount: formatHM(o.extraMinutes),
     }));
 
-    const pendingActions: PendingActionItem[] = [...correctionActions, ...overtimeActions, ...leaveActions];
+    // ----- Pending actions: face verifications submitted by employees -----
+    const faceActions: PendingActionItem[] = (pendingFaceVerifications.items ?? []).map((f) => ({
+      id: String(f.attendanceId || f.id),
+      type: 'FACE_VERIFICATION',
+      employeeId: f.employeeId,
+      employeeName: f.employeeName,
+      employeeCode: f.employeeCode,
+      department: f.department,
+      requestType: 'Face Verification',
+      details: `Clocked in at ${f.clockInTime} — photo awaiting visual check`,
+      date: f.dateLabel,
+      status: 'Pending',
+      submissionTime: timeAgo(f.submittedAt) || 'Recently',
+    }));
+
+    const pendingActions: PendingActionItem[] = [...correctionActions, ...overtimeActions, ...leaveActions, ...faceActions];
     this.pendingActionsState = pendingActions;
 
     // ----- Attendance KPIs (today) -----

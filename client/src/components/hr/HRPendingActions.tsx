@@ -3,6 +3,7 @@ import { PendingActionItem } from '../../types/hr';
 import {
   AlertCircle,
   Calendar,
+  Camera,
   Clock,
   Sparkles,
   ChevronRight,
@@ -22,10 +23,12 @@ export const HRPendingActions: React.FC<HRPendingActionsProps> = ({
   const correctionItem = pendingActions.find((a) => a.type === 'ATTENDANCE_CORRECTION');
   const leaveItem = pendingActions.find((a) => a.type === 'LEAVE_REQUEST');
   const overtimeItem = pendingActions.find((a) => a.type === 'EXTRA_HOURS');
+  const faceItem = pendingActions.find((a) => a.type === 'FACE_VERIFICATION');
 
   const correctionCount = pendingActions.filter((a) => a.type === 'ATTENDANCE_CORRECTION' && a.status === 'Pending').length;
   const leaveCount = pendingActions.filter((a) => a.type === 'LEAVE_REQUEST' && a.status === 'Pending').length;
   const overtimeCount = pendingActions.filter((a) => a.type === 'EXTRA_HOURS' && a.status === 'Pending').length;
+  const faceCount = pendingActions.filter((a) => a.type === 'FACE_VERIFICATION' && a.status === 'Pending').length;
 
   const actionCards = [
     {
@@ -64,6 +67,18 @@ export const HRPendingActions: React.FC<HRPendingActionsProps> = ({
       actionToReview: overtimeItem || null,
       route: '/hr/attendance/overtime',
     },
+    {
+      id: 'action-card-face-verification',
+      title: 'Face Verification',
+      count: faceCount > 0 ? `${faceCount} pending` : 'No pending data',
+      countNum: faceCount,
+      explanation: faceCount > 0 ? 'Clock-in photos awaiting visual check.' : 'No face photos requiring review.',
+      icon: <Camera className="w-5 h-5 text-purple-600" />,
+      tagColor: faceCount > 0 ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-slate-100/60 text-slate-500 border-slate-200/80',
+      buttonBg: 'bg-purple-600 hover:bg-purple-500 text-white',
+      actionToReview: faceItem || null,
+      route: '/hr/attendance/face-verification',
+    },
   ];
 
   const handleReviewClick = (card: typeof actionCards[0]) => {
@@ -88,8 +103,8 @@ export const HRPendingActions: React.FC<HRPendingActionsProps> = ({
         </div>
       </div>
 
-      {/* 3 Compact Action Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 4 Compact Action Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {actionCards.map((card) => (
           <div
             key={card.id}

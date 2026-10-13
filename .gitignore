@@ -6,6 +6,7 @@ client/dist/
 client/.vite/
 server/node_modules/
 server/dist/
+server/uploads/faces/
 server/.env
 server/server.log
 server/server.err.log

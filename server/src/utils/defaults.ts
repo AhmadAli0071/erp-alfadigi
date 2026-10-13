@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
     shiftStart: '06:00 PM',
     shiftEnd: '03:00 AM',
     autoClockOutTime: '08:00 AM',
+    faceCaptureEnabled: true,
     requiredWorkingHours: 7.67, // 7h 40m (460 min)
     gracePeriodMinutes: 10,
     breakDeductionEnabled: true,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AttendanceSettings, BreakTypeBudgets } from '../../types/settings';
-import { Clock, ShieldAlert, Coffee, Hourglass, Check, Utensils, Moon, Toilet } from 'lucide-react';
+import { Clock, ShieldAlert, Coffee, Hourglass, Check, Utensils, Moon, Toilet, Camera } from 'lucide-react';
 
 interface AttendanceSettingsPanelProps {
   settings: AttendanceSettings;
@@ -135,6 +135,33 @@ export const AttendanceSettingsPanel: React.FC<AttendanceSettingsPanelProps> = (
           </div>
           <p className="text-[11px] text-slate-400">Punches within this window (e.g. up to 6:05 PM) are marked Present.</p>
         </div>
+      </div>
+
+      {/* Face Capture */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <div className="text-xs font-semibold text-slate-900 flex items-center gap-2">
+            <Camera className="w-4 h-4 text-indigo-600" />
+            Face Capture at Clock-In
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Employee must capture a photo when clocking in. HR verifies who actually showed up. Photos are removed the next morning at 08:00 AM PKT.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange({ faceCaptureEnabled: !settings.faceCaptureEnabled })}
+          className={`w-11 h-6 rounded-full p-1 transition-colors relative cursor-pointer shrink-0 ${
+            settings.faceCaptureEnabled ? 'bg-indigo-600' : 'bg-slate-200/50'
+          }`}
+          id="toggle-face-capture"
+        >
+          <div
+            className={`w-4 h-4 rounded-full bg-white transition-transform ${
+              settings.faceCaptureEnabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
       </div>
 
       {/* Break Type Budgets */}

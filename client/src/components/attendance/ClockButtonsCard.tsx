@@ -13,7 +13,9 @@ import {
   Toilet,
   Lock,
   ChevronUp,
+  Camera,
 } from 'lucide-react';
+import { FaceCaptureModal } from './FaceCaptureModal';
 
 interface ClockButtonsCardProps {
   user: User;
@@ -42,6 +44,7 @@ interface TodayAttendance {
   workingMinutes: number;
   isAutoClockedOut?: boolean;
   sessionBreakBase?: number;
+  faceVerifyStatus?: string;
   status: string;
 }
 
@@ -109,6 +112,9 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
   const [nowTick, setNowTick] = useState<number>(Date.now());
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [faceCaptureRequired, setFaceCaptureRequired] = useState(false);
+  const [faceVerifyStatus, setFaceVerifyStatus] = useState<string | null>(null);
+  const [showFaceModal, setShowFaceModal] = useState(false);
 
   // Live ticking timer - updates every second
   useEffect(() => {
@@ -124,8 +130,10 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       if (!res.ok) return;
       const data = await res.json();
       if (data.breakBudgets) setBudgets(data.breakBudgets);
+      setFaceCaptureRequired(!!data.faceCaptureRequired);
       if (data.attendance) {
         const att: TodayAttendance = data.attendance;
+        setFaceVerifyStatus(att.faceVerifyStatus || null);
         if (att.clockIn) {
           setClockInTime(att.clockIn);
           if (att.clockInAt) setClockInAt(new Date(att.clockInAt));
@@ -147,6 +155,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
         setBreakMinutes(att.breakMinutes || 0);
       } else {
         setClockState('not_clocked_in');
+        setFaceVerifyStatus(null);
         setClockInTime(null);
         setClockInAt(null);
         setClockOutTime(null);
@@ -165,23 +174,36 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
     fetchTodayStatus();
   }, [fetchTodayStatus]);
 
-  const handleClockIn = async () => {
+  const startClockIn = async (photo?: Blob) => {
     setIsLoading('in');
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/attendance/clock-in`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ employeeEmail: user.email }),
-      });
+      let res: Response;
+      if (photo) {
+        const fd = new FormData();
+        fd.append('employeeEmail', user.email);
+        fd.append('photo', photo, 'face.jpg');
+        res = await fetch(`${API_BASE}/attendance/clock-in`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: fd,
+        });
+      } else {
+        res = await fetch(`${API_BASE}/attendance/clock-in`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getHeaders() },
+          body: JSON.stringify({ employeeEmail: user.email }),
+        });
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Unable to clock in.');
-        return;
+        return false;
       }
       setClockState('working');
       setClockInTime(data.attendance.clockIn);
       setClockInAt(new Date());
+      setFaceVerifyStatus(data.faceVerifyStatus || 'PENDING');
       setBreakStartedAt(null);
       setActiveBreakType(null);
       setShowBreakMenu(false);
@@ -197,11 +219,22 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
         setSessionBreakBase(0);
         setIsAutoClockedOut(false);
       }
+      return true;
     } catch {
       setError('Unable to connect to server.');
+      return false;
     } finally {
       setIsLoading(null);
     }
+  };
+
+  const handleClockIn = async () => {
+    setError(null);
+    if (faceCaptureRequired) {
+      setShowFaceModal(true);
+      return;
+    }
+    await startClockIn();
   };
 
   const handleBreakStart = async (type: BreakTypeKey) => {
@@ -463,6 +496,38 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
       icon: <Square className="w-4 h-4 text-rose-600" />,
       color: 'bg-rose-50 border-rose-200',
       sub: null as string | null,
+    },
+    {
+      label: 'Face Verification',
+      value:
+        faceVerifyStatus === 'VERIFIED'
+          ? 'Verified'
+          : faceVerifyStatus === 'PENDING'
+          ? 'Pending'
+          : faceVerifyStatus === 'REJECTED'
+          ? 'Rejected'
+          : faceVerifyStatus === 'EXPIRED'
+          ? 'Expired'
+          : '—',
+      icon:
+        faceVerifyStatus === 'VERIFIED' ? (
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        ) : faceVerifyStatus === 'REJECTED' ? (
+          <AlertCircle className="w-4 h-4 text-rose-600" />
+        ) : faceVerifyStatus === 'PENDING' ? (
+          <Camera className="w-4 h-4 text-amber-600" />
+        ) : (
+          <Camera className="w-4 h-4 text-slate-400" />
+        ),
+      color:
+        faceVerifyStatus === 'VERIFIED'
+          ? 'bg-emerald-50 border-emerald-200'
+          : faceVerifyStatus === 'REJECTED'
+          ? 'bg-rose-50 border-rose-200'
+          : faceVerifyStatus === 'PENDING'
+          ? 'bg-amber-50 border-amber-200'
+          : 'bg-slate-50 border-slate-200',
+      sub: faceVerifyStatus === 'PENDING' ? 'Photo under HR review' : null,
     },
     {
       label: 'Working Hours',
@@ -739,7 +804,7 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
 
       {/* Summary Cards */}
       {showSummaryCards && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
           {summaryCards.map((card) => (
             <div key={card.label} className="p-4 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -754,6 +819,17 @@ export const ClockButtonsCard: React.FC<ClockButtonsCardProps> = ({
           ))}
         </div>
       )}
+
+      <FaceCaptureModal
+        open={showFaceModal}
+        clockInTime={clockInTime}
+        onCapture={async (blob) => {
+          const ok = await startClockIn(blob);
+          setShowFaceModal(false);
+          if (!ok) throw new Error('Clock-in failed');
+        }}
+        onClose={() => setShowFaceModal(false)}
+      />
     </div>
   );
 };

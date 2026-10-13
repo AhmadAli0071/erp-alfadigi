@@ -1,13 +1,18 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import multer from 'multer';
 import { z } from 'zod';
-import { Attendance, BreakType } from '../models/Attendance.js';
+import { Attendance, IAttendance, BreakType } from '../models/Attendance.js';
 import { Employee } from '../models/Employee.js';
 import { User } from '../models/User.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { runAbsentScan } from '../jobs/autoAbsent.js';
 import { getAttendanceConfig } from '../jobs/autoAbsent.js';
 import { canAccessEmployee, isHr } from '../utils/access.js';
+import { FACE_UPLOAD_ROOT } from '../utils/facePhotos.js';
 import { notifyEmails, createNotification } from '../services/notificationService.js';
 import { ensureSettings } from '../utils/defaults.js';
 
@@ -65,6 +70,46 @@ const isLateClockIn = async (now: Date, shiftStartOverride?: string): Promise<{ 
 const clockInSchema = z.object({
   employeeEmail: z.string().email(),
 });
+
+/* ------------------------------------------------------------------ */
+/* FACE CAPTURE (clock-in photo → HR manually verifies who showed up)  */
+/* ------------------------------------------------------------------ */
+
+const ALLOWED_FACE_MIMES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+const faceUpload = multer({
+  storage: multer.diskStorage({
+    // destination is per-date; filename = <timestamp>_<rand>.<ext>
+    destination: (_req, _file, cb) => cb(null, FACE_UPLOAD_ROOT),
+    filename: (_req, file, cb) => {
+      const ext = ALLOWED_FACE_MIMES[file.mimetype] || 'jpg';
+      const name = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}.${ext}`;
+      cb(null, name);
+    },
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_FACE_MIMES[file.mimetype]) cb(null, true);
+    else cb(new Error('Only JPEG, PNG or WebP images are allowed.'));
+  },
+});
+
+/** Face capture required? (from settings; default true) */
+const faceCaptureRequired = async (): Promise<boolean> => {
+  try {
+    const s = await ensureSettings();
+    const att = (s.attendance || {}) as Record<string, unknown>;
+    return att.faceCaptureEnabled !== false;
+  } catch {
+    return true;
+  }
+};
+
+const faceStatusOf = (rec: IAttendance): string => rec.faceCapture?.status || 'NONE';
 
 const breakStartSchema = z.object({
   employeeEmail: z.string().email(),
@@ -173,18 +218,42 @@ const teamAttendanceSchema = z.object({
 const selfEmail = (req: AuthRequest): string => req.user!.email.toLowerCase();
 
 // POST /api/attendance/clock-in
-router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// Accepts JSON (no photo) or multipart with a `photo` file (face capture).
+router.post('/clock-in', authenticate, faceUpload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
+  const uploadedFile = (req.file as Express.Multer.File | undefined) || undefined;
+  const cleanupUpload = () => {
+    if (uploadedFile) {
+      try {
+        fs.unlinkSync(path.join(FACE_UPLOAD_ROOT, uploadedFile.filename));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
   try {
-    const parsed = clockInSchema.safeParse(req.body);
+    // Multer body fields arrive as strings
+    const parsed = clockInSchema.safeParse({
+      employeeEmail: (req.body as Record<string, unknown>).employeeEmail,
+    });
     if (!parsed.success) {
+      cleanupUpload();
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
 
     const employee = await resolveEmployee(req);
     if (!employee) {
+      cleanupUpload();
       res.status(404).json({ error: 'Employee not found.' });
       return;
+    }
+
+    // Face capture is mandatory (unless HR disabled the setting) — block clock-in without it
+    if (await faceCaptureRequired()) {
+      if (!uploadedFile) {
+        res.status(400).json({ error: 'Face photo is required to clock in. Please allow camera access and capture your photo.' });
+        return;
+      }
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -196,9 +265,22 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
 
     const existing = await Attendance.findOne({ employeeId: employee._id, date: today });
     if (existing && existing.clockIn && !existing.clockOut) {
+      cleanupUpload();
       res.status(409).json({ error: 'Already clocked in today.', attendance: existing });
       return;
     }
+
+    // Persist face photo → pending HR verification. Re-entry re-captures (new photo, status back to PENDING).
+    const faceCapture = uploadedFile
+      ? {
+          file: uploadedFile.filename,
+          capturedAt: now,
+          status: 'PENDING' as const,
+          verifiedBy: '',
+          verifiedAt: null,
+          note: '',
+        }
+      : null;
 
     let attendance;
     let reentered = false;
@@ -215,6 +297,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       existing.clockOut = '';
       existing.clockOutAt = null;
       existing.isAutoClockedOut = false;
+      if (faceCapture) existing.faceCapture = faceCapture;
       // Re-entry is never "late" (it's a resume, not a first arrival) — but
       // preserve explicit HR/late designations already on the record.
       if (existing.status !== 'Late' && existing.status !== 'Work From Home' && existing.status !== 'On Duty') {
@@ -225,6 +308,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       existing.clockIn = timeStr;
       existing.clockInAt = now;
       existing.status = newStatus;
+      if (faceCapture) existing.faceCapture = faceCapture;
       attendance = await existing.save();
     } else {
       attendance = await Attendance.create({
@@ -233,6 +317,7 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
         clockIn: timeStr,
         clockInAt: now,
         status: newStatus,
+        faceCapture,
       });
     }
 
@@ -266,8 +351,14 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
       await notifyAttendanceEvent(employee, 'Team Member Clocked In', `${employee.name} clocked in at ${timeStr}.`, String(attendance._id));
     }
 
-    res.json({ success: true, reentered, attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: attendance.status } });
+    res.json({
+      success: true,
+      reentered,
+      faceVerifyStatus: faceStatusOf(attendance),
+      attendance: { id: attendance._id, clockIn: timeStr, clockInAt: attendance.clockInAt, status: attendance.status },
+    });
   } catch (err) {
+    cleanupUpload();
     console.error('Clock in error:', err);
     res.status(500).json({ error: 'Unable to clock in.' });
   }
@@ -557,9 +648,11 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
     const today = new Date().toISOString().split('T')[0];
     const attendance = await Attendance.findOne({ employeeId: employee._id, date: today });
     const breakBudgets = await getBreakBudgets();
+    const faceRequired = await faceCaptureRequired();
 
     res.json({
       breakBudgets,
+      faceCaptureRequired: faceRequired,
       attendance: attendance ? {
         id: attendance._id,
         clockIn: attendance.clockIn || null,
@@ -573,6 +666,7 @@ router.get('/today/:email', authenticate, async (req: AuthRequest, res: Response
         isAutoClockedOut: !!attendance.isAutoClockedOut,
         sessionBreakBase: attendance.sessionBreakBase || 0,
         hoursManuallySet: !!attendance.hoursManuallySet,
+        faceVerifyStatus: faceStatusOf(attendance),
         status: attendance.status,
       } : null,
     });
@@ -761,6 +855,7 @@ router.get('/history/:email', authenticate, async (req: AuthRequest, res: Respon
         breakMinutes: r.breakMinutes,
         workingMinutes: r.workingMinutes,
         isAutoClockedOut: !!r.isAutoClockedOut,
+        faceVerifyStatus: faceStatusOf(r),
         status: r.status,
         correctionStatus: r.correctionStatus || 'NONE',
         correctionReason: r.correctionReason || '',
@@ -1092,6 +1187,7 @@ router.get('/hr', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (r
         workingHours: minutesToHM(worked),
         hoursManuallySet: !!r.hoursManuallySet,
         isAutoClockedOut: !!r.isAutoClockedOut,
+        faceVerifyStatus: faceStatusOf(r),
         extraHours: minutesToHM(extra),
         shortHours: minutesToHM(short),
         status: r.status,
@@ -1214,12 +1310,15 @@ const reviewDecisionSchema = z.object({
 // GET /api/attendance/hr/pending-review - pending correction/OT queues (HR only)
 router.get('/hr/pending-review', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const [pendingCorrections, pendingOT] = await Promise.all([
+    const [pendingCorrections, pendingOT, pendingFaces] = await Promise.all([
       Attendance.find({ correctionStatus: 'PENDING' })
         .sort({ updatedAt: -1 })
         .populate('employeeId', 'name empId email department'),
       Attendance.find({ otStatus: 'PENDING' })
         .sort({ updatedAt: -1 })
+        .populate('employeeId', 'name empId email department'),
+      Attendance.find({ 'faceCapture.status': 'PENDING', 'faceCapture.file': { $ne: '' } })
+        .sort({ 'faceCapture.capturedAt': -1 })
         .populate('employeeId', 'name empId email department'),
     ]);
 
@@ -1255,10 +1354,118 @@ router.get('/hr/pending-review', authenticate, requireRole('HR_ADMIN', 'SUPER_AD
         employees: new Set(pendingOT.map((r) => String(r.employeeId._id || r.employeeId))).size,
         items: pendingOT.map(mapItem),
       },
+      faceVerifications: {
+        count: pendingFaces.length,
+        items: pendingFaces.map((r) => {
+          const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string } | null;
+          return {
+            id: String(r._id),
+            employeeId: String(r.employeeId._id || r.employeeId),
+            employeeName: emp?.name || 'Unknown',
+            employeeCode: emp?.empId || '-',
+            department: (emp?.department || 'HR') as 'HR' | 'Sales' | 'Tech',
+            date: r.date,
+            clockIn: r.clockIn || null,
+            capturedAt: r.faceCapture?.capturedAt || null,
+          };
+        }),
+      },
     });
   } catch (err) {
     console.error('Pending review error:', err);
     res.status(500).json({ error: 'Unable to load pending reviews.' });
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* FACE VERIFICATION (HR only)                                         */
+/* ------------------------------------------------------------------ */
+
+const faceVerifySchema = z.object({
+  decision: z.enum(['VERIFIED', 'REJECTED']),
+  note: z.string().max(500).optional(),
+});
+
+/** Serve the captured face photo (HR only). Streams the file from disk. */
+router.get('/hr/:id/face-photo', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      res.status(400).json({ error: 'Invalid id.' });
+      return;
+    }
+    const rec = await Attendance.findById(id);
+    if (!rec || !rec.faceCapture?.file) {
+      res.status(404).json({ error: 'No face photo on record.' });
+      return;
+    }
+    // Stored filename is server-generated (timestamp_hex.ext) — reject anything suspicious
+    const file = rec.faceCapture.file;
+    if (!/^[0-9]+_[a-f0-9]+\.(jpg|png|webp)$/i.test(file)) {
+      res.status(400).json({ error: 'Invalid photo reference.' });
+      return;
+    }
+    const full = path.join(FACE_UPLOAD_ROOT, file);
+    if (!fs.existsSync(full)) {
+      res.status(404).json({ error: 'Photo expired or removed (kept until 08:00 AM PKT next day).' });
+      return;
+    }
+    const ext = path.extname(file).toLowerCase();
+    res.setHeader('Content-Type', ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    fs.createReadStream(full).pipe(res);
+  } catch (err) {
+    console.error('Face photo fetch error:', err);
+    res.status(500).json({ error: 'Unable to load photo.' });
+  }
+});
+
+// PUT /api/attendance/hr/:id/face-verify - HR approve/reject captured face
+router.put('/hr/:id/face-verify', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      res.status(400).json({ error: 'Invalid id.' });
+      return;
+    }
+    const parsed = faceVerifySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { decision, note } = parsed.data;
+
+    const rec = await Attendance.findById(id).populate('employeeId', 'name email');
+    if (!rec || !rec.faceCapture?.file) {
+      res.status(404).json({ error: 'No face photo on record.' });
+      return;
+    }
+    if (rec.faceCapture.status !== 'PENDING') {
+      res.status(409).json({ error: 'This capture was already reviewed.' });
+      return;
+    }
+
+    rec.faceCapture.status = decision;
+    rec.faceCapture.verifiedBy = req.user!.email;
+    rec.faceCapture.verifiedAt = new Date();
+    rec.faceCapture.note = note || '';
+    await rec.save();
+
+    const emp = rec.employeeId as unknown as { name: string; email: string } | null;
+    if (decision === 'REJECTED' && emp) {
+      await createNotification({
+        userEmail: emp.email,
+        title: 'Face Verification Failed',
+        message: `The photo captured at your clock-in on ${rec.date} ${rec.clockIn || ''} did not match. Please contact HR to resolve this. Working hours for that day may be affected.`,
+        type: 'attendance',
+        relatedId: String(rec._id),
+      });
+    }
+
+    res.json({ success: true, faceVerifyStatus: decision });
+  } catch (err) {
+    console.error('Face verify error:', err);
+    res.status(500).json({ error: 'Unable to update verification.' });
   }
 });
 
