@@ -1378,13 +1378,18 @@ router.get('/hr/pending-review', authenticate, requireRole('HR_ADMIN', 'SUPER_AD
           const emp = r.employeeId as unknown as { _id: { toString(): string }; name: string; empId: string; department: string } | null;
           return {
             id: String(r._id),
+            attendanceId: String(r._id),
             employeeId: String(r.employeeId._id || r.employeeId),
             employeeName: emp?.name || 'Unknown',
             employeeCode: emp?.empId || '-',
             department: (emp?.department || 'HR') as 'HR' | 'Sales' | 'Tech',
             date: r.date,
+            dateLabel: dateLabel(r.date),
             clockIn: r.clockIn || null,
+            clockInTime: r.clockIn || '-',
             capturedAt: r.faceCapture?.capturedAt || null,
+            submittedAt: r.faceCapture?.capturedAt || r.updatedAt,
+            faceVerifyStatus: faceStatusOf(r),
           };
         }),
       },
