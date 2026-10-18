@@ -207,7 +207,7 @@ export const HodDashboardLayout: React.FC<HodDashboardLayoutProps> = ({ user, on
           ) : activeRoute === '/hod/tickets' ? (
             <HODTicketsView user={user} onNavigate={setCurrentRoute} />
           ) : (
-            <HODDashboardView user={user} />
+            <HODDashboardView user={user} showClockCard={false} />
           )}
         </main>
       </div>

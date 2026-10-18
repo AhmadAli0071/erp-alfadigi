@@ -252,7 +252,7 @@ const TopHoursChart: React.FC<{ rows: { name: string; dept: string; mins: number
 
 /* ---------------- Main view ---------------- */
 
-export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
+export const HODDashboardView: React.FC<{ user: User; showClockCard?: boolean }> = ({ user, showClockCard = true }) => {
   const [data, setData] = useState<OverviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -544,7 +544,7 @@ export const HODDashboardView: React.FC<{ user: User }> = ({ user }) => {
       </div>
 
       {/* My Shift Today - HOD clock-in/out like every other employee */}
-      <ClockButtonsCard user={user} title="My Shift Today" />
+      {showClockCard && <ClockButtonsCard user={user} title="My Shift Today" />}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/80 border border-slate-200/70 overflow-x-auto">
