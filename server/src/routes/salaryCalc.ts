@@ -3,7 +3,7 @@ import { SalarySnapshot } from '../models/SalarySnapshot.js';
 import { SalaryAdjustment } from '../models/SalaryAdjustment.js';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth.js';
 import { Employee } from '../models/Employee.js';
-import { calcMonthLive, calcEmployeeMonth, applyAdjustments, currentMonth, SalaryCalcRow, AdjLike } from '../utils/salaryCalc.js';
+import { calcMonthLive, calcEmployeeMonth, applyAdjustments, currentMonth, daysInMonth, SalaryCalcRow, AdjLike } from '../utils/salaryCalc.js';
 import { getAttendanceConfig } from '../jobs/autoAbsent.js';
 
 const router = Router();
@@ -289,7 +289,7 @@ router.get('/month/export', authenticate, requireRole('HR_ADMIN', 'SUPER_ADMIN',
     const fmtH = (m: number) => `${(m / 60).toFixed(1)}h`;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const lines: string[] = [];
-    lines.push(`Salary Calculation,${month},30-day basis`);
+    lines.push(`Salary Calculation,${month},${daysInMonth(month)}-day basis`);
     lines.push(`Employee ID,Name,Department,Job Title,Base Salary (PKR),Per Day (PKR),Expected Hours,Worked Hours,OT Hours,Paid Leave (days),Unpaid Leave (days),Absent (days),Shortfall Hours,Calculated (PKR),Adjustments (PKR),Final Payable (PKR),Deduction (PKR)`);
     for (const r of filtered) {
       const adjDelta = r.finalPayable - r.payable;

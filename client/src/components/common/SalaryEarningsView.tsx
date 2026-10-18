@@ -284,7 +284,7 @@ export const SalaryEarningsView: React.FC<SalaryEarningsViewProps> = ({ onNaviga
                 <p className="text-[11px] text-slate-500">
                   {calc.source === 'snapshot' ? 'Saved record · ' : ''}
                   {fmtHM(calc.workedMinutes)} worked{calc.otMinutes > 0 ? ` + ${fmtHM(calc.otMinutes)} OT` : ''}
-                  {calc.paidLeaveDays > 0 ? ` · ${calc.paidLeaveDays} paid leave day(s)` : ''} of {fmtHM(calc.expectedMinutes)} expected ({calc.expectedDays ?? 30} days)
+                  {calc.paidLeaveDays > 0 ? ` · ${calc.paidLeaveDays} paid leave day(s)` : ''} of {fmtHM(calc.expectedMinutes)} expected ({calc.expectedDays || 0} days)
                 </p>
               </div>
             </div>

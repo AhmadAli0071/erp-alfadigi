@@ -6,8 +6,12 @@ import { getAttendanceConfig } from '../jobs/autoAbsent.js';
 import { SalaryLogEntry } from '../models/SalarySnapshot.js';
 import { SalaryAdjustment } from '../models/SalaryAdjustment.js';
 
-/** Salary is divided on a FIXED 30-day month (business rule). */
-export const SALARY_MONTH_DAYS = 30;
+/** Actual number of calendar days (28/29/30/31) in a "YYYY-MM" month. */
+export const daysInMonth = (month: string): number => {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+};
+
 const PKT_OFFSET_MIN = 5 * 60;
 
 export const currentMonth = (): string =>
@@ -117,7 +121,7 @@ export const calcEmployeeMonth = async (
   const expectedDays = window.length;
   const expectedMinutes = expectedDays * requiredMinutes;
   const baseSalary = Math.max(0, employee.salary || 0);
-  const perDayRate = baseSalary / SALARY_MONTH_DAYS;
+  const perDayRate = baseSalary / daysInMonth(month);
   const perMinuteRate = expectedMinutes > 0 ? baseSalary / expectedMinutes : 0;
   // Sat/Sun are non-working but PAID for every employee — never deducted, even when
   // the auto-absent sweep marks them Absent.

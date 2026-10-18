@@ -60,7 +60,7 @@ const SalarySnapshotSchema = new Schema<ISalarySnapshot>(
     baseSalary: { type: Number, default: 0 },
     perDayRate: { type: Number, default: 0 },
     requiredHoursPerDay: { type: Number, default: 8 },
-    expectedDays: { type: Number, default: 30 },
+    expectedDays: { type: Number, default: 0 },
     expectedMinutes: { type: Number, default: 0 },
     workedMinutes: { type: Number, default: 0 },
     otMinutes: { type: Number, default: 0 },

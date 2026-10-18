@@ -94,6 +94,10 @@ const DEPTS = ['Tech', 'Sales', 'HR'];
 
 export const HRSalaryCalcView: React.FC<{ onNavigateToDashboard: () => void }> = ({ onNavigateToDashboard }) => {
   const [month, setMonth] = useState(currentMonth());
+  const monthDays = useMemo(() => {
+    const [y, m] = month.split('-').map(Number);
+    return new Date(Date.UTC(y, m, 0)).getUTCDate();
+  }, [month]);
   const [dept, setDept] = useState('');
   const [search, setSearch] = useState('');
   const [data, setData] = useState<MonthResponse | null>(null);
@@ -216,7 +220,7 @@ export const HRSalaryCalcView: React.FC<{ onNavigateToDashboard: () => void }> =
         </button>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Salary Calculation</h1>
-          <p className="text-xs text-slate-500 font-medium">Working-hours based payroll · 30-day basis · live updates</p>
+          <p className="text-xs text-slate-500 font-medium">Working-hours based payroll · {monthDays}-day calendar basis · live updates</p>
         </div>
       </div>
 
@@ -429,7 +433,7 @@ export const HRSalaryCalcView: React.FC<{ onNavigateToDashboard: () => void }> =
       )}
 
       <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium justify-center">
-        <Activity className="w-3 h-3" /> Salary = Base × (counted ÷ expected) · Expected = 30 × {data?.requiredHoursPerDay ?? 9}h · Live updates every 30s
+        <Activity className="w-3 h-3" /> Salary = Base × (counted ÷ expected) · Expected = {monthDays} × {data?.requiredHoursPerDay ?? 9}h · Live updates every 30s
       </div>
 
       {adjustFor && (
